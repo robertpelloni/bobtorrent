@@ -14,6 +14,8 @@ import Swarm from './lib/server/swarm.js'
 import parseHttpRequest from './lib/server/parse-http.js'
 import parseUdpRequest from './lib/server/parse-udp.js'
 import parseWebSocketRequest from './lib/server/parse-websocket.js'
+import { validateManifest } from './lib/manifest.js'
+import LRU from 'lru'
 
 const debug = Debug('bittorrent-tracker:server')
 const hasOwnProperty = Object.prototype.hasOwnProperty
@@ -53,6 +55,15 @@ class Server extends EventEmitter {
     this.listening = false
     this.destroyed = false
     this.torrents = {}
+
+    // LRU Cache for Manifests (max 1000 items)
+    this.manifests = new LRU({ max: 1000 })
+
+    this.subscriptions = {} // PublicKey -> Set<Socket>
+
+    // Blob Index: BlobID -> Set<Socket>
+    // In a real implementation, this should be LRU or DHT-backed.
+    this.blobIndex = {}
 
     this.http = null
     this.udp4 = null
@@ -486,11 +497,14 @@ class Server extends EventEmitter {
     this._onRequest(params, (err, response) => {
       if (this.destroyed || socket.destroyed) return
       if (err) {
-        socket.send(JSON.stringify({
+        const errResponse = {
           action: params.action === common.ACTIONS.ANNOUNCE ? 'announce' : 'scrape',
-          'failure reason': err.message,
-          info_hash: hex2bin(params.info_hash)
-        }), socket.onSend)
+          'failure reason': err.message
+        }
+        if (params.info_hash) {
+          errResponse.info_hash = hex2bin(params.info_hash)
+        }
+        socket.send(JSON.stringify(errResponse), socket.onSend)
 
         this.emit('warning', err)
         return
@@ -631,9 +645,158 @@ class Server extends EventEmitter {
       this._onAnnounce(params, cb)
     } else if (params && params.action === common.ACTIONS.SCRAPE) {
       this._onScrape(params, cb)
+    } else if (params && params.action === 'publish') {
+      this._onPublish(params, cb)
+    } else if (params && params.action === 'subscribe') {
+      this._onSubscribe(params, cb)
+    } else if (params && params.action === 'announce_blob') {
+      this._onAnnounceBlob(params, cb)
+    } else if (params && params.action === 'find_blob') {
+      this._onFindBlob(params, cb)
     } else {
       cb(new Error('Invalid action'))
     }
+  }
+
+  _onAnnounceBlob (params, cb) {
+    if (!Array.isArray(params.blob_ids)) return cb(new Error('blob_ids must be array'))
+
+    const socket = params.socket
+
+    params.blob_ids.forEach(blobId => {
+        if (typeof blobId !== 'string' || blobId.length !== 64) return // Validate SHA256 hex
+
+        if (!this.blobIndex[blobId]) {
+            this.blobIndex[blobId] = new Set()
+        }
+        this.blobIndex[blobId].add(socket)
+
+        // Track for cleanup
+        if (!socket.heldBlobs) socket.heldBlobs = new Set()
+        socket.heldBlobs.add(blobId)
+    })
+
+    // Cleanup hook
+    if (!socket._cleanupBlobsSetup) {
+        socket.on('close', () => {
+            if (socket.heldBlobs) {
+                for (const blobId of socket.heldBlobs) {
+                    if (this.blobIndex[blobId]) {
+                        this.blobIndex[blobId].delete(socket)
+                        if (this.blobIndex[blobId].size === 0) delete this.blobIndex[blobId]
+                    }
+                }
+                socket.heldBlobs.clear()
+            }
+        })
+        socket._cleanupBlobsSetup = true
+    }
+
+    cb(null, { action: 'announce_blob', status: 'ok' })
+  }
+
+  _onFindBlob (params, cb) {
+    const blobId = params.blob_id
+    if (!blobId) return cb(new Error('Missing blob_id'))
+
+    const peers = []
+    if (this.blobIndex[blobId]) {
+        this.blobIndex[blobId].forEach(socket => {
+            if (socket.addr) peers.push(socket.addr)
+        })
+    }
+
+    cb(null, {
+        action: 'find_blob_result',
+        blob_id: blobId,
+        peers: peers
+    })
+  }
+
+  _onPublish (params, cb) {
+    try {
+      if (!validateManifest(params.manifest)) {
+        return cb(new Error('Invalid signature'))
+      }
+    } catch (e) {
+      return cb(new Error('Manifest validation failed: ' + e.message))
+    }
+
+    const key = params.manifest.publicKey
+    const current = this.manifests.get(key)
+
+    if (current && params.manifest.sequence <= current.sequence) {
+      return cb(new Error('Sequence too low'))
+    }
+
+    // Store manifest
+    this.manifests.set(key, params.manifest)
+    debug('Manifest updated for %s seq=%d', key, params.manifest.sequence)
+
+    // Broadcast to subscribers
+    if (this.subscriptions[key]) {
+      this.subscriptions[key].forEach(socket => {
+        if (socket.readyState === 1) { // OPEN
+          try {
+            socket.send(JSON.stringify({
+              action: 'publish',
+              manifest: params.manifest
+            }))
+          } catch (err) {
+            debug('Broadcast failed for peer %s: %s', socket.peerId, err.message)
+          }
+        }
+      })
+    }
+
+    cb(null, { action: 'publish', status: 'ok' })
+  }
+
+  _onSubscribe (params, cb) {
+    const key = params.key
+    const socket = params.socket
+
+    if (!this.subscriptions[key]) {
+      this.subscriptions[key] = new Set()
+    }
+    this.subscriptions[key].add(socket)
+
+    // Track subscriptions on the socket for efficient cleanup
+    if (!socket.subscribedKeys) {
+      socket.subscribedKeys = new Set()
+    }
+    socket.subscribedKeys.add(key)
+
+    // Send latest if available
+    const cached = this.manifests.get(key)
+    if (cached) {
+      try {
+        socket.send(JSON.stringify({
+          action: 'publish',
+          manifest: cached
+        }))
+      } catch (err) {
+        debug('Initial send failed for peer %s: %s', socket.peerId, err.message)
+      }
+    }
+
+    // Cleanup on close
+    if (!socket._cleanupSetup) {
+      socket.on('close', () => {
+        if (socket.subscribedKeys) {
+          for (const k of socket.subscribedKeys) {
+            if (this.subscriptions[k]) {
+              this.subscriptions[k].delete(socket)
+              if (this.subscriptions[k].size === 0) delete this.subscriptions[k]
+            }
+          }
+          socket.subscribedKeys.clear()
+        }
+      })
+      socket._cleanupSetup = true
+    }
+
+    cb(null, { action: 'subscribe', status: 'ok' })
   }
 
   _onAnnounce (params, cb) {
