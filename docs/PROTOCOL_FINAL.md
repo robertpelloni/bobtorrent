@@ -1,7 +1,7 @@
 # Megatorrent Protocol Specification (Final)
 
 **Status:** Reference Implementation Complete
-**Version:** 1.0.0
+**Version:** 1.1.0 (Protocol v5)
 
 ## Overview
 Megatorrent is a decentralized, anonymous, and resilient content distribution protocol designed as a successor to BitTorrent. It eliminates central points of failure (trackers) and obfuscates traffic to prevent censorship and surveillance.
@@ -56,6 +56,9 @@ All peer-to-peer traffic is wrapped in a custom encrypted transport layer to pre
 *   `MSG_DATA (0x03)`: Binary Blob Data.
 *   `MSG_FIND_PEERS (0x04)`: Request PEX for a Blob ID.
 *   `MSG_PEERS (0x05)`: List of peers (JSON).
+*   `MSG_PUBLISH (0x06)`: Request Peer (Gateway) to publish a Manifest to the DHT.
+*   `MSG_ANNOUNCE (0x07)`: Announce own address (e.g., .onion) to Peer.
+*   `MSG_OK (0x08)`: Generic Success Acknowledgement.
 *   `MSG_ERROR (0xFF)`: Error message.
 
 ---
@@ -73,9 +76,11 @@ All peer-to-peer traffic is wrapped in a custom encrypted transport layer to pre
 
 ---
 
-## 5. Tor Integration
+## 5. Tor Integration & Dark Swarms
 *   **SOCKS5:** The Reference Client supports SOCKS5 proxies (`--proxy`).
 *   **PEX Fallback:** Since Tor cannot carry UDP (DHT), clients behind Tor use `MSG_FIND_PEERS` over the encrypted TCP connection to discover content via their peers.
+*   **Remote Publishing:** Authors behind Tor can use `MSG_PUBLISH` to instruct a Gateway node to write to the public DHT on their behalf.
+*   **Hidden Service Announcing:** Nodes can announce `.onion` addresses via `MSG_ANNOUNCE`, creating an invisible swarm overlay accessible only via Tor.
 
 ---
 
