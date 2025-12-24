@@ -17,7 +17,8 @@ const argv = minimist(process.argv.slice(2), {
     o: 'output',
     d: 'dir',
     p: 'proxy',
-    s: 'secret' // Read/Write Secret Key for Private Channel
+    s: 'secret',
+    b: 'bootstrap' // New Flag
   },
   default: {
     keyfile: './identity.json',
@@ -35,6 +36,12 @@ const heldBlobs = new Set()
 const knownSequences = {}
 let serverPort = 0
 const connectedPeers = new Set()
+
+// Add Bootstrap Peer if provided
+if (argv.bootstrap) {
+  console.log(`Adding Bootstrap Peer: ${argv.bootstrap}`)
+  connectedPeers.add(argv.bootstrap)
+}
 
 function parseUri (input) {
   if (input.startsWith('megatorrent://')) {
@@ -58,7 +65,7 @@ if (!command) {
   gen-key [-k identity.json]
   ingest -i <file> [-d ./storage]
   publish [-k identity.json] -i <file_entry.json> [-s <hex_secret>]
-  subscribe <uri> [-d ./storage] [--proxy socks5://...]
+  subscribe <uri> [-d ./storage] [--proxy ...] [--bootstrap host:port]
   `)
   process.exit(1)
 }
@@ -80,7 +87,6 @@ if (command === 'gen-key') {
   }
   fs.writeFileSync(argv.keyfile, JSON.stringify(data, null, 2))
 
-  // Also gen a read key for private channels example
   const readKey = Buffer.alloc(32)
   sodium.randombytes_buf(readKey)
   const readKeyHex = readKey.toString('hex')
@@ -197,7 +203,18 @@ if (command === 'subscribe') {
 
   const checkUpdate = async () => {
     try {
+      // 1. Try DHT
       const res = await dht.getManifest(publicKey)
+
+      // 2. If DHT failed but we have a Bootstrap peer (Dark Swarm), try PEX?
+      // PEX currently finds *Blobs*, not Manifests.
+      // But Protocol v4 could support Manifest Fetch via PEX (Future Work).
+      // For now, Dark Swarms work for *content* but Manifests usually still need DHT
+      // or we assume the bootstrap peer can serve the manifest via a direct request?
+      // Our Secure Transport supports GET <BlobID>.
+      // If we map PubKey to a "Manifest Blob ID" (Mutable), we could fetch it.
+      // Current impl relies on DHT for Manifests.
+
       if (res) {
         if (!knownSequences[publicKey] || res.seq > knownSequences[publicKey]) {
           console.log(`Found New Manifest (Seq: ${res.seq})`)
@@ -205,7 +222,7 @@ if (command === 'subscribe') {
           await processManifest(res.manifest)
         }
       } else {
-        console.log('No manifest found yet...')
+        console.log('No manifest found in DHT yet...')
       }
     } catch (err) {
       console.error('Lookup error:', err.message)
@@ -222,8 +239,6 @@ if (command === 'subscribe') {
     }
 
     let collections = manifest.collections
-
-    // Handle Encryption
     if (manifest.encrypted) {
       if (!readKey) {
         console.error('Manifest is encrypted but no key provided in URI.')
@@ -238,7 +253,6 @@ if (command === 'subscribe') {
         return
       }
     } else if (!collections) {
-      // Legacy or error
       console.error('Manifest format error')
       return
     }
@@ -267,14 +281,23 @@ if (command === 'subscribe') {
 
             let peers = await dht.findBlobPeers(blobId)
 
+            // Fallback to PEX (bootstrap or previously connected)
             if (peers.length === 0 && connectedPeers.size > 0) {
               console.log('DHT yielded no peers. Trying PEX...')
               for (const p of connectedPeers) {
+                // Try to ask peer
                 const pexPeers = await findPeersViaPEX(p, blobId)
-                peers = peers.concat(pexPeers)
+                if (pexPeers.length > 0) {
+                  console.log(`PEX found ${pexPeers.length} peers via ${p}`)
+                  peers = peers.concat(pexPeers)
+                }
               }
+              // Also add the bootstrap peers themselves as candidates if they hold the blob
+              connectedPeers.forEach(p => peers.push(p))
             }
 
+            // Deduplicate
+            peers = [...new Set(peers)]
             console.log(`Found ${peers.length} peers:`, peers)
 
             let downloaded = false
@@ -293,7 +316,8 @@ if (command === 'subscribe') {
                 break
               } catch (e) {
                 console.error(`Peer ${peer} failed: ${e.message}`)
-                connectedPeers.delete(peer)
+                // Don't remove bootstrap peer on fail, it might just not have *this* file
+                if (peer !== argv.bootstrap) connectedPeers.delete(peer)
               }
             }
             if (!downloaded) console.error(`Failed to download blob ${blobId}`)
