@@ -21,6 +21,8 @@ export function setGlobalProxy (proxyUrl) {
 const MSG_HELLO = 0x01
 const MSG_REQUEST = 0x02
 const MSG_DATA = 0x03
+const MSG_FIND_PEERS = 0x04
+const MSG_PEERS = 0x05
 const MSG_ERROR = 0xFF
 
 function encryptStream (socket, isServer, onMessage) {
@@ -129,7 +131,7 @@ function encryptStream (socket, isServer, onMessage) {
     sendMessage: (type, payload, cb) => {
       const buf = Buffer.alloc(1 + payload.length)
       buf[0] = type
-      payload.copy(buf, 1)
+      if (payload) payload.copy(buf, 1)
 
       if (!sharedTx) pendingWrites.push({ buf, cb })
       else writeEncrypted(buf, cb)
@@ -137,11 +139,10 @@ function encryptStream (socket, isServer, onMessage) {
   }
 }
 
-export function startSecureServer (storageDir, port = 0, onGossip = null) {
+export function startSecureServer (storageDir, port = 0, onGossip = null, dht = null) {
   const server = net.createServer(socket => {
-    const secure = encryptStream(socket, true, (type, payload) => {
+    const secure = encryptStream(socket, true, async (type, payload) => {
       if (type === MSG_HELLO) {
-        // Gossip: Peer sends { key, seq }
         try {
           const gossip = JSON.parse(payload.toString())
           if (onGossip) onGossip(gossip, secure)
@@ -156,6 +157,16 @@ export function startSecureServer (storageDir, port = 0, onGossip = null) {
         } else {
           secure.sendMessage(MSG_ERROR, Buffer.from('Not Found'))
         }
+      } else if (type === MSG_FIND_PEERS) {
+          // PEX Request
+          if (dht) {
+              const blobId = payload.toString()
+              const peers = await dht.findBlobPeers(blobId)
+              const peersJson = JSON.stringify(peers)
+              secure.sendMessage(MSG_PEERS, Buffer.from(peersJson))
+          } else {
+              secure.sendMessage(MSG_PEERS, Buffer.from('[]'))
+          }
       }
     })
   })
@@ -202,7 +213,6 @@ export function downloadSecureBlob (peer, blobId, knownSequences = {}, onGossip 
       const secure = encryptStream(socket, false, (type, payload) => {
         if (type === MSG_DATA) {
           chunks.push(payload)
-          // Verify Integrity
           const fullBuffer = Buffer.concat(chunks)
           const hash = crypto.createHash('sha256').update(fullBuffer).digest('hex')
           if (hash === blobId) {
@@ -221,13 +231,9 @@ export function downloadSecureBlob (peer, blobId, knownSequences = {}, onGossip 
         }
       })
 
-      // Wait for handshake then send HELLO + REQUEST
       socket.once('secureConnect', () => {
-        // Send Gossip Hello
         const hello = Buffer.from(JSON.stringify(knownSequences))
         secure.sendMessage(MSG_HELLO, hello)
-
-        // Send Request
         secure.sendMessage(MSG_REQUEST, Buffer.from(blobId))
       })
 
@@ -236,4 +242,38 @@ export function downloadSecureBlob (peer, blobId, knownSequences = {}, onGossip 
 
     connect().catch(reject)
   })
+}
+
+// Helper to perform PEX lookup via a connected peer
+export function findPeersViaPEX (peer, blobId) {
+    return new Promise((resolve, reject) => {
+        const [host, portStr] = peer.split(':')
+        const port = parseInt(portStr)
+
+        // PEX needs a connection. This is expensive if we open a new one just for PEX.
+        // In a real app, we'd reuse existing connections.
+        // For this ref impl, we open a connection, ask, and close.
+
+        let socket
+        // ... connection logic duplicated from download (should refactor) ...
+        // Simplified for brevity:
+        socket = new net.Socket()
+        socket.connect(port, host, () => {
+             const secure = encryptStream(socket, false, (type, payload) => {
+                 if (type === MSG_PEERS) {
+                     try {
+                         const peers = JSON.parse(payload.toString())
+                         socket.end()
+                         resolve(peers)
+                     } catch(e) { resolve([]) }
+                 }
+             })
+             socket.once('secureConnect', () => {
+                 secure.sendMessage(MSG_HELLO, Buffer.from("{}"))
+                 secure.sendMessage(MSG_FIND_PEERS, Buffer.from(blobId))
+             })
+        })
+        socket.on('error', () => resolve([]))
+        setTimeout(() => socket.destroy(), 5000)
+    })
 }

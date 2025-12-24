@@ -3,10 +3,11 @@
 import fs from 'fs'
 import path from 'path'
 import minimist from 'minimist'
+import sodium from 'sodium-native'
 import { generateKeypair } from './lib/crypto.js'
-import { createManifest, validateManifest } from './lib/manifest.js'
+import { createManifest, validateManifest, decryptManifest } from './lib/manifest.js'
 import { ingest, reassemble } from './lib/storage.js'
-import { startSecureServer, downloadSecureBlob, setGlobalProxy } from './lib/secure-transport.js'
+import { startSecureServer, downloadSecureBlob, setGlobalProxy, findPeersViaPEX } from './lib/secure-transport.js'
 import { DHTClient } from './lib/dht-real.js'
 
 const argv = minimist(process.argv.slice(2), {
@@ -15,7 +16,8 @@ const argv = minimist(process.argv.slice(2), {
     i: 'input',
     o: 'output',
     d: 'dir',
-    p: 'proxy'
+    p: 'proxy',
+    s: 'secret' // Read/Write Secret Key for Private Channel
   },
   default: {
     keyfile: './identity.json',
@@ -23,37 +25,40 @@ const argv = minimist(process.argv.slice(2), {
   }
 })
 
-// Configure Proxy
 if (argv.proxy) {
   console.log(`Using SOCKS5 Proxy: ${argv.proxy}`)
   setGlobalProxy(argv.proxy)
 }
 
 const command = argv._[0]
-
-// Global State for Seeding/Gossip
-const heldBlobs = new Set() // BlobIDs we have on disk
-const knownSequences = {} // PubKey -> Seq
+const heldBlobs = new Set()
+const knownSequences = {}
 let serverPort = 0
+const connectedPeers = new Set()
 
 function parseUri (input) {
   if (input.startsWith('megatorrent://')) {
     const withoutScheme = input.replace('megatorrent://', '')
     const parts = withoutScheme.split('/')
+    // <pubkey> or <pubkey>:<secret>
+    const authParts = parts[0].split(':')
+
     return {
-      publicKey: parts[0],
+      publicKey: authParts[0],
+      readKey: authParts[1] || null,
       blobId: parts[1] || null
     }
   }
-  return { publicKey: input, blobId: null }
+  const parts = input.split(':')
+  return { publicKey: parts[0], readKey: parts[1] || null, blobId: null }
 }
 
 if (!command) {
   console.error(`Usage:
   gen-key [-k identity.json]
   ingest -i <file> [-d ./storage]
-  publish [-k identity.json] -i <file_entry.json>
-  subscribe <uri> [-d ./storage] [--proxy socks5://127.0.0.1:9050]
+  publish [-k identity.json] -i <file_entry.json> [-s <hex_secret>]
+  subscribe <uri> [-d ./storage] [--proxy socks5://...]
   `)
   process.exit(1)
 }
@@ -67,7 +72,6 @@ if (['ingest', 'publish', 'subscribe'].includes(command)) {
   dht = new DHTClient({ stateFile: path.join(argv.dir, 'dht_state.json') })
 }
 
-// 1. Generate Key
 if (command === 'gen-key') {
   const keypair = generateKeypair()
   const data = {
@@ -75,16 +79,22 @@ if (command === 'gen-key') {
     secretKey: keypair.secretKey.toString('hex')
   }
   fs.writeFileSync(argv.keyfile, JSON.stringify(data, null, 2))
+
+  // Also gen a read key for private channels example
+  const readKey = Buffer.alloc(32)
+  sodium.randombytes_buf(readKey)
+  const readKeyHex = readKey.toString('hex')
+
   console.log(`Identity generated at ${argv.keyfile}`)
   console.log(`Public Key: ${data.publicKey}`)
-  console.log(`URI: megatorrent://${data.publicKey}`)
+  console.log(`Public URI: megatorrent://${data.publicKey}`)
+  console.log(`Private URI: megatorrent://${data.publicKey}:${readKeyHex}`)
   if (dht) dht.destroy()
   process.exit(0)
 }
 
-// 2. Ingest
 if (command === 'ingest') {
-  const server = startSecureServer(argv.dir, 0)
+  const server = startSecureServer(argv.dir, 0, null, dht)
   setTimeout(() => {
     serverPort = server.port
     console.log(`Secure Blob Server running on port ${serverPort}`)
@@ -109,7 +119,6 @@ if (command === 'ingest') {
   }, 500)
 }
 
-// 3. Publish
 if (command === 'publish') {
   if (!fs.existsSync(argv.keyfile)) {
     console.error('Keyfile not found. Run gen-key first.')
@@ -141,9 +150,10 @@ if (command === 'publish') {
   }]
 
   const sequence = Date.now()
-  const manifest = createManifest(keypair, sequence, collections)
+  const manifest = createManifest(keypair, sequence, collections, argv.secret)
 
   console.log('Publishing manifest to DHT...')
+  if (argv.secret) console.log('Encrypted Channel Enabled.')
 
   dht.putManifest(keypair, sequence, manifest).then(hash => {
     console.log('Published!')
@@ -159,7 +169,6 @@ if (command === 'publish') {
   })
 }
 
-// 4. Subscribe
 if (command === 'subscribe') {
   const uri = argv._[1]
   if (!uri) {
@@ -167,8 +176,9 @@ if (command === 'subscribe') {
     process.exit(1)
   }
 
-  const { publicKey } = parseUri(uri)
+  const { publicKey, readKey } = parseUri(uri)
   console.log(`Looking up Manifest for ${publicKey} in DHT...`)
+  if (readKey) console.log('Using Read Key for decryption.')
 
   const handleGossip = (gossip) => {
     if (gossip && gossip[publicKey]) {
@@ -179,7 +189,7 @@ if (command === 'subscribe') {
     }
   }
 
-  const server = startSecureServer(argv.dir, 0, handleGossip)
+  const server = startSecureServer(argv.dir, 0, handleGossip, dht)
   setTimeout(() => {
     serverPort = server.port
     console.log(`Seeding on port ${serverPort}`)
@@ -211,14 +221,35 @@ if (command === 'subscribe') {
       return
     }
 
-    const items = manifest.collections[0].items
+    let collections = manifest.collections
+
+    // Handle Encryption
+    if (manifest.encrypted) {
+      if (!readKey) {
+        console.error('Manifest is encrypted but no key provided in URI.')
+        return
+      }
+      try {
+        const decrypted = decryptManifest(manifest, readKey)
+        collections = decrypted.collections
+        console.log('Manifest decrypted successfully.')
+      } catch (e) {
+        console.error('Failed to decrypt manifest:', e.message)
+        return
+      }
+    } else if (!collections) {
+      // Legacy or error
+      console.error('Manifest format error')
+      return
+    }
+
+    const items = collections[0].items
     for (const item of items) {
       if (item.chunks) {
         console.log(`Processing: ${item.name}`)
         const outPath = path.join(argv.dir, item.name)
         if (fs.existsSync(outPath)) {
           console.log('Already downloaded.')
-          // Ensure we seed it
           item.chunks.forEach(c => heldBlobs.add(c.id))
           continue
         }
@@ -233,7 +264,17 @@ if (command === 'subscribe') {
             heldBlobs.add(blobId)
           } else {
             console.log(`Finding peers for blob ${blobId}...`)
-            const peers = await dht.findBlobPeers(blobId)
+
+            let peers = await dht.findBlobPeers(blobId)
+
+            if (peers.length === 0 && connectedPeers.size > 0) {
+              console.log('DHT yielded no peers. Trying PEX...')
+              for (const p of connectedPeers) {
+                const pexPeers = await findPeersViaPEX(p, blobId)
+                peers = peers.concat(pexPeers)
+              }
+            }
+
             console.log(`Found ${peers.length} peers:`, peers)
 
             let downloaded = false
@@ -244,14 +285,15 @@ if (command === 'subscribe') {
                 fs.writeFileSync(blobPath, buffer)
                 chunks.push(buffer)
                 heldBlobs.add(blobId)
+                connectedPeers.add(peer)
 
-                // Announce immediately to become a seeder
                 if (serverPort) dht.announceBlob(blobId, serverPort)
 
                 downloaded = true
                 break
               } catch (e) {
                 console.error(`Peer ${peer} failed: ${e.message}`)
+                connectedPeers.delete(peer)
               }
             }
             if (!downloaded) console.error(`Failed to download blob ${blobId}`)
@@ -269,12 +311,10 @@ if (command === 'subscribe') {
         }
       }
     }
-    // After processing, announce all held blobs
     announceHeldBlobs()
   }
 }
 
-// Periodic Re-announce (Seeding)
 function announceHeldBlobs () {
   if (heldBlobs.size > 0 && dht && serverPort) {
     console.log(`Re-announcing ${heldBlobs.size} blobs to DHT...`)
@@ -283,4 +323,4 @@ function announceHeldBlobs () {
   }
 }
 
-setInterval(announceHeldBlobs, 15 * 60 * 1000) // Every 15 mins
+setInterval(announceHeldBlobs, 15 * 60 * 1000)
