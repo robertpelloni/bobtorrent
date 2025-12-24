@@ -3,27 +3,31 @@
 import fs from 'fs'
 import path from 'path'
 import minimist from 'minimist'
-import { WebSocket } from 'ws'
 import { generateKeypair } from './lib/crypto.js'
 import { createManifest, validateManifest } from './lib/manifest.js'
 import { ingest, reassemble } from './lib/storage.js'
-import { startSecureServer, downloadSecureBlob } from './lib/secure-transport.js'
+import { startSecureServer, downloadSecureBlob, setGlobalProxy } from './lib/secure-transport.js'
 import { DHTClient } from './lib/dht-real.js'
-import sodium from 'sodium-native'
 
 const argv = minimist(process.argv.slice(2), {
   alias: {
     k: 'keyfile',
-    t: 'tracker', // kept for legacy compatibility
     i: 'input',
     o: 'output',
-    d: 'dir'
+    d: 'dir',
+    p: 'proxy'
   },
   default: {
     keyfile: './identity.json',
     dir: './storage'
   }
 })
+
+// Configure Proxy if provided
+if (argv.proxy) {
+  console.log(`Using SOCKS5 Proxy: ${argv.proxy}`)
+  setGlobalProxy(argv.proxy)
+}
 
 const command = argv._[0]
 
@@ -42,9 +46,9 @@ function parseUri (input) {
 if (!command) {
   console.error(`Usage:
   gen-key [-k identity.json]
-  ingest -i <file> [-d ./storage] -> Returns FileEntry JSON
-  publish [-k identity.json] -i <file_entry.json> (Uses DHT)
-  subscribe <public_key_hex|megatorrent://...> [-d ./storage] (Uses DHT)
+  ingest -i <file> [-d ./storage]
+  publish [-k identity.json] -i <file_entry.json>
+  subscribe <uri> [-d ./storage] [--proxy socks5://127.0.0.1:9050]
   `)
   process.exit(1)
 }
@@ -54,11 +58,10 @@ if (!fs.existsSync(argv.dir)) {
   fs.mkdirSync(argv.dir, { recursive: true })
 }
 
-// Initialize DHT if needed
+// Initialize DHT
 let dht = null
 if (['ingest', 'publish', 'subscribe'].includes(command)) {
-  dht = new DHTClient()
-  // Wait a bit for bootstrap?
+  dht = new DHTClient({ stateFile: path.join(argv.dir, 'dht_state.json') })
 }
 
 // 1. Generate Key
@@ -78,9 +81,7 @@ if (command === 'gen-key') {
 
 // 2. Ingest
 if (command === 'ingest') {
-  // Start the Secure Blob Server
   const server = startSecureServer(argv.dir, 0)
-  // Wait for port assignment
   setTimeout(() => {
     const port = server.port
     console.log(`Secure Blob Server running on port ${port}`)
@@ -91,7 +92,6 @@ if (command === 'ingest') {
       const fileBuf = fs.readFileSync(argv.input)
       const result = ingest(fileBuf, path.basename(argv.input))
 
-      // Save Blobs
       result.blobs.forEach(blob => {
         fs.writeFileSync(path.join(argv.dir, blob.id), blob.buffer)
       })
@@ -100,7 +100,6 @@ if (command === 'ingest') {
       console.log('FileEntry JSON (save this to a file to publish it):')
       console.log(JSON.stringify(result.fileEntry, null, 2))
 
-      // Announce to DHT
       console.log('Announcing blobs to DHT...')
       const promises = result.blobs.map(b => dht.announceBlob(b.id, port))
 
@@ -123,7 +122,6 @@ if (command === 'publish') {
     secretKey: Buffer.from(keyData.secretKey, 'hex')
   }
 
-  // Read Input
   if (!argv.input) {
     console.error('Please specify input file with -i')
     process.exit(1)
@@ -151,7 +149,6 @@ if (command === 'publish') {
   dht.putManifest(keypair, sequence, manifest).then(hash => {
     console.log('Published!')
     console.log('Mutable Item Hash:', hash.toString('hex'))
-    // Wait briefly for propagation
     setTimeout(() => {
       dht.destroy()
       process.exit(0)
@@ -174,13 +171,10 @@ if (command === 'subscribe') {
   const { publicKey } = parseUri(uri)
   console.log(`Looking up Manifest for ${publicKey} in DHT...`)
 
-  // Start Server to reciprocate
-  const server = startSecureServer(argv.dir, 0)
-  setTimeout(() => {
-    console.log(`Local Secure Server on ${server.port}`)
-  }, 100)
+  // Start Server
+  startSecureServer(argv.dir, 0)
 
-  // Poll DHT for updates
+  // Poll DHT
   const checkUpdate = async () => {
     try {
       const res = await dht.getManifest(publicKey)
@@ -195,10 +189,7 @@ if (command === 'subscribe') {
     }
   }
 
-  // Initial check
   checkUpdate()
-
-  // Periodic check (every minute)
   setInterval(checkUpdate, 60000)
 
   async function processManifest (manifest) {

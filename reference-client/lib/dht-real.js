@@ -1,15 +1,56 @@
 import DHT from 'bittorrent-dht'
 import sodium from 'sodium-native'
+import fs from 'fs'
 
-// Wrapper for BEP 44 Mutable Items
+// Wrapper for BEP 44 Mutable Items & State Persistence
 export class DHTClient {
   constructor (opts = {}) {
-    this.dht = new DHT(opts)
+    // Load persisted state if available
+    const stateFile = opts.stateFile || './dht_state.json'
+    const dhtOpts = { ...opts }
+
+    if (fs.existsSync(stateFile)) {
+      try {
+        const state = JSON.parse(fs.readFileSync(stateFile, 'utf-8'))
+        if (state.nodeId) dhtOpts.nodeId = Buffer.from(state.nodeId, 'hex')
+        if (state.nodes) {
+          this._savedNodes = state.nodes
+        }
+      } catch (e) {
+        console.error('Failed to load DHT state:', e.message)
+      }
+    }
+
+    this.dht = new DHT(dhtOpts)
     this.ready = false
-    this.dht.on('ready', () => { this.ready = true })
+    this.stateFile = stateFile
+
+    this.dht.on('ready', () => {
+      this.ready = true
+      if (this._savedNodes) {
+        this._savedNodes.forEach(node => this.dht.addNode(node))
+      }
+    })
+
+    // Auto-save state on exit or periodically
+    this._saveInterval = setInterval(() => this.saveState(), 60000 * 5)
+  }
+
+  saveState () {
+    try {
+      const state = {
+        nodeId: this.dht.nodeId.toString('hex'),
+        nodes: this.dht.toJSON().nodes
+      }
+      fs.writeFileSync(this.stateFile, JSON.stringify(state, null, 2))
+    } catch (e) {
+      // Ignore write errors
+    }
   }
 
   destroy () {
+    this.saveState()
+    clearInterval(this._saveInterval)
     this.dht.destroy()
   }
 
@@ -79,7 +120,7 @@ export class DHTClient {
       })
 
       this.dht.lookup(blobId, (err) => {
-        // Return whatever we found
+        if (err) return reject(err)
         resolve(peers)
       })
     })
