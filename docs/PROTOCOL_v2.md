@@ -53,6 +53,18 @@ All subsequent messages are framed:
 *   Redundancy is achieved via the DHT's natural replication of announcements.
 *   The more peers subscribe to a channel, the more replicas of the blobs exist in the swarm.
 
-## 4. Onion Routing (Optional)
-*   Peers may announce `.onion` addresses in the DHT (requires Tor support in DHT or specialized separate DHT).
-*   The Reference Client supports SOCKS5, allowing it to run behind a Tor proxy.
+## 4. Security Considerations & Best Practices
+
+### 4.1. Anonymity & DHT Leakage
+While the Data Plane is encrypted and can be routed via Tor (SOCKS5), the **DHT traffic uses UDP**, which Tor does not support natively.
+*   **Risk:** Performing DHT lookups exposes your IP address to the DHT swarm nodes.
+*   **Mitigation (Current):** Use a **Gateway Node** or VPN to bootstrap into the DHT if anonymity is critical.
+*   **Mitigation (Future):** Implement DHT-over-TCP or route DHT traffic through a specialized mixnet (e.g., I2P).
+
+### 4.2. Sybil Resistance
+*   The protocol relies on **Ed25519 Identity Keys**.
+*   Spammers cannot forge updates for a channel they do not own.
+*   However, a Sybil attacker could flood the DHT with fake peers for a blob. The Encrypted Handshake mitigates this by allowing clients to quickly disconnect from peers that fail the handshake, but traffic analysis of connection attempts is still possible.
+
+### 4.3. Traffic Analysis
+*   **Padding:** All blobs should ideally be padded to a fixed size (e.g., 2MB) to prevent fingerprinting files based on chunk sizes. The current implementation supports arbitrary blob sizes, but clients SHOULD enforce fixed-size chunking during ingestion.
