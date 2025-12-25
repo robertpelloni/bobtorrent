@@ -6,7 +6,7 @@ import minimist from 'minimist'
 import sodium from 'sodium-native'
 import { generateKeypair } from './lib/crypto.js'
 import { createManifest, validateManifest, decryptManifest } from './lib/manifest.js'
-import { ingest, reassemble } from './lib/storage.js'
+import { ingestStream, reassembleStream } from './lib/storage.js'
 import { startSecureServer, downloadSecureBlob, setGlobalProxy, findPeersViaPEX, publishViaGateway } from './lib/secure-transport.js'
 import { DHTClient } from './lib/dht-real.js'
 
@@ -19,8 +19,8 @@ const argv = minimist(process.argv.slice(2), {
     p: 'proxy',
     s: 'secret',
     b: 'bootstrap',
-    g: 'gateway', // New: Publish via Gateway
-    a: 'announce-address' // New: Announce specific address (e.g. .onion)
+    g: 'gateway',
+    a: 'announce-address'
   },
   default: {
     keyfile: './identity.json',
@@ -65,7 +65,7 @@ if (!command) {
   gen-key [-k identity.json]
   ingest -i <file> [-d ./storage]
   publish [-k identity.json] -i <file_entry.json> [-s <secret>] [--gateway <host:port>]
-  subscribe <uri> [-d ./storage] [--proxy ...] [--bootstrap host:port] [--announce-address <my.onion:80>]
+  subscribe <uri> [-d ./storage] [--proxy ...]
   `)
   process.exit(1)
 }
@@ -76,9 +76,6 @@ if (!fs.existsSync(argv.dir)) {
 
 let dht = null
 if (['ingest', 'publish', 'subscribe'].includes(command)) {
-  // Only start DHT if NOT using proxy or if specifically wanted?
-  // For now, start it unless explicit flag?
-  // We'll keep it for PEX gateway logic.
   dht = new DHTClient({ stateFile: path.join(argv.dir, 'dht_state.json') })
 }
 
@@ -104,26 +101,29 @@ if (command === 'gen-key') {
 
 if (command === 'ingest') {
   const server = startSecureServer(argv.dir, 0, null, dht)
-  setTimeout(() => {
+  setTimeout(async () => {
     serverPort = server.port
     console.log(`Secure Blob Server running on port ${serverPort}`)
 
     if (!argv.input) {
       console.log('Running in server-only mode. Press Ctrl+C to exit.')
     } else {
-      const fileBuf = fs.readFileSync(argv.input)
-      const result = ingest(fileBuf, path.basename(argv.input))
+      console.log(`Ingesting ${argv.input} (Streaming Mode)...`)
 
-      result.blobs.forEach(blob => {
-        fs.writeFileSync(path.join(argv.dir, blob.id), blob.buffer)
-        heldBlobs.add(blob.id)
-      })
+      try {
+        const result = await ingestStream(argv.input, argv.dir, path.basename(argv.input))
 
-      console.log(`Ingested ${result.blobs.length} blobs to ${argv.dir}`)
-      console.log('FileEntry JSON (save this to a file to publish it):')
-      console.log(JSON.stringify(result.fileEntry, null, 2))
+        result.fileEntry.chunks.forEach(c => heldBlobs.add(c.blobId))
 
-      announceHeldBlobs()
+        console.log(`Ingested ${result.fileEntry.chunks.length} blobs to ${argv.dir}`)
+        console.log('FileEntry JSON (save this to a file to publish it):')
+        console.log(JSON.stringify(result.fileEntry, null, 2))
+
+        announceHeldBlobs()
+      } catch (e) {
+        console.error('Ingest failed:', e)
+        process.exit(1)
+      }
     }
   }, 500)
 }
@@ -219,9 +219,6 @@ if (command === 'subscribe') {
     try {
       const res = await dht.getManifest(publicKey)
 
-      // TODO: PEX for Manifest lookup via Gateway?
-      // Not implemented in this ref, but structure supports it.
-
       if (res) {
         if (!knownSequences[publicKey] || res.seq > knownSequences[publicKey]) {
           console.log(`Found New Manifest (Seq: ${res.seq})`)
@@ -271,68 +268,74 @@ if (command === 'subscribe') {
         const outPath = path.join(argv.dir, item.name)
         if (fs.existsSync(outPath)) {
           console.log('Already downloaded.')
-          item.chunks.forEach(c => heldBlobs.add(c.id))
+          item.chunks.forEach(c => heldBlobs.add(c.blobId))
           continue
         }
 
-        const chunks = []
+        // Check if we have all blobs
+        let missing = false
         for (const chunk of item.chunks) {
-          const blobId = chunk.id
-          const blobPath = path.join(argv.dir, blobId)
-
-          if (fs.existsSync(blobPath)) {
-            chunks.push(fs.readFileSync(blobPath))
-            heldBlobs.add(blobId)
-          } else {
-            console.log(`Finding peers for blob ${blobId}...`)
-
-            let peers = await dht.findBlobPeers(blobId)
-
-            if (peers.length === 0 && connectedPeers.size > 0) {
-              console.log('DHT yielded no peers. Trying PEX...')
-              for (const p of connectedPeers) {
-                const pexPeers = await findPeersViaPEX(p, blobId)
-                if (pexPeers.length > 0) {
-                  peers = peers.concat(pexPeers)
-                }
-              }
-              connectedPeers.forEach(p => peers.push(p))
-            }
-
-            peers = [...new Set(peers)]
-            console.log(`Found ${peers.length} peers:`, peers)
-
-            let downloaded = false
-            for (const peer of peers) {
-              try {
-                console.log(`Connecting to ${peer}...`)
-                const buffer = await downloadSecureBlob(peer, blobId, knownSequences, handleGossip, argv['announce-address'])
-                fs.writeFileSync(blobPath, buffer)
-                chunks.push(buffer)
-                heldBlobs.add(blobId)
-                connectedPeers.add(peer)
-
-                if (serverPort) dht.announceBlob(blobId, serverPort)
-
-                downloaded = true
-                break
-              } catch (e) {
-                console.error(`Peer ${peer} failed: ${e.message}`)
-                if (peer !== argv.bootstrap) connectedPeers.delete(peer)
-              }
-            }
-            if (!downloaded) console.error(`Failed to download blob ${blobId}`)
+          if (!fs.existsSync(path.join(argv.dir, chunk.blobId))) {
+            missing = true; break
           }
         }
 
-        if (chunks.length === item.chunks.length) {
-          const fileBuf = await reassemble(item, async (bid) => {
-            return fs.readFileSync(path.join(argv.dir, bid))
-          })
-          if (fileBuf) {
-            fs.writeFileSync(outPath, fileBuf)
-            console.log(`Successfully assembled ${item.name}`)
+        if (missing) {
+          for (const chunk of item.chunks) {
+            const blobId = chunk.blobId
+            const blobPath = path.join(argv.dir, blobId)
+
+            if (fs.existsSync(blobPath)) {
+              heldBlobs.add(blobId)
+            } else {
+              console.log(`Finding peers for blob ${blobId}...`)
+
+              let peers = await dht.findBlobPeers(blobId)
+
+              if (peers.length === 0 && connectedPeers.size > 0) {
+                console.log('DHT yielded no peers. Trying PEX...')
+                for (const p of connectedPeers) {
+                  const pexPeers = await findPeersViaPEX(p, blobId)
+                  if (pexPeers.length > 0) {
+                    peers = peers.concat(pexPeers)
+                  }
+                }
+                connectedPeers.forEach(p => peers.push(p))
+              }
+
+              peers = [...new Set(peers)]
+              console.log(`Found ${peers.length} peers:`, peers)
+
+              let downloaded = false
+              for (const peer of peers) {
+                try {
+                  console.log(`Connecting to ${peer}...`)
+                  const buffer = await downloadSecureBlob(peer, blobId, knownSequences, handleGossip, argv['announce-address'])
+                  fs.writeFileSync(blobPath, buffer)
+                  heldBlobs.add(blobId)
+                  connectedPeers.add(peer)
+
+                  if (serverPort) dht.announceBlob(blobId, serverPort)
+
+                  downloaded = true
+                  break
+                } catch (e) {
+                  console.error(`Peer ${peer} failed: ${e.message}`)
+                  if (peer !== argv.bootstrap) connectedPeers.delete(peer)
+                }
+              }
+              if (!downloaded) console.error(`Failed to download blob ${blobId}`)
+            }
           }
+        }
+
+        // Reassemble Streaming
+        if (item.chunks.every(c => fs.existsSync(path.join(argv.dir, c.blobId)))) {
+          console.log(`Reassembling ${item.name}...`)
+          await reassembleStream(item, (bid) => path.join(argv.dir, bid), outPath)
+          console.log(`Successfully assembled ${item.name}`)
+        } else {
+          console.error(`Could not reassemble ${item.name} (Missing chunks)`)
         }
       }
     }
