@@ -7,6 +7,9 @@ import http from 'http'
 import { MegatorrentClient } from './lib/client.js'
 import { generateKeypair } from './lib/crypto.js'
 import { ingestStream } from './lib/storage.js'
+import { createManifest } from './lib/manifest.js'
+import { publishViaGateway } from './lib/secure-transport.js'
+import { DHTClient } from './lib/dht-real.js'
 
 const argv = minimist(process.argv.slice(2), {
   alias: {
@@ -19,7 +22,7 @@ const argv = minimist(process.argv.slice(2), {
     g: 'gateway',
     a: 'announce-address',
     P: 'port', // RPC Port
-    T: 'p2p-port' // Transport Port (for fixed binding)
+    T: 'p2p-port' // Transport Port
   },
   default: {
     keyfile: './identity.json',
@@ -34,8 +37,8 @@ if (!command) {
   console.error(`Usage:
   gen-key [-k identity.json]
   ingest -i <file> [-d ./storage]
-  publish [-k identity.json] -i <file_entry.json>
-  serve [-d ./storage] [--port 3000] [--p2p-port 4000] [--bootstrap host:port]
+  publish [-k identity.json] -i <file_entry.json> [--gateway <host:port>]
+  serve [-d ./storage] [--port 3000] [--p2p-port 4000]
   subscribe <uri> [-d ./storage] (Legacy CLI mode)
   `)
   process.exit(1)
@@ -61,7 +64,55 @@ if (command === 'ingest') {
   })
 }
 
-// 3. Serve (Daemon Mode)
+// 3. Publish
+if (command === 'publish') {
+  if (!argv.keyfile || !fs.existsSync(argv.keyfile)) { console.error('Missing keyfile'); process.exit(1) }
+  if (!argv.input) { console.error('Missing input file entry'); process.exit(1) }
+
+  const keyData = JSON.parse(fs.readFileSync(argv.keyfile))
+  const keypair = {
+    publicKey: Buffer.from(keyData.publicKey, 'hex'),
+    secretKey: Buffer.from(keyData.secretKey, 'hex')
+  }
+
+  // Read File Entry (JSON)
+  let fileEntry
+  try {
+    fileEntry = JSON.parse(fs.readFileSync(argv.input))
+  } catch (e) { console.error('Invalid JSON input'); process.exit(1) }
+
+  const collections = [{ title: 'Default', items: [fileEntry] }]
+  const sequence = Date.now()
+  const manifest = createManifest(keypair, sequence, collections, argv.secret)
+
+  if (argv.gateway) {
+    console.log(`Publishing via Gateway: ${argv.gateway}`)
+    publishViaGateway(argv.gateway, manifest, keypair).then(() => {
+      console.log('Published to Gateway!')
+      process.exit(0)
+    }).catch(err => {
+      console.error('Gateway Publish failed:', err)
+      process.exit(1)
+    })
+  } else {
+    console.log('Publishing manifest to DHT...')
+    const dht = new DHTClient({ stateFile: path.join(argv.dir, 'dht_state.json') })
+    dht.putManifest(keypair, sequence, manifest).then(hash => {
+      console.log('Published!')
+      console.log('Mutable Item Hash:', hash.toString('hex'))
+      setTimeout(() => {
+        dht.destroy()
+        process.exit(0)
+      }, 2000)
+    }).catch(err => {
+      console.error('Publish failed:', err)
+      dht.destroy()
+      process.exit(1)
+    })
+  }
+}
+
+// 4. Serve (Daemon Mode)
 if (command === 'serve') {
   const client = new MegatorrentClient({
     dir: argv.dir,
@@ -75,7 +126,6 @@ if (command === 'serve') {
     console.log('Megatorrent Client Started')
 
     const server = http.createServer((req, res) => {
-      // Enable CORS for WebUI
       res.setHeader('Access-Control-Allow-Origin', '*')
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
       if (req.method === 'OPTIONS') { res.end(); return }
@@ -125,7 +175,7 @@ if (command === 'serve') {
   })
 }
 
-// 4. Subscribe (Legacy CLI wrapper)
+// 5. Subscribe (Legacy CLI wrapper)
 if (command === 'subscribe') {
   const client = new MegatorrentClient({
     dir: argv.dir,
