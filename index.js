@@ -23,7 +23,7 @@ const argv = minimist(process.argv.slice(2), {
     a: 'announce-address',
     P: 'port',
     T: 'p2p-port',
-    j: 'json' // New Flag
+    j: 'json'
   },
   default: {
     keyfile: './identity.json',
@@ -32,14 +32,14 @@ const argv = minimist(process.argv.slice(2), {
   }
 })
 
-// Output Hygiene Helper
+// Output Hygiene
 const log = {
-    info: (...args) => {
-        if (argv.json) console.error(...args)
-        else console.log(...args)
-    },
-    error: (...args) => console.error(...args),
-    json: (obj) => console.log(JSON.stringify(obj, null, 2))
+  info: (...args) => {
+    if (argv.json) console.error(...args)
+    else console.log(...args)
+  },
+  error: (...args) => console.error(...args),
+  json: (obj) => console.log(JSON.stringify(obj, null, 2))
 }
 
 const command = argv._[0]
@@ -55,7 +55,6 @@ if (!command) {
   process.exit(1)
 }
 
-// 1. Generate Key
 if (command === 'gen-key') {
   const keypair = generateKeypair()
   const data = {
@@ -68,91 +67,45 @@ if (command === 'gen-key') {
   else process.exit(0)
 }
 
-// 2. Ingest
 if (command === 'ingest') {
   if (!argv.input) { log.error('Missing input'); process.exit(1) }
 
-  // If JSON mode, we don't start the announce server immediately or we silence it?
-  // Ingest CLI usually starts a temporary server to seed.
-  // If we want to pipe JSON, we shouldn't block stdout with logs.
-
-  // NOTE: ingestStream returns promise.
-  // We need to silence the "Secure Blob Server running..." logs from startSecureServer if we call it.
-  // But ingest command calls 'startSecureServer'.
-  // We need to pass a logger or silence it globally?
-  // For this ref, let's just silence our own logs. 'startSecureServer' logs to console.
-  // We should update 'secure-transport.js' to use a passed logger or silence.
-  // Or simpler: We override console.log temporarily?
-
   if (argv.json) {
-      const originalLog = console.log
-      console.log = console.error // Redirect all logs to stderr
-
-      ingestStream(argv.input, argv.dir, path.basename(argv.input)).then(res => {
-          console.log = originalLog // Restore
-          console.log(JSON.stringify(res.fileEntry, null, 2))
-          // We must exit to close the server if we want to pipe, but we need to seed?
-          // If we seed, the process stays alive.
-          // User can Ctrl+C.
-          // But piping `ingest > file.json` will hang if process doesn't exit.
-          // Usually 'ingest' implies "prepare". 'serve' implies "seed".
-          // So 'ingest' should probably exit after done?
-          // Previous behavior: it started a server and kept running.
-          // If --json, we probably just want the metadata and exit?
-          // Let's assume exit for --json mode.
-          process.exit(0)
-      })
+    const originalLog = console.log
+    console.log = console.error
+    ingestStream(argv.input, argv.dir, path.basename(argv.input)).then(res => {
+      console.log = originalLog
+      console.log(JSON.stringify(res.fileEntry, null, 2))
+      process.exit(0)
+    })
   } else {
-      // Normal mode (interactive seeder)
-      // Copy existing logic but use log.info
-      // ... (We need to duplicate logic or refactor? Let's refactor slightly to use log.info)
+    // Interactive Mode
+    const dht = new DHTClient({ stateFile: path.join(argv.dir, 'dht_state.json') })
+    import('./lib/secure-transport.js').then(({ startSecureServer }) => {
+      const server = startSecureServer(argv.dir, 0, null, dht)
+      setTimeout(async () => {
+        log.info(`Secure Blob Server running on port ${server.port}`)
+        try {
+          log.info(`Ingesting ${argv.input}...`)
+          const result = await ingestStream(argv.input, argv.dir, path.basename(argv.input))
+          log.info(`Ingested ${result.fileEntry.chunks.length} blobs`)
+          log.json(result.fileEntry)
 
-      // For now, I will rewrite the ingest block below to use the new hygiene strategy.
+          const heldBlobs = result.fileEntry.chunks.map(c => c.blobId)
+          const announce = () => {
+            heldBlobs.forEach(bid => dht.announceBlob(bid, server.port))
+          }
+          announce()
+          setInterval(announce, 15 * 60 * 1000)
+        } catch (e) {
+          log.error(e)
+          process.exit(1)
+        }
+      }, 500)
+    })
   }
 }
 
-// Rewriting command blocks to use 'log':
-
-if (command === 'ingest' && !argv.json) {
-    // Interactive Mode
-    // We import startSecureServer dynamically or assume it's imported.
-    const { startSecureServer } = await import('./lib/secure-transport.js')
-    // We need DHT?
-    const { DHTClient } = await import('./lib/dht-real.js')
-
-    let dht = new DHTClient({ stateFile: path.join(argv.dir, 'dht_state.json') })
-    const server = startSecureServer(argv.dir, 0, null, dht)
-
-    setTimeout(async () => {
-        log.info(`Secure Blob Server running on port ${server.port}`)
-        if (server.port) {
-             const { tryMapPort } = await import('./lib/client.js') // Helper not exported?
-             // We duplicated tryMapPort in index.js previously.
-             // I'll copy/paste tryMapPort here or export it.
-             // It was in index.js scope.
-        }
-
-        try {
-            log.info(`Ingesting ${argv.input}...`)
-            const result = await ingestStream(argv.input, argv.dir, path.basename(argv.input))
-            log.info(`Ingested ${result.fileEntry.chunks.length} blobs`)
-            log.json(result.fileEntry)
-
-            // Announce
-            const heldBlobs = result.fileEntry.chunks.map(c => c.blobId)
-            const announce = () => {
-                heldBlobs.forEach(bid => dht.announceBlob(bid, server.port))
-            }
-            announce()
-            setInterval(announce, 15 * 60 * 1000)
-        } catch(e) {
-            log.error(e)
-            process.exit(1)
-        }
-    }, 500)
-}
-
-// 3. Publish
 if (command === 'publish') {
   if (!argv.keyfile || !fs.existsSync(argv.keyfile)) { log.error('Missing keyfile'); process.exit(1) }
 
@@ -164,41 +117,40 @@ if (command === 'publish') {
 
   let fileEntry
   try {
-      fileEntry = JSON.parse(fs.readFileSync(argv.input))
-  } catch(e) { log.error('Invalid JSON'); process.exit(1) }
+    fileEntry = JSON.parse(fs.readFileSync(argv.input))
+  } catch (e) { log.error('Invalid JSON'); process.exit(1) }
 
   const collections = [{ title: 'Default', items: [fileEntry] }]
   const sequence = Date.now()
   const manifest = createManifest(keypair, sequence, collections, argv.secret)
 
   if (argv.gateway) {
-      log.info(`Publishing via Gateway: ${argv.gateway}`)
-      publishViaGateway(argv.gateway, manifest, keypair).then(() => {
-          log.info('Published to Gateway!')
-          process.exit(0)
-      }).catch(err => {
-          log.error('Gateway Publish failed:', err)
-          process.exit(1)
-      })
+    log.info(`Publishing via Gateway: ${argv.gateway}`)
+    publishViaGateway(argv.gateway, manifest, keypair).then(() => {
+      log.info('Published to Gateway!')
+      process.exit(0)
+    }).catch(err => {
+      log.error('Gateway Publish failed:', err)
+      process.exit(1)
+    })
   } else {
-      log.info('Publishing manifest to DHT...')
-      const dht = new DHTClient({ stateFile: path.join(argv.dir, 'dht_state.json') })
-      dht.putManifest(keypair, sequence, manifest).then(hash => {
-        log.info('Published!')
-        log.info('Hash:', hash.toString('hex'))
-        setTimeout(() => {
-          dht.destroy()
-          process.exit(0)
-        }, 2000)
-      }).catch(err => {
-        log.error('Publish failed:', err)
+    log.info('Publishing manifest to DHT...')
+    const dht = new DHTClient({ stateFile: path.join(argv.dir, 'dht_state.json') })
+    dht.putManifest(keypair, sequence, manifest).then(hash => {
+      log.info('Published!')
+      log.info('Hash:', hash.toString('hex'))
+      setTimeout(() => {
         dht.destroy()
-        process.exit(1)
-      })
+        process.exit(0)
+      }, 2000)
+    }).catch(err => {
+      log.error('Publish failed:', err)
+      dht.destroy()
+      process.exit(1)
+    })
   }
 }
 
-// 4. Serve
 if (command === 'serve') {
   const client = new MegatorrentClient({
     dir: argv.dir,
@@ -261,7 +213,6 @@ if (command === 'serve') {
   })
 }
 
-// 5. Subscribe
 if (command === 'subscribe') {
   const client = new MegatorrentClient({
     dir: argv.dir,
