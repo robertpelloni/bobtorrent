@@ -3,105 +3,44 @@
 import fs from 'fs'
 import path from 'path'
 import minimist from 'minimist'
-import sodium from 'sodium-native'
-import natUpnp from 'nat-upnp'
+import http from 'http'
+import { MegatorrentClient } from './lib/client.js'
 import { generateKeypair } from './lib/crypto.js'
-import { createManifest, validateManifest, decryptManifest } from './lib/manifest.js'
-import { ingestStream, reassembleStream } from './lib/storage.js'
-import { startSecureServer, downloadSecureBlob, setGlobalProxy, findPeersViaPEX, publishViaGateway } from './lib/secure-transport.js'
-import { DHTClient } from './lib/dht-real.js'
+import { ingestStream } from './lib/storage.js'
 
 const argv = minimist(process.argv.slice(2), {
   alias: {
     k: 'keyfile',
     i: 'input',
-    o: 'output',
     d: 'dir',
     p: 'proxy',
     s: 'secret',
     b: 'bootstrap',
     g: 'gateway',
-    a: 'announce-address'
+    a: 'announce-address',
+    P: 'port' // RPC Port
   },
   default: {
     keyfile: './identity.json',
-    dir: './storage'
+    dir: './storage',
+    port: 3000
   }
 })
 
-if (argv.proxy) {
-  console.log(`Using SOCKS5 Proxy: ${argv.proxy}`)
-  setGlobalProxy(argv.proxy)
-}
-
 const command = argv._[0]
-const heldBlobs = new Set()
-const knownSequences = {}
-let serverPort = 0
-const connectedPeers = new Set()
-const bannedPeers = new Set()
-
-if (argv.bootstrap) {
-  console.log(`Adding Bootstrap Peer: ${argv.bootstrap}`)
-  connectedPeers.add(argv.bootstrap)
-}
-
-function parseUri (input) {
-  if (input.startsWith('megatorrent://')) {
-    const withoutScheme = input.replace('megatorrent://', '')
-    const parts = withoutScheme.split('/')
-    const authParts = parts[0].split(':')
-
-    return {
-      publicKey: authParts[0],
-      readKey: authParts[1] || null,
-      blobId: parts[1] || null
-    }
-  }
-  const parts = input.split(':')
-  return { publicKey: parts[0], readKey: parts[1] || null, blobId: null }
-}
-
-async function tryMapPort (port) {
-  if (argv.proxy) return
-  console.log(`Attempting UPnP mapping for port ${port}...`)
-  const client = natUpnp.createClient()
-
-  return new Promise((resolve) => {
-    client.portMapping({
-      public: port,
-      private: port,
-      ttl: 3600
-    }, (err) => {
-      if (err) {
-        console.log('UPnP failed (expected if no router support):', err.message)
-      } else {
-        console.log('UPnP Success: Port mapped.')
-      }
-      resolve()
-    })
-  })
-}
 
 if (!command) {
   console.error(`Usage:
   gen-key [-k identity.json]
   ingest -i <file> [-d ./storage]
-  publish [-k identity.json] -i <file_entry.json> [-s <secret>] [--gateway <host:port>]
-  subscribe <uri> [-d ./storage] [--proxy ...]
+  publish [-k identity.json] -i <file_entry.json>
+  serve [-d ./storage] [--port 3000]
+  subscribe <uri> [-d ./storage] (Legacy CLI mode)
   `)
   process.exit(1)
 }
 
-if (!fs.existsSync(argv.dir)) {
-  fs.mkdirSync(argv.dir, { recursive: true })
-}
-
-let dht = null
-if (['ingest', 'publish', 'subscribe'].includes(command)) {
-  dht = new DHTClient({ stateFile: path.join(argv.dir, 'dht_state.json') })
-}
-
+// 1. Generate Key
 if (command === 'gen-key') {
   const keypair = generateKeypair()
   const data = {
@@ -109,268 +48,90 @@ if (command === 'gen-key') {
     secretKey: keypair.secretKey.toString('hex')
   }
   fs.writeFileSync(argv.keyfile, JSON.stringify(data, null, 2))
-
-  const readKey = Buffer.alloc(32)
-  sodium.randombytes_buf(readKey)
-  const readKeyHex = readKey.toString('hex')
-
   console.log(`Identity generated at ${argv.keyfile}`)
-  console.log(`Public Key: ${data.publicKey}`)
-  console.log(`Public URI: megatorrent://${data.publicKey}`)
-  console.log(`Private URI: megatorrent://${data.publicKey}:${readKeyHex}`)
-  if (dht) dht.destroy()
   process.exit(0)
 }
 
+// 2. Ingest
 if (command === 'ingest') {
-  const server = startSecureServer(argv.dir, 0, null, dht)
-  setTimeout(async () => {
-    serverPort = server.port
-    console.log(`Secure Blob Server running on port ${serverPort}`)
-    tryMapPort(serverPort)
-
-    if (!argv.input) {
-      console.log('Running in server-only mode. Press Ctrl+C to exit.')
-    } else {
-      console.log(`Ingesting ${argv.input} (Streaming Mode)...`)
-
-      try {
-        const result = await ingestStream(argv.input, argv.dir, path.basename(argv.input))
-
-        result.fileEntry.chunks.forEach(c => heldBlobs.add(c.blobId))
-
-        console.log(`Ingested ${result.fileEntry.chunks.length} blobs to ${argv.dir}`)
-        console.log('FileEntry JSON (save this to a file to publish it):')
-        console.log(JSON.stringify(result.fileEntry, null, 2))
-
-        announceHeldBlobs()
-      } catch (e) {
-        console.error('Ingest failed:', e)
-        process.exit(1)
-      }
-    }
-  }, 500)
+  if (!argv.input) { console.error('Missing input'); process.exit(1) }
+  ingestStream(argv.input, argv.dir, path.basename(argv.input)).then(res => {
+    console.log(JSON.stringify(res.fileEntry, null, 2))
+  })
 }
 
-if (command === 'publish') {
-  if (!fs.existsSync(argv.keyfile)) {
-    console.error('Keyfile not found. Run gen-key first.')
-    process.exit(1)
-  }
-  const keyData = JSON.parse(fs.readFileSync(argv.keyfile))
-  const keypair = {
-    publicKey: Buffer.from(keyData.publicKey, 'hex'),
-    secretKey: Buffer.from(keyData.secretKey, 'hex')
-  }
+// 3. Serve (Daemon Mode)
+if (command === 'serve') {
+  const client = new MegatorrentClient({
+    dir: argv.dir,
+    proxy: argv.proxy,
+    bootstrap: argv.bootstrap,
+    announceAddress: argv['announce-address']
+  })
 
-  if (!argv.input) {
-    console.error('Please specify input file with -i')
-    process.exit(1)
-  }
+  client.start().then(() => {
+    console.log('Megatorrent Client Started')
 
-  const content = fs.readFileSync(argv.input, 'utf-8')
-  let items
-  try {
-    const json = JSON.parse(content)
-    items = [json]
-  } catch (e) {
-    items = content.split('\n').map(l => l.trim()).filter(l => l.length > 0)
-  }
+    const server = http.createServer((req, res) => {
+      // Enable CORS for WebUI
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+      if (req.method === 'OPTIONS') { res.end(); return }
 
-  const collections = [{
-    title: 'Default Collection',
-    items
-  }]
+      if (req.url === '/api/rpc' && req.method === 'POST') {
+        let body = ''
+        req.on('data', chunk => { body += chunk })
+        req.on('end', async () => {
+          try {
+            const { method, params } = JSON.parse(body)
+            let result = {}
 
-  const sequence = Date.now()
-  const manifest = createManifest(keypair, sequence, collections, argv.secret)
-
-  if (argv.secret) console.log('Encrypted Channel Enabled.')
-
-  if (argv.gateway) {
-    console.log(`Publishing via Gateway: ${argv.gateway}`)
-    publishViaGateway(argv.gateway, manifest).then(() => {
-      console.log('Published to Gateway!')
-      process.exit(0)
-    }).catch(err => {
-      console.error('Gateway Publish failed:', err)
-      process.exit(1)
-    })
-  } else {
-    console.log('Publishing manifest to DHT...')
-    dht.putManifest(keypair, sequence, manifest).then(hash => {
-      console.log('Published!')
-      console.log('Mutable Item Hash:', hash.toString('hex'))
-      setTimeout(() => {
-        dht.destroy()
-        process.exit(0)
-      }, 2000)
-    }).catch(err => {
-      console.error('Publish failed:', err)
-      dht.destroy()
-      process.exit(1)
-    })
-  }
-}
-
-if (command === 'subscribe') {
-  const uri = argv._[1]
-  if (!uri) {
-    console.error('Please provide public key hex or megatorrent:// URI')
-    process.exit(1)
-  }
-
-  const { publicKey, readKey } = parseUri(uri)
-  console.log(`Looking up Manifest for ${publicKey} in DHT...`)
-  if (readKey) console.log('Using Read Key for decryption.')
-
-  const handleGossip = (gossip) => {
-    if (gossip && gossip.sequences && gossip.sequences[publicKey]) {
-      const seq = gossip.sequences[publicKey]
-      if (!knownSequences[publicKey] || seq > knownSequences[publicKey]) {
-        console.log(`Gossip: Peer has newer sequence ${seq}`)
-        checkUpdate()
-      }
-    }
-  }
-
-  const server = startSecureServer(argv.dir, 0, handleGossip, dht)
-  setTimeout(() => {
-    serverPort = server.port
-    console.log(`Seeding on port ${serverPort}`)
-    tryMapPort(serverPort)
-  }, 500)
-
-  const checkUpdate = async () => {
-    try {
-      const res = await dht.getManifest(publicKey)
-
-      if (res) {
-        if (!knownSequences[publicKey] || res.seq > knownSequences[publicKey]) {
-          console.log(`Found New Manifest (Seq: ${res.seq})`)
-          knownSequences[publicKey] = res.seq
-          await processManifest(res.manifest)
-        }
-      } else {
-        console.log('No manifest found in DHT yet...')
-      }
-    } catch (err) {
-      console.error('Lookup error:', err.message)
-    }
-  }
-
-  checkUpdate()
-  setInterval(checkUpdate, 60000)
-
-  async function processManifest (manifest) {
-    if (!validateManifest(manifest) || manifest.publicKey !== publicKey) {
-      console.error('Invalid manifest signature!')
-      return
-    }
-
-    let collections = manifest.collections
-    if (manifest.encrypted) {
-      if (!readKey) {
-        console.error('Manifest is encrypted but no key provided in URI.')
-        return
-      }
-      try {
-        const decrypted = decryptManifest(manifest, readKey)
-        collections = decrypted.collections
-        console.log('Manifest decrypted successfully.')
-      } catch (e) {
-        console.error('Failed to decrypt manifest:', e.message)
-        return
-      }
-    } else if (!collections) {
-      console.error('Manifest format error')
-      return
-    }
-
-    const items = collections[0].items
-    for (const item of items) {
-      if (item.chunks) {
-        console.log(`Processing: ${item.name}`)
-        const outPath = path.join(argv.dir, item.name)
-        if (fs.existsSync(outPath)) {
-          console.log('Already downloaded.')
-          item.chunks.forEach(c => heldBlobs.add(c.blobId))
-          continue
-        }
-
-        const chunks = []
-        for (const chunk of item.chunks) {
-          const blobId = chunk.id
-          const blobPath = path.join(argv.dir, blobId)
-
-          if (fs.existsSync(blobPath)) {
-            chunks.push(fs.readFileSync(blobPath))
-            heldBlobs.add(blobId)
-          } else {
-            console.log(`Finding peers for blob ${blobId}...`)
-
-            let peers = await dht.findBlobPeers(blobId)
-
-            if (peers.length === 0 && connectedPeers.size > 0) {
-              console.log('DHT yielded no peers. Trying PEX...')
-              for (const p of connectedPeers) {
-                const pexPeers = await findPeersViaPEX(p, blobId)
-                if (pexPeers.length > 0) {
-                  peers = peers.concat(pexPeers)
-                }
+            if (method === 'addSubscription') {
+              await client.subscribe(params.uri)
+              result = { status: 'ok' }
+            } else if (method === 'getSubscriptions') {
+              result = {
+                subscriptions: Array.from(client.subscriptions).map(uri => ({
+                  uri,
+                  status: 'Active',
+                  lastSequence: client.knownSequences[client.parseUri(uri).publicKey] || 0
+                }))
               }
-              connectedPeers.forEach(p => peers.push(p))
-            }
-
-            peers = [...new Set(peers)]
-            peers = peers.filter(p => !bannedPeers.has(p))
-
-            console.log(`Found ${peers.length} peers:`, peers)
-
-            let downloaded = false
-            for (const peer of peers) {
-              try {
-                console.log(`Connecting to ${peer}...`)
-                const buffer = await downloadSecureBlob(peer, blobId, knownSequences, handleGossip, argv['announce-address'])
-                fs.writeFileSync(blobPath, buffer)
-                heldBlobs.add(blobId)
-                connectedPeers.add(peer)
-
-                if (serverPort) dht.announceBlob(blobId, serverPort)
-
-                downloaded = true
-                break
-              } catch (e) {
-                console.error(`Peer ${peer} failed: ${e.message}`)
-                if (peer !== argv.bootstrap) connectedPeers.delete(peer)
-
-                if (e.message.includes('Integrity Check Failed')) {
-                  console.error(`BLACKLISTING peer ${peer} due to corrupt data.`)
-                  bannedPeers.add(peer)
-                  setTimeout(() => bannedPeers.delete(peer), 3600 * 1000)
-                }
+            } else if (method === 'getStatus') {
+              result = {
+                heldBlobs: client.heldBlobs.size,
+                peers: client.connectedPeers.size,
+                serverPort: client.serverPort
               }
             }
-            if (!downloaded) console.error(`Failed to download blob ${blobId}`)
+
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ result }))
+          } catch (e) {
+            res.writeHead(500)
+            res.end(JSON.stringify({ error: e.message }))
           }
-        }
-
-        if (chunks.length === item.chunks.length) {
-          await reassembleStream(item, (bid) => path.join(argv.dir, bid), outPath)
-          console.log(`Successfully assembled ${item.name}`)
-        }
+        })
+      } else {
+        res.writeHead(404); res.end()
       }
-    }
-    announceHeldBlobs()
-  }
+    })
+
+    server.listen(argv.port, () => {
+      console.log(`JSON-RPC Server listening on http://localhost:${argv.port}`)
+    })
+  })
 }
 
-function announceHeldBlobs () {
-  if (heldBlobs.size > 0 && dht && serverPort) {
-    console.log(`Re-announcing ${heldBlobs.size} blobs to DHT...`)
-    const promises = Array.from(heldBlobs).map(bid => dht.announceBlob(bid, serverPort))
-    Promise.allSettled(promises).then(() => console.log('Announce complete.'))
-  }
+// 4. Subscribe (Legacy CLI wrapper)
+if (command === 'subscribe') {
+  const client = new MegatorrentClient({
+    dir: argv.dir,
+    proxy: argv.proxy,
+    bootstrap: argv.bootstrap,
+    announceAddress: argv['announce-address']
+  })
+  client.start().then(() => {
+    client.subscribe(argv._[1])
+  })
 }
-
-setInterval(announceHeldBlobs, 15 * 60 * 1000)
