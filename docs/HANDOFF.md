@@ -12,10 +12,23 @@ We have preserved the integration files here:
 ## 🛠 Integration Steps for C++ Developer
 
 ### 1. Copy C++ Source
-Copy the contents of `cpp-reference/megatorrent/` to `qbittorrent/src/base/megatorrent/`.
+Copy the contents of `cpp-reference/megatorrent/` to `qbittorrent/src/base/`.
+(Note: You may need to flatten the directory structure or update paths in CMakeLists.txt if you prefer `src/base/megatorrent/`).
 
 ### 2. Update CMakeLists
-Modify `qbittorrent/src/base/CMakeLists.txt` to include the new files (as done in the reference implementation steps).
+Modify `qbittorrent/src/base/CMakeLists.txt` to include the new files:
+```cmake
+    # megatorrent headers
+    dht_client.h
+    secure_socket.h
+    manifest.h
+    global.h
+
+    # megatorrent sources
+    dht_client.cpp
+    secure_socket.cpp
+    manifest.cpp
+```
 
 ### 3. Copy WebUI Assets
 *   Copy `webui-reference/megatorrent.js` to `qbittorrent/src/webui/www/private/scripts/`.
@@ -31,10 +44,11 @@ Ensure `libtorrent` and `OpenSSL` are correctly linked. The provided stubs use `
 ### `dht_client.h/cpp` (Decentralized Control)
 *   **Purpose:** Replaces the deprecated WebSocket Tracker.
 *   **Functionality:** Handles `putManifest` (BEP 44), `getManifest`, `announceBlob`, and `findBlobPeers`.
+*   **Gateway Extension:** Implements `relaySignedPut` to support anonymous publishing via Gateway (Protocol v5).
 
 ### `secure_socket.h/cpp` (Encrypted Transport)
 *   **Purpose:** Implements the custom Encrypted Transport Protocol (v5).
-*   **Functionality:** Ephemeral ECDH Handshake, ChaCha20-Poly1305 Encryption, Binary Packet Parsing (`MSG_HELLO`, `MSG_DATA`, etc.).
+*   **Functionality:** Ephemeral ECDH Handshake, ChaCha20-Poly1305 Encryption, Binary Packet Parsing (`MSG_HELLO`, `MSG_DATA`, `MSG_PUBLISH`, etc.).
 
 ### `manifest.h/cpp` (Data Structure)
 *   **Purpose:** Parses and validates the JSON Manifest format and Ed25519 signatures.
