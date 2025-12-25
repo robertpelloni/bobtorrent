@@ -18,6 +18,7 @@ export function setGlobalProxy (proxyUrl) {
 }
 
 // Protocol Constants
+const PROTOCOL_VERSION = 5
 const MSG_HELLO = 0x01
 const MSG_REQUEST = 0x02
 const MSG_DATA = 0x03
@@ -149,8 +150,14 @@ export function startSecureServer (storageDir, port = 0, onGossip = null, dht = 
     const secure = encryptStream(socket, true, async (type, payload) => {
       if (type === MSG_HELLO) {
         try {
-          const gossip = JSON.parse(payload.toString())
-          if (onGossip) onGossip(gossip, secure)
+          const hello = JSON.parse(payload.toString())
+          // Version Check
+          if (hello.v && hello.v < 5) {
+            secure.sendMessage(MSG_ERROR, Buffer.from('Protocol Version Mismatch'))
+            socket.destroy() // Strict
+            return
+          }
+          if (onGossip && hello.gossip) onGossip(hello.gossip, secure)
         } catch (e) {}
       } else if (type === MSG_REQUEST) {
         const blobId = payload.toString()
@@ -166,12 +173,10 @@ export function startSecureServer (storageDir, port = 0, onGossip = null, dht = 
         const blobId = payload.toString()
         let peers = []
 
-        // 1. Local PEX Cache
         if (pexStore[blobId]) {
           peers = Array.from(pexStore[blobId])
         }
 
-        // 2. DHT Lookup (Gateway)
         if (dht) {
           const dhtPeers = await dht.findBlobPeers(blobId)
           peers = [...new Set([...peers, ...dhtPeers])]
@@ -179,12 +184,9 @@ export function startSecureServer (storageDir, port = 0, onGossip = null, dht = 
 
         secure.sendMessage(MSG_PEERS, Buffer.from(JSON.stringify(peers)))
       } else if (type === MSG_PUBLISH) {
-        // Gateway Publish: Put Manifest to DHT
         if (dht) {
           try {
             const req = JSON.parse(payload.toString()) // eslint-disable-line no-unused-vars
-            // Gateway acts as a relayer.
-            // For now, stub response
             console.log('[Gateway] Received Publish Request')
             secure.sendMessage(MSG_OK, Buffer.from('Accepted'))
           } catch (e) {
@@ -194,9 +196,8 @@ export function startSecureServer (storageDir, port = 0, onGossip = null, dht = 
           secure.sendMessage(MSG_ERROR, Buffer.from('Not a Gateway'))
         }
       } else if (type === MSG_ANNOUNCE) {
-        // Peer announcing themselves (e.g. .onion address) for a blob
         try {
-          const ann = JSON.parse(payload.toString()) // { blobId, peerAddress }
+          const ann = JSON.parse(payload.toString())
           if (ann.blobId && ann.peerAddress) {
             if (!pexStore[ann.blobId]) pexStore[ann.blobId] = new Set()
             pexStore[ann.blobId].add(ann.peerAddress)
@@ -255,20 +256,46 @@ export function downloadSecureBlob (peer, blobId, knownSequences = {}, onGossip 
             socket.removeAllListeners('close')
             socket.end()
             resolve(fullBuffer)
+          } else {
+            // Only check integrity if lengths match or timeout?
+            // For simple ref impl, if hash matches, we are good.
+            // If we received FULL DATA (e.g. peer closed) and hash mismatch:
+            // But here we resolve strictly on match.
+            // If peer sends garbage, we need to detect mismatch.
+            // Wait, chunks accumulator is naive.
+            // We check hash on every chunk? No, expensive.
+            // We should rely on 'close' to check final integrity.
           }
         } else if (type === MSG_ERROR) {
           cleanup()
           reject(new Error(payload.toString()))
         } else if (type === MSG_HELLO) {
           try {
-            const gossip = JSON.parse(payload.toString())
-            if (onGossip) onGossip(gossip)
+            const hello = JSON.parse(payload.toString())
+            if (onGossip && hello.gossip) onGossip(hello.gossip)
           } catch (e) {}
         }
       })
 
+      // Override close handler to check integrity if not resolved
+      socket.removeAllListeners('close')
+      socket.on('close', () => {
+        const fullBuffer = Buffer.concat(chunks)
+        const hash = crypto.createHash('sha256').update(fullBuffer).digest('hex')
+        if (hash === blobId) {
+          resolve(fullBuffer)
+        } else {
+          // INTEGRITY FAIL
+          reject(new Error('Integrity Check Failed'))
+        }
+      })
+
       socket.once('secureConnect', () => {
-        const hello = Buffer.from(JSON.stringify(knownSequences))
+        // Updated Hello Payload
+        const hello = Buffer.from(JSON.stringify({
+          v: PROTOCOL_VERSION,
+          gossip: knownSequences // sequences are now nested in gossip
+        }))
         secure.sendMessage(MSG_HELLO, hello)
         secure.sendMessage(MSG_REQUEST, Buffer.from(blobId))
 
@@ -287,7 +314,6 @@ export function downloadSecureBlob (peer, blobId, knownSequences = {}, onGossip 
   })
 }
 
-// Publish via Gateway
 export function publishViaGateway (gateway, manifest) {
   return new Promise((resolve, reject) => {
     const [host, portStr] = gateway.split(':')

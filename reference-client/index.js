@@ -4,6 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import minimist from 'minimist'
 import sodium from 'sodium-native'
+import natUpnp from 'nat-upnp'
 import { generateKeypair } from './lib/crypto.js'
 import { createManifest, validateManifest, decryptManifest } from './lib/manifest.js'
 import { ingestStream, reassembleStream } from './lib/storage.js'
@@ -38,6 +39,7 @@ const heldBlobs = new Set()
 const knownSequences = {}
 let serverPort = 0
 const connectedPeers = new Set()
+const bannedPeers = new Set()
 
 if (argv.bootstrap) {
   console.log(`Adding Bootstrap Peer: ${argv.bootstrap}`)
@@ -58,6 +60,27 @@ function parseUri (input) {
   }
   const parts = input.split(':')
   return { publicKey: parts[0], readKey: parts[1] || null, blobId: null }
+}
+
+async function tryMapPort (port) {
+  if (argv.proxy) return
+  console.log(`Attempting UPnP mapping for port ${port}...`)
+  const client = natUpnp.createClient()
+
+  return new Promise((resolve) => {
+    client.portMapping({
+      public: port,
+      private: port,
+      ttl: 3600
+    }, (err) => {
+      if (err) {
+        console.log('UPnP failed (expected if no router support):', err.message)
+      } else {
+        console.log('UPnP Success: Port mapped.')
+      }
+      resolve()
+    })
+  })
 }
 
 if (!command) {
@@ -104,6 +127,7 @@ if (command === 'ingest') {
   setTimeout(async () => {
     serverPort = server.port
     console.log(`Secure Blob Server running on port ${serverPort}`)
+    tryMapPort(serverPort)
 
     if (!argv.input) {
       console.log('Running in server-only mode. Press Ctrl+C to exit.')
@@ -201,9 +225,10 @@ if (command === 'subscribe') {
   if (readKey) console.log('Using Read Key for decryption.')
 
   const handleGossip = (gossip) => {
-    if (gossip && gossip[publicKey]) {
-      if (!knownSequences[publicKey] || gossip[publicKey] > knownSequences[publicKey]) {
-        console.log(`Gossip: Peer has newer sequence ${gossip[publicKey]}`)
+    if (gossip && gossip.sequences && gossip.sequences[publicKey]) {
+      const seq = gossip.sequences[publicKey]
+      if (!knownSequences[publicKey] || seq > knownSequences[publicKey]) {
+        console.log(`Gossip: Peer has newer sequence ${seq}`)
         checkUpdate()
       }
     }
@@ -213,6 +238,7 @@ if (command === 'subscribe') {
   setTimeout(() => {
     serverPort = server.port
     console.log(`Seeding on port ${serverPort}`)
+    tryMapPort(serverPort)
   }, 500)
 
   const checkUpdate = async () => {
@@ -272,70 +298,66 @@ if (command === 'subscribe') {
           continue
         }
 
-        // Check if we have all blobs
-        let missing = false
+        const chunks = []
         for (const chunk of item.chunks) {
-          if (!fs.existsSync(path.join(argv.dir, chunk.blobId))) {
-            missing = true; break
-          }
-        }
+          const blobId = chunk.id
+          const blobPath = path.join(argv.dir, blobId)
 
-        if (missing) {
-          for (const chunk of item.chunks) {
-            const blobId = chunk.blobId
-            const blobPath = path.join(argv.dir, blobId)
+          if (fs.existsSync(blobPath)) {
+            chunks.push(fs.readFileSync(blobPath))
+            heldBlobs.add(blobId)
+          } else {
+            console.log(`Finding peers for blob ${blobId}...`)
 
-            if (fs.existsSync(blobPath)) {
-              heldBlobs.add(blobId)
-            } else {
-              console.log(`Finding peers for blob ${blobId}...`)
+            let peers = await dht.findBlobPeers(blobId)
 
-              let peers = await dht.findBlobPeers(blobId)
-
-              if (peers.length === 0 && connectedPeers.size > 0) {
-                console.log('DHT yielded no peers. Trying PEX...')
-                for (const p of connectedPeers) {
-                  const pexPeers = await findPeersViaPEX(p, blobId)
-                  if (pexPeers.length > 0) {
-                    peers = peers.concat(pexPeers)
-                  }
-                }
-                connectedPeers.forEach(p => peers.push(p))
-              }
-
-              peers = [...new Set(peers)]
-              console.log(`Found ${peers.length} peers:`, peers)
-
-              let downloaded = false
-              for (const peer of peers) {
-                try {
-                  console.log(`Connecting to ${peer}...`)
-                  const buffer = await downloadSecureBlob(peer, blobId, knownSequences, handleGossip, argv['announce-address'])
-                  fs.writeFileSync(blobPath, buffer)
-                  heldBlobs.add(blobId)
-                  connectedPeers.add(peer)
-
-                  if (serverPort) dht.announceBlob(blobId, serverPort)
-
-                  downloaded = true
-                  break
-                } catch (e) {
-                  console.error(`Peer ${peer} failed: ${e.message}`)
-                  if (peer !== argv.bootstrap) connectedPeers.delete(peer)
+            if (peers.length === 0 && connectedPeers.size > 0) {
+              console.log('DHT yielded no peers. Trying PEX...')
+              for (const p of connectedPeers) {
+                const pexPeers = await findPeersViaPEX(p, blobId)
+                if (pexPeers.length > 0) {
+                  peers = peers.concat(pexPeers)
                 }
               }
-              if (!downloaded) console.error(`Failed to download blob ${blobId}`)
+              connectedPeers.forEach(p => peers.push(p))
             }
+
+            peers = [...new Set(peers)]
+            peers = peers.filter(p => !bannedPeers.has(p))
+
+            console.log(`Found ${peers.length} peers:`, peers)
+
+            let downloaded = false
+            for (const peer of peers) {
+              try {
+                console.log(`Connecting to ${peer}...`)
+                const buffer = await downloadSecureBlob(peer, blobId, knownSequences, handleGossip, argv['announce-address'])
+                fs.writeFileSync(blobPath, buffer)
+                heldBlobs.add(blobId)
+                connectedPeers.add(peer)
+
+                if (serverPort) dht.announceBlob(blobId, serverPort)
+
+                downloaded = true
+                break
+              } catch (e) {
+                console.error(`Peer ${peer} failed: ${e.message}`)
+                if (peer !== argv.bootstrap) connectedPeers.delete(peer)
+
+                if (e.message.includes('Integrity Check Failed')) {
+                  console.error(`BLACKLISTING peer ${peer} due to corrupt data.`)
+                  bannedPeers.add(peer)
+                  setTimeout(() => bannedPeers.delete(peer), 3600 * 1000)
+                }
+              }
+            }
+            if (!downloaded) console.error(`Failed to download blob ${blobId}`)
           }
         }
 
-        // Reassemble Streaming
-        if (item.chunks.every(c => fs.existsSync(path.join(argv.dir, c.blobId)))) {
-          console.log(`Reassembling ${item.name}...`)
+        if (chunks.length === item.chunks.length) {
           await reassembleStream(item, (bid) => path.join(argv.dir, bid), outPath)
           console.log(`Successfully assembled ${item.name}`)
-        } else {
-          console.error(`Could not reassemble ${item.name} (Missing chunks)`)
         }
       }
     }
