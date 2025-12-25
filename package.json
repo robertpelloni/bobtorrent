@@ -12,7 +12,6 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "bencode": "^4.0.0",
     "bittorrent-dht": "^11.0.11",
     "minimist": "^1.2.8",
     "nat-upnp": "^1.1.1",

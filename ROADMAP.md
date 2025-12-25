@@ -1,6 +1,6 @@
 # Megatorrent Project Roadmap & Status
 
-**Current Version:** v1.0.0
+**Current Version:** v1.0.0 (Final Release)
 **Protocol Version:** v5
 
 ## ✅ Accomplished Features
@@ -19,15 +19,11 @@
 ### 3. Data Plane & Anonymity
 *   **Encryption:** ChaCha20-Poly1305 + Ephemeral ECDH (X25519) Handshake.
 *   **Transport:** Custom Binary Protocol (`secure-transport.js`).
-    *   `MSG_HELLO (0x01)`: Handshake + Gossip.
-    *   `MSG_REQUEST (0x02)`: Blob Request.
-    *   `MSG_DATA (0x03)`: Encrypted Data.
-    *   `MSG_FIND_PEERS (0x04)`: PEX Request (TCP).
-    *   `MSG_PEERS (0x05)`: PEX Response.
-    *   `MSG_PUBLISH (0x06)`: Gateway Publishing.
-    *   `MSG_ANNOUNCE (0x07)`: Hidden Service Announcing.
 *   **Tor Support:** SOCKS5 client integration.
 *   **Traffic Analysis Resistance:** Fixed-size 1MB padding.
+*   **Safe Mode:** Auto-disables UDP DHT when Proxy is enabled to prevent leaks.
+*   **Gateway Protocol:** Remote publishing via Encrypted TCP.
+*   **Hidden Services:** Announce `.onion` addresses via `MSG_ANNOUNCE`.
 
 ### 4. Resilience
 *   **Active Seeding:** Periodic re-announcement of held content.
@@ -43,24 +39,8 @@
 
 ---
 
-## 🚧 Pending / In-Progress
+## 🔮 Future Work (v2.0)
 
-### 1. Anonymity Safety (Critical)
-*   **Issue:** `bittorrent-dht` uses UDP. If a SOCKS5 proxy is configured, UDP traffic may either fail or leak the real IP.
-*   **Fix:** "Safe Mode". If proxy is enabled, disable local DHT instance. Rely entirely on TCP PEX (`MSG_FIND_PEERS`) and Gateway features via the Bootstrap node.
-
-### 2. PEX Propagation
-*   **Issue:** Currently, PEX is a simple query-response.
-*   **Enhancement:** Active propagation of `MSG_ANNOUNCE` to neighbors (Gossip) to ensure Hidden Services are discoverable across the swarm without DHT.
-
-### 3. C++ Reference
-*   **Status:** Stubs created (`dht_client`, `secure_socket`).
-*   **Next:** Implement actual OpenSSL/Libtorrent logic (requires C++ dev environment).
-
----
-
-## 📅 Roadmap
-
-1.  **v1.1 (Immediate):** Fix UDP Leakage in Proxy Mode (Disable DHT, Force Gateway Mode).
-2.  **v1.2:** Enhanced PEX Gossip (Flood-fill for Hidden Services).
-3.  **v2.0:** Full C++ Integration in qBittorrent Core.
+1.  **C++ Core Integration:** Port the Node.js reference logic to the C++ codebase using the provided stubs.
+2.  **I2P Support:** Native I2P SAM integration for even stronger anonymity.
+3.  **DHT-over-TCP:** Implement a TCP-based DHT overlay to allow Tor users to participate in the DHT directly.
