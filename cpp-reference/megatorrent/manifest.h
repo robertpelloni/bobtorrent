@@ -1,29 +1,36 @@
 #ifndef MEGATORRENT_MANIFEST_H
 #define MEGATORRENT_MANIFEST_H
 
-#include "global.h"
-
-#include <QObject>
+#include "megatorrent_global.h"
+#include <QJsonObject>
 #include <QJsonArray>
-#include <QJsonValue>
-#include <QDebug>
-
-// Note: In a real build, we would include OpenSSL headers here.
-// #include <openssl/evp.h>
-// #include <openssl/pem.h>
+#include <QJsonDocument>
 
 namespace Megatorrent {
 
-class ManifestVerifier : public QObject {
-    Q_OBJECT
+class Manifest {
 public:
-    explicit ManifestVerifier(QObject *parent = nullptr);
+    Manifest();
 
-    // Parses and validates the signature of a manifest JSON
-    static bool parseAndValidate(const QByteArray &jsonData, Manifest &outManifest);
+    // Parse from JSON bytes
+    bool parse(const QByteArray &data);
+
+    // Getters
+    QString infoHash() const;
+    QVector<FileEntry> files() const;
+    QByteArray publicKey() const;
+    QByteArray signature() const;
+    qint64 sequence() const;
+
+    // Validation
+    bool verifySignature();
 
 private:
-    static bool verifySignature(const QByteArray &pubKeyHex, const QByteArray &message, const QByteArray &signatureHex);
+    QString m_infoHash;
+    QVector<FileEntry> m_files;
+    QByteArray m_publicKey;
+    QByteArray m_signature;
+    qint64 m_sequence;
 };
 
 }

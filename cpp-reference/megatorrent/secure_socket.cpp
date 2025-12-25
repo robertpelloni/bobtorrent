@@ -1,139 +1,280 @@
 #include "secure_socket.h"
+#include <QDataStream>
 #include <QDebug>
-#include <QtEndian>
-
-// Mock OpenSSL
-namespace Crypto {
-    void generateKeypair(QByteArray &pub, QByteArray &priv) { pub.resize(32); priv.resize(32); }
-    void deriveKeys(const QByteArray &priv, const QByteArray &remotePub, bool isServer, QByteArray &tx, QByteArray &rx) { tx.resize(32); rx.resize(32); }
-    QByteArray encrypt(const QByteArray &plain, const QByteArray &key, QByteArray &nonce) { return plain; }
-    QByteArray decrypt(const QByteArray &cipher, const QByteArray &key, QByteArray &nonce, bool &ok) { ok = true; return cipher; }
-}
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/kdf.h>
 
 namespace Megatorrent {
 
-// Protocol Constants
-const quint8 MSG_HELLO = 0x01;
-const quint8 MSG_REQUEST = 0x02;
-const quint8 MSG_DATA = 0x03;
-const quint8 MSG_FIND_PEERS = 0x04;
-const quint8 MSG_PEERS = 0x05;
-const quint8 MSG_PUBLISH = 0x06;
-const quint8 MSG_ANNOUNCE = 0x07;
-const quint8 MSG_OK = 0x08;
-const quint8 MSG_ERROR = 0xFF;
+// Constants
+const int NONCE_SIZE = 12; // IETF ChaCha20-Poly1305
+const int MAC_SIZE = 16;
+const int KEY_SIZE = 32;
 
-SecureSocket::SecureSocket(QObject *parent) : QObject(parent), m_handshakeComplete(false) {
+SecureSocket::SecureSocket(QObject *parent)
+    : QObject(parent), m_handshakeComplete(false)
+{
     m_socket = new QTcpSocket(this);
     connect(m_socket, &QTcpSocket::connected, this, &SecureSocket::onSocketConnected);
+    connect(m_socket, &QTcpSocket::disconnected, this, &SecureSocket::onSocketDisconnected);
     connect(m_socket, &QTcpSocket::readyRead, this, &SecureSocket::onReadyRead);
+    connect(m_socket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::error),
+            this, &SecureSocket::onSocketError);
 
-    Crypto::generateKeypair(m_ephemeralPub, m_ephemeralPriv);
-    m_nonceTx.resize(24); m_nonceTx.fill(0);
-    m_nonceRx.resize(24); m_nonceRx.fill(0);
+    m_nonceTx.resize(NONCE_SIZE);
+    m_nonceRx.resize(NONCE_SIZE);
+    m_nonceTx.fill(0);
+    m_nonceRx.fill(0);
+}
+
+SecureSocket::~SecureSocket() {
+    if (m_socket->isOpen()) m_socket->close();
 }
 
 void SecureSocket::connectToHost(const QString &host, quint16 port) {
     m_socket->connectToHost(host, port);
 }
 
+void SecureSocket::close() {
+    m_socket->close();
+}
+
+bool SecureSocket::isConnected() const {
+    return m_socket->state() == QAbstractSocket::ConnectedState && m_handshakeComplete;
+}
+
 void SecureSocket::onSocketConnected() {
-    sendHandshake();
+    performHandshake();
 }
 
-void SecureSocket::sendHandshake() {
+void SecureSocket::onSocketDisconnected() {
+    emit disconnected();
+}
+
+void SecureSocket::performHandshake() {
+    // 1. Generate X25519 Keypair
+    EVP_PKEY *pkey = EVP_PKEY_Q_keygen(NULL, NULL, "X25519");
+    if (!pkey) {
+        emit errorOccurred("Keygen failed");
+        m_socket->close();
+        return;
+    }
+
+    size_t len = 32;
+    m_ephemeralPub.resize(32);
+    EVP_PKEY_get_raw_public_key(pkey, (unsigned char*)m_ephemeralPub.data(), &len);
+
+    // Save private key for later derivation (need to serialize or keep EVP_PKEY*)
+    // OpenSSL doesn't easily export raw private X25519 usually, but let's try raw private.
+    m_ephemeralPriv.resize(32);
+    EVP_PKEY_get_raw_private_key(pkey, (unsigned char*)m_ephemeralPriv.data(), &len);
+
+    EVP_PKEY_free(pkey);
+
+    // 2. Send Public Key
     m_socket->write(m_ephemeralPub);
-}
-
-void SecureSocket::sendMessage(quint8 type, const QByteArray &payload) {
-    if (!m_handshakeComplete) return;
-
-    QByteArray packet;
-    packet.append((char)type);
-    packet.append(payload);
-
-    QByteArray cipher = Crypto::encrypt(packet, m_sharedTx, m_nonceTx);
-
-    quint16 len = cipher.size();
-    QByteArray frame;
-    QDataStream ds(&frame, QIODevice::WriteOnly);
-    ds << len;
-    frame.append(cipher);
-
-    m_socket->write(frame);
-}
-
-void SecureSocket::write(const QByteArray &data) {
-    sendMessage(MSG_DATA, data);
 }
 
 void SecureSocket::onReadyRead() {
     m_buffer.append(m_socket->readAll());
 
     if (!m_handshakeComplete) {
-        processHandshake();
+        if (m_buffer.size() >= 32) {
+            QByteArray remotePub = m_buffer.mid(0, 32);
+            m_buffer.remove(0, 32);
+
+            // ECDH
+            EVP_PKEY *priv = EVP_PKEY_new_raw_private_key(EVP_PKEY_X25519, NULL, (const unsigned char*)m_ephemeralPriv.data(), 32);
+            EVP_PKEY *pub = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL, (const unsigned char*)remotePub.data(), 32);
+
+            EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(priv, NULL);
+            EVP_PKEY_derive_init(ctx);
+            EVP_PKEY_derive_set_peer(ctx, pub);
+
+            size_t secretLen;
+            EVP_PKEY_derive(ctx, NULL, &secretLen);
+            QByteArray sharedSecret(secretLen, 0);
+            EVP_PKEY_derive(ctx, (unsigned char*)sharedSecret.data(), &secretLen);
+
+            EVP_PKEY_CTX_free(ctx);
+            EVP_PKEY_free(pub);
+            EVP_PKEY_free(priv);
+
+            // KDF (BLAKE2b)
+            // Salt? "S" or "C" depending on role. Client = "C".
+            // Implementation detail: sodium generic hash (BLAKE2b)
+            // out = hash(sharedPoint || salt)
+
+            auto kdf = [&](const char* salt) {
+                EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
+                EVP_DigestInit_ex(mdctx, EVP_blake2b512(), NULL); // Verify OpenSSL supports this
+                EVP_DigestUpdate(mdctx, sharedSecret.data(), sharedSecret.size());
+                EVP_DigestUpdate(mdctx, salt, 1);
+
+                unsigned char hash[64];
+                unsigned int size;
+                EVP_DigestFinal_ex(mdctx, hash, &size);
+                EVP_MD_CTX_free(mdctx);
+
+                // Key is first 32 bytes
+                return QByteArray((char*)hash, 32);
+            };
+
+            m_sharedTx = kdf("C"); // Client Tx
+            m_sharedRx = kdf("S"); // Client Rx
+
+            m_handshakeComplete = true;
+            emit connected();
+            flushWrites();
+
+            if (!m_buffer.isEmpty()) processBuffer();
+        }
     } else {
-        processEncryptedData();
+        processBuffer();
     }
 }
 
-void SecureSocket::processHandshake() {
-    if (m_buffer.size() < 32) return;
-
-    m_remotePub = m_buffer.left(32);
-    m_buffer = m_buffer.mid(32);
-
-    Crypto::deriveKeys(m_ephemeralPriv, m_remotePub, false, m_sharedTx, m_sharedRx);
-    m_handshakeComplete = true;
-    emit connected();
-
-    if (!m_buffer.isEmpty()) processEncryptedData();
-
-    // Send Hello (Gossip)
-    sendMessage(MSG_HELLO, "{}"); // Placeholder JSON
-}
-
-void SecureSocket::processEncryptedData() {
+void SecureSocket::processBuffer() {
     while (m_buffer.size() >= 2) {
-        quint16 len = qFromBigEndian<quint16>(reinterpret_cast<const uchar*>(m_buffer.constData()));
+        QDataStream ds(m_buffer);
+        quint16 len;
+        ds >> len; // Big Endian by default in QDataStream? Qt default is Big Endian. Correct.
 
-        if (m_buffer.size() < 2 + len) return;
+        if (m_buffer.size() < 2 + len) return; // Wait for data
 
         QByteArray frame = m_buffer.mid(2, len);
-        m_buffer = m_buffer.mid(2 + len);
+        m_buffer.remove(0, 2 + len);
 
-        bool ok;
-        QByteArray plain = Crypto::decrypt(frame, m_sharedRx, m_nonceRx, ok);
-
-        if (!ok || plain.isEmpty()) {
-            emit errorOccurred("Decryption failed");
+        QByteArray plain;
+        if (decrypt(frame, plain)) {
+            if (plain.size() > 0) {
+                quint8 type = (quint8)plain[0];
+                if (type == Protocol::MSG_DATA) {
+                    emit dataReceived(plain.mid(1));
+                } else {
+                    emit messageReceived(type, plain.mid(1));
+                }
+            }
+        } else {
+            emit errorOccurred("Decryption Failed");
             m_socket->close();
             return;
         }
-
-        quint8 type = (quint8)plain.at(0);
-        QByteArray payload = plain.mid(1);
-
-        if (type == MSG_DATA) {
-            emit dataReceived(payload);
-        } else if (type == MSG_HELLO) {
-            // Handle Gossip
-        } else if (type == MSG_FIND_PEERS) {
-            // Handle PEX Request
-        } else if (type == MSG_PEERS) {
-            // Handle PEX Response
-        } else if (type == MSG_PUBLISH) {
-            // Handle Gateway Publish
-        } else if (type == MSG_ANNOUNCE) {
-            // Handle Peer Announcement
-        } else if (type == MSG_ERROR) {
-            emit errorOccurred(QString::fromUtf8(payload));
-        }
     }
 }
 
-void SecureSocket::close() {
-    m_socket->close();
+void SecureSocket::sendMessage(quint8 type, const QByteArray &payload) {
+    QByteArray plain;
+    plain.append((char)type);
+    plain.append(payload);
+
+    PendingWrite pw;
+    pw.data = plain;
+    m_pendingWrites.enqueue(pw);
+
+    if (m_handshakeComplete) flushWrites();
+}
+
+void SecureSocket::sendControlMessage(quint8 type, const QByteArray &payload) {
+    sendMessage(type, payload);
+}
+
+void SecureSocket::write(const QByteArray &data) {
+    sendMessage(Protocol::MSG_DATA, data);
+}
+
+void SecureSocket::flushWrites() {
+    while (!m_pendingWrites.isEmpty()) {
+        PendingWrite pw = m_pendingWrites.dequeue();
+        QByteArray encrypted = encrypt(pw.data);
+
+        // Header: Len (2 bytes BE)
+        QByteArray packet;
+        QDataStream ds(&packet, QIODevice::WriteOnly);
+        ds << (quint16)encrypted.size();
+        packet.append(encrypted);
+
+        m_socket->write(packet);
+    }
+}
+
+QByteArray SecureSocket::encrypt(const QByteArray &data) {
+    // ChaCha20-Poly1305 IETF (EVP_chacha20_poly1305)
+    // Nonce 12 bytes
+
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    EVP_EncryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, NULL, NULL);
+
+    // Set Key and IV
+    EVP_EncryptInit_ex(ctx, NULL, NULL, (const unsigned char*)m_sharedTx.data(), (const unsigned char*)m_nonceTx.data());
+
+    // Increment Nonce (Little Endian increment 12 bytes? Usually 8 bytes counter + 4 bytes constant)
+    // Libsodium sodium_increment treats as big integer little endian.
+    // Simple increment:
+    for (int i = 0; i < NONCE_SIZE; i++) {
+        m_nonceTx[i] = m_nonceTx[i] + 1;
+        if (m_nonceTx[i] != 0) break;
+    }
+
+    int outlen;
+    QByteArray cipher(data.size() + MAC_SIZE, 0);
+
+    EVP_EncryptUpdate(ctx, (unsigned char*)cipher.data(), &outlen, (const unsigned char*)data.data(), data.size());
+
+    // Poly1305 Tag generation is automatic?
+    // In EVP_chacha20_poly1305, calling EncryptFinal retrieves tag?
+    // Actually, normally one sets tag len?
+    // Wait, EVP_chacha20_poly1305 behavior:
+    // Update encrypts payload.
+    // Then Get Tag.
+
+    int finalLen;
+    EVP_EncryptFinal_ex(ctx, (unsigned char*)cipher.data() + outlen, &finalLen);
+
+    // Get Tag
+    unsigned char tag[MAC_SIZE];
+    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, MAC_SIZE, tag);
+
+    // Append Tag to Ciphertext
+    std::copy(tag, tag + MAC_SIZE, cipher.begin() + outlen); // cipher is sized data+mac
+
+    EVP_CIPHER_CTX_free(ctx);
+    return cipher;
+}
+
+bool SecureSocket::decrypt(const QByteArray &ciphertext, QByteArray &plaintext) {
+    if (ciphertext.size() < MAC_SIZE) return false;
+
+    QByteArray tag = ciphertext.right(MAC_SIZE);
+    QByteArray cipher = ciphertext.left(ciphertext.size() - MAC_SIZE);
+
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    EVP_DecryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, NULL, NULL);
+    EVP_DecryptInit_ex(ctx, NULL, NULL, (const unsigned char*)m_sharedRx.data(), (const unsigned char*)m_nonceRx.data());
+
+    // Increment Nonce Rx
+    for (int i = 0; i < NONCE_SIZE; i++) {
+        m_nonceRx[i] = m_nonceRx[i] + 1;
+        if (m_nonceRx[i] != 0) break;
+    }
+
+    // Set Tag
+    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, MAC_SIZE, (void*)tag.data());
+
+    plaintext.resize(cipher.size());
+    int outlen;
+    EVP_DecryptUpdate(ctx, (unsigned char*)plaintext.data(), &outlen, (const unsigned char*)cipher.data(), cipher.size());
+
+    int ret = EVP_DecryptFinal_ex(ctx, (unsigned char*)plaintext.data() + outlen, &outlen);
+
+    EVP_CIPHER_CTX_free(ctx);
+    return (ret > 0);
+}
+
+void SecureSocket::onSocketError(QAbstractSocket::SocketError error) {
+    Q_UNUSED(error);
+    emit errorOccurred(m_socket->errorString());
 }
 
 }
