@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2024-05-22
+
+### Added
+- **WebAPI Integration:** Added `MegatorrentController` to the C++ reference to expose subscription management to the WebUI.
+- **Frontend Upgrade:** Updated `megatorrent.js` to use the native qBittorrent WebAPI endpoints (`/api/v2/megatorrent/`) instead of external RPC.
+
 ## [1.3.0] - 2024-05-22
 
 ### Added
