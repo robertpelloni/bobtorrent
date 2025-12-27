@@ -39,6 +39,7 @@
 *   **Manifest:** `manifest.h/cpp` (Parser & OpenSSL Ed25519 Validator).
 *   **Blob Downloader:** `blob_downloader.h/cpp` (Peer Connection & Integrity).
 *   **I2P Support:** `i2p_sam.h/cpp` (SAM v3.1 Client) & `SessionImpl` integration.
+    *   *Details:* Implements `HELLO`, `SESSION CREATE`, `STREAM CONNECT`, and Accept Loop.
 *   **WebAPI:** `MegatorrentController` exposing subscription management to WebUI.
 
 ---
