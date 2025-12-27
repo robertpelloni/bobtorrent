@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2024-05-22
+
+### Fixed
+- **Critical Protocol Fix:** Updated `lib/secure-transport.js` to correctly use `sodium.crypto_aead_chacha20poly1305_ietf` instead of `crypto_secretbox`. This restores compatibility with standard OpenSSL C++ clients (IETF ChaCha20, 12-byte nonce).
+
 ## [1.4.0] - 2024-05-22
 
 ### Added
