@@ -27,3 +27,15 @@ void MegatorrentController::getSubscriptionsAction()
 {
     setResult(BitTorrent::Session::instance()->getMegatorrentSubscriptions());
 }
+
+void MegatorrentController::publishAction()
+{
+    requireParams({u"publicKey"_s, u"privateKey"_s, u"fileEntry"_s});
+
+    const QString publicKey = params()[u"publicKey"_s];
+    const QString privateKey = params()[u"privateKey"_s];
+    const QJsonObject fileEntry = params()[u"fileEntry"_s].toObject();
+
+    if (!BitTorrent::Session::instance()->publishMegatorrentManifest(publicKey, privateKey, fileEntry))
+        throw APIError(APIErrorType::GenericError, tr("Failed to publish manifest. Key not found or invalid format."));
+}

@@ -469,6 +469,7 @@ namespace BitTorrent
         bool addMegatorrentSubscription(const QString &publicKey, const QString &label) override;
         bool removeMegatorrentSubscription(const QString &publicKey) override;
         QJsonArray getMegatorrentSubscriptions() const override;
+        bool publishMegatorrentManifest(const QString &publicKey, const QString &privateKey, const QJsonObject &fileEntry) override;
 
         // Torrent interface
         void handleTorrentResumeDataRequested(const TorrentImpl *torrent);

@@ -144,9 +144,8 @@ if (command === 'publish') {
     })
   } else {
     log.info('Publishing manifest to DHT...')
-    // Use ephemeral state file to avoid NodeID conflict with running Daemon
     const dht = new DHTClient({
-        stateFile: path.join(argv.dir, 'dht_publish_state.json'),
+        stateFile: path.join(argv.dir, 'dht_state.json'),
         bootstrap: argv.bootstrap,
         address: argv.host
     })
@@ -203,14 +202,6 @@ if (command === 'serve') {
             if (method === 'addSubscription') {
               await client.subscribe(params.uri)
               result = { status: 'ok' }
-            } else if (method === 'publishManifest') {
-                const { manifest, secretKeyHex, publicKeyHex } = params
-                const keypair = {
-                    publicKey: Buffer.from(publicKeyHex, 'hex'),
-                    secretKey: Buffer.from(secretKeyHex, 'hex')
-                }
-                const hash = await client.dht.putManifest(keypair, manifest.sequence, manifest)
-                result = { status: 'ok', hash: hash.toString('hex') }
             } else if (method === 'getSubscriptions') {
               result = {
                 subscriptions: Array.from(client.subscriptions).map(uri => ({

@@ -13,6 +13,7 @@ public:
     Q_INVOKABLE void addSubscriptionAction();
     Q_INVOKABLE void removeSubscriptionAction();
     Q_INVOKABLE void getSubscriptionsAction();
+    Q_INVOKABLE void publishAction();
 };
 
 #endif // MEGATORRENT_CONTROLLER_H

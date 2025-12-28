@@ -6673,6 +6673,40 @@ bool SessionImpl::addMegatorrentSubscription(const QString &publicKey, const QSt
     return true;
 }
 
+bool SessionImpl::publishMegatorrentManifest(const QString &publicKey, const QString &privateKey, const QJsonObject &fileEntry)
+{
+    if (!m_megaDHT) return false;
+
+    QByteArray pk = QByteArray::fromHex(publicKey.toLatin1());
+    QByteArray sk = QByteArray::fromHex(privateKey.toLatin1());
+
+    if (pk.size() != 32 || sk.size() != 64) return false;
+
+    QJsonObject manifest;
+    manifest["publicKey"] = publicKey;
+    manifest["sequence"] = QDateTime::currentMSecsSinceEpoch();
+
+    QJsonObject collection;
+    collection["title"] = "Default";
+    QJsonArray items;
+    items.append(fileEntry);
+    collection["items"] = items;
+
+    QJsonArray collections;
+    collections.append(collection);
+    manifest["collections"] = collections;
+
+    QJsonDocument doc(manifest);
+    QByteArray jsonBytes = doc.toJson(QJsonDocument::Compact);
+
+    // Simple BEncode (String): length:content
+    QByteArray payload = QByteArray::number(jsonBytes.size()) + ":" + jsonBytes;
+
+    m_megaDHT->putManifest(pk, sk, payload, manifest["sequence"].toVariant().toLongLong());
+
+    return true;
+}
+
 QJsonArray SessionImpl::getMegatorrentSubscriptions() const
 {
     if (!m_megaSubscription) return {};

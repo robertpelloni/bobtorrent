@@ -489,6 +489,7 @@ namespace BitTorrent
         virtual bool addMegatorrentSubscription(const QString &publicKey, const QString &label) = 0;
         virtual bool removeMegatorrentSubscription(const QString &publicKey) = 0;
         virtual QJsonArray getMegatorrentSubscriptions() const = 0;
+        virtual bool publishMegatorrentManifest(const QString &publicKey, const QString &privateKey, const QJsonObject &fileEntry) = 0;
 
     signals:
         void startupProgressUpdated(int progress);
