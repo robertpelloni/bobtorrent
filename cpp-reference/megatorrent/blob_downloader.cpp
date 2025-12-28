@@ -1,6 +1,8 @@
 #include "blob_downloader.h"
 #include <QDebug>
 #include <QCryptographicHash>
+#include <QJsonObject>
+#include <QJsonDocument>
 
 namespace Megatorrent {
 
@@ -111,6 +113,12 @@ void BlobDownloader::onSocketConnected() {
     SecureSocket *socket = qobject_cast<SecureSocket*>(sender());
     if (!socket) return;
     QString blobId = socket->property("blobId").toString();
+
+    // Send Hello
+    QJsonObject hello;
+    hello["v"] = Megatorrent::PROTOCOL_VERSION;
+    QJsonDocument doc(hello);
+    socket->sendMessage(Protocol::MSG_HELLO, doc.toJson(QJsonDocument::Compact));
 
     // Send Request: [MSG_REQUEST][BlobID (Hex)]
     QByteArray payload = blobId.toLatin1();
