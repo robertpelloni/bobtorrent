@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2024 Megatorrent Team
+ * Distributed under the MIT software license, see the accompanying
+ * file LICENSE or http://www.opensource.org/licenses/mit-license.php.
+ */
+
 #include "dht_client.h"
 
 #include <libtorrent/session.hpp>
