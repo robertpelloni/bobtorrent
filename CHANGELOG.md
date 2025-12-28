@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **C++ I2P Support:** Implemented `Megatorrent::SamSession` (SAM v3.1 Client) in C++.
 - **qBittorrent Integration:** Integrated I2P startup and shutdown logic into `SessionImpl` with safe resource management.
+- **Publish Action:** Added `publishMegatorrentManifest` to C++ WebAPI (`MegatorrentController` and `Session`).
+
+### Fixed
+- **Protocol Compliance:** Updated `lib/secure-transport.js` and `cpp-reference/megatorrent/secure_socket.cpp` to use **32-bit length prefixes** for encrypted frames (supporting >64KB chunks).
+- **Handshake:** Updated C++ `BlobDownloader` to send `MSG_HELLO` upon connection.
+- **DHT Hashing:** Fixed Node.js `lib/dht-real.js` to strictly truncate Blob IDs to 20-byte InfoHashes for compatibility with `libtorrent`.
 
 ## [1.4.1] - 2024-05-22
 
