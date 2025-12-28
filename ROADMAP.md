@@ -1,9 +1,16 @@
 # Megatorrent Project Roadmap & Status
 
-**Current Version:** v1.5.0
-**Protocol Version:** v5
+**Current Version:** v2.0.0-dev
+**Protocol Version:** v6 (Draft)
 
-## ✅ Accomplished Features
+## 🚧 In Progress: v2.0 (Anonymity++)
+
+### 1. DHT-over-TCP
+*   **Goal:** Allow nodes behind Tor/I2P (who cannot use UDP) to participate in the DHT and look up content.
+*   **Mechanism:** Encapsulate KRPC messages inside the Encrypted TCP Transport (`MSG_DHT_QUERY`, `MSG_DHT_RESPONSE`).
+*   **Status:** Protocol Definition.
+
+## ✅ Accomplished Features (v1.x)
 
 ### 1. Core Architecture
 *   **Monorepo Structure:** Root Node.js project, `qbittorrent` submodule.
@@ -44,7 +51,7 @@
 
 ---
 
-## 🔮 Future Work (v2.0)
+## 🔮 Future Work
 
-1.  **DHT-over-TCP:** Implement a TCP-based DHT overlay to allow Tor users to participate in the DHT directly.
-2.  **UI Implementation:** Build the actual Qt Widgets for the Subscription Manager (currently API-only).
+1.  **UI Implementation:** Build the actual Qt Widgets for the Subscription Manager (currently API-only).
+2.  **Hybrid Mode:** Simultaneous UDP and TCP DHT participation for bridge nodes.

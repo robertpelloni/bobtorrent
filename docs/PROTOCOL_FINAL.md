@@ -1,7 +1,7 @@
 # Megatorrent Protocol Specification (Final)
 
-**Status:** Reference Implementation Complete
-**Version:** 1.1.0 (Protocol v5)
+**Status:** In Development (v2.0 Draft)
+**Version:** 1.2.0 (Protocol v6)
 
 ## Overview
 Megatorrent is a decentralized, anonymous, and resilient content distribution protocol designed as a successor to BitTorrent. It eliminates central points of failure (trackers) and obfuscates traffic to prevent censorship and surveillance.
@@ -59,6 +59,8 @@ All peer-to-peer traffic is wrapped in a custom encrypted transport layer to pre
 *   `MSG_PUBLISH (0x06)`: Request Peer (Gateway) to publish a Manifest to the DHT.
 *   `MSG_ANNOUNCE (0x07)`: Announce own address (e.g., .onion) to Peer.
 *   `MSG_OK (0x08)`: Generic Success Acknowledgement.
+*   `MSG_DHT_QUERY (0x09)`: Encapsulated KRPC Query (Bencoded).
+*   `MSG_DHT_RESPONSE (0x0A)`: Encapsulated KRPC Response/Error (Bencoded).
 *   `MSG_ERROR (0xFF)`: Error message.
 
 ---
