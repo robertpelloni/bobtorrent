@@ -1,6 +1,7 @@
 import { spawn, execSync } from 'child_process'
 import path from 'path'
 import fs from 'fs'
+import { createManifest } from '../lib/manifest.js'
 
 const ROOT = process.cwd()
 const NODE = process.argv[0]
@@ -84,13 +85,36 @@ async function run () {
   const nodeB_restarted = spawnNode('Node B', DATA_B, '6002', '7002', '8002', '127.0.0.1:8001')
   await sleep(2000)
 
-  // 3. Publish (Bootstrap to Node A DHT 8001)
-  console.log('Publishing Manifest...')
+  // 3. Publish (Via RPC on Node B)
+  console.log('Publishing Manifest via RPC...')
   try {
-    const pubOut = execSync(`${NODE} ${INDEX} publish -k ${keyFile} -i ${fileEntryPath} -d ${DATA_B} --bootstrap 127.0.0.1:8001`).toString()
-    console.log('[Publish CLI]', pubOut)
+    const fileEntry = JSON.parse(fs.readFileSync(fileEntryPath))
+    const collections = [{ title: 'Default', items: [fileEntry] }]
+    const sequence = Date.now()
+
+    // Keypair for createManifest (Buffers)
+    const keypairBuf = {
+        publicKey: Buffer.from(keyData.publicKey, 'hex'),
+        secretKey: Buffer.from(keyData.secretKey, 'hex')
+    }
+
+    const manifest = createManifest(keypairBuf, sequence, collections)
+
+    const res = await fetch('http://localhost:6002/api/rpc', {
+      method: 'POST',
+      body: JSON.stringify({
+        method: 'publishManifest',
+        params: {
+            manifest,
+            secretKeyHex: keyData.secretKey,
+            publicKeyHex: keyData.publicKey
+        }
+      })
+    })
+    const json = await res.json()
+    console.log('RPC Publish Result:', json)
   } catch (e) {
-    console.error('[Publish CLI Error]', e.message, e.stdout.toString(), e.stderr.toString())
+    console.error('[Publish RPC Error]', e.message)
   }
 
   // 4. Subscribe Node C

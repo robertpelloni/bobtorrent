@@ -65,8 +65,7 @@ void SecureSocket::performHandshake() {
     m_ephemeralPub.resize(32);
     EVP_PKEY_get_raw_public_key(pkey, (unsigned char*)m_ephemeralPub.data(), &len);
 
-    // Save private key for later derivation (need to serialize or keep EVP_PKEY*)
-    // OpenSSL doesn't easily export raw private X25519 usually, but let's try raw private.
+    // Save private key for later derivation
     m_ephemeralPriv.resize(32);
     EVP_PKEY_get_raw_private_key(pkey, (unsigned char*)m_ephemeralPriv.data(), &len);
 
@@ -102,13 +101,9 @@ void SecureSocket::onReadyRead() {
             EVP_PKEY_free(priv);
 
             // KDF (BLAKE2b)
-            // Salt? "S" or "C" depending on role. Client = "C".
-            // Implementation detail: sodium generic hash (BLAKE2b)
-            // out = hash(sharedPoint || salt)
-
             auto kdf = [&](const char* salt) {
                 EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
-                EVP_DigestInit_ex(mdctx, EVP_blake2b512(), NULL); // Verify OpenSSL supports this
+                EVP_DigestInit_ex(mdctx, EVP_blake2b512(), NULL);
                 EVP_DigestUpdate(mdctx, sharedSecret.data(), sharedSecret.size());
                 EVP_DigestUpdate(mdctx, salt, 1);
 
@@ -117,7 +112,6 @@ void SecureSocket::onReadyRead() {
                 EVP_DigestFinal_ex(mdctx, hash, &size);
                 EVP_MD_CTX_free(mdctx);
 
-                // Key is first 32 bytes
                 return QByteArray((char*)hash, 32);
             };
 
@@ -136,15 +130,15 @@ void SecureSocket::onReadyRead() {
 }
 
 void SecureSocket::processBuffer() {
-    while (m_buffer.size() >= 2) {
+    while (m_buffer.size() >= 4) {
         QDataStream ds(m_buffer);
-        quint16 len;
-        ds >> len; // Big Endian by default in QDataStream? Qt default is Big Endian. Correct.
+        quint32 len;
+        ds >> len; // Protocol v5: 4-byte length
 
-        if (m_buffer.size() < 2 + len) return; // Wait for data
+        if (m_buffer.size() < 4 + len) return; // Wait for data
 
-        QByteArray frame = m_buffer.mid(2, len);
-        m_buffer.remove(0, 2 + len);
+        QByteArray frame = m_buffer.mid(4, len);
+        m_buffer.remove(0, 4 + len);
 
         QByteArray plain;
         if (decrypt(frame, plain)) {
@@ -189,10 +183,10 @@ void SecureSocket::flushWrites() {
         PendingWrite pw = m_pendingWrites.dequeue();
         QByteArray encrypted = encrypt(pw.data);
 
-        // Header: Len (2 bytes BE)
+        // Header: Len (4 bytes BE)
         QByteArray packet;
         QDataStream ds(&packet, QIODevice::WriteOnly);
-        ds << (quint16)encrypted.size();
+        ds << (quint32)encrypted.size();
         packet.append(encrypted);
 
         m_socket->write(packet);
@@ -200,18 +194,13 @@ void SecureSocket::flushWrites() {
 }
 
 QByteArray SecureSocket::encrypt(const QByteArray &data) {
-    // ChaCha20-Poly1305 IETF (EVP_chacha20_poly1305)
-    // Nonce 12 bytes
-
+    // ChaCha20-Poly1305 IETF
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     EVP_EncryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, NULL, NULL);
 
-    // Set Key and IV
     EVP_EncryptInit_ex(ctx, NULL, NULL, (const unsigned char*)m_sharedTx.data(), (const unsigned char*)m_nonceTx.data());
 
-    // Increment Nonce (Little Endian increment 12 bytes? Usually 8 bytes counter + 4 bytes constant)
-    // Libsodium sodium_increment treats as big integer little endian.
-    // Simple increment:
+    // Increment Nonce
     for (int i = 0; i < NONCE_SIZE; i++) {
         m_nonceTx[i] = m_nonceTx[i] + 1;
         if (m_nonceTx[i] != 0) break;
@@ -222,13 +211,6 @@ QByteArray SecureSocket::encrypt(const QByteArray &data) {
 
     EVP_EncryptUpdate(ctx, (unsigned char*)cipher.data(), &outlen, (const unsigned char*)data.data(), data.size());
 
-    // Poly1305 Tag generation is automatic?
-    // In EVP_chacha20_poly1305, calling EncryptFinal retrieves tag?
-    // Actually, normally one sets tag len?
-    // Wait, EVP_chacha20_poly1305 behavior:
-    // Update encrypts payload.
-    // Then Get Tag.
-
     int finalLen;
     EVP_EncryptFinal_ex(ctx, (unsigned char*)cipher.data() + outlen, &finalLen);
 
@@ -236,8 +218,7 @@ QByteArray SecureSocket::encrypt(const QByteArray &data) {
     unsigned char tag[MAC_SIZE];
     EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, MAC_SIZE, tag);
 
-    // Append Tag to Ciphertext
-    std::copy(tag, tag + MAC_SIZE, cipher.begin() + outlen); // cipher is sized data+mac
+    std::copy(tag, tag + MAC_SIZE, cipher.begin() + outlen);
 
     EVP_CIPHER_CTX_free(ctx);
     return cipher;
@@ -253,13 +234,11 @@ bool SecureSocket::decrypt(const QByteArray &ciphertext, QByteArray &plaintext) 
     EVP_DecryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, NULL, NULL);
     EVP_DecryptInit_ex(ctx, NULL, NULL, (const unsigned char*)m_sharedRx.data(), (const unsigned char*)m_nonceRx.data());
 
-    // Increment Nonce Rx
     for (int i = 0; i < NONCE_SIZE; i++) {
         m_nonceRx[i] = m_nonceRx[i] + 1;
         if (m_nonceRx[i] != 0) break;
     }
 
-    // Set Tag
     EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, MAC_SIZE, (void*)tag.data());
 
     plaintext.resize(cipher.size());

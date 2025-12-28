@@ -26,7 +26,8 @@ const argv = minimist(process.argv.slice(2), {
     T: 'p2p-port',
     D: 'dht-port',
     j: 'json',
-    I: 'i2p'
+    I: 'i2p',
+    H: 'host'
   },
   default: {
     keyfile: './identity.json',
@@ -86,10 +87,11 @@ if (command === 'ingest') {
     // Interactive Mode
     const dht = new DHTClient({
         stateFile: path.join(argv.dir, 'dht_state.json'),
-        bootstrap: argv.bootstrap
+        bootstrap: argv.bootstrap,
+        address: argv.host
     })
     import('./lib/secure-transport.js').then(({ startSecureServer }) => {
-      const server = startSecureServer(argv.dir, 0, null, dht)
+      const server = startSecureServer(argv.dir, 0, null, dht, null, argv.host)
       setTimeout(async () => {
         log.info(`Secure Blob Server running on port ${server.port}`)
         try {
@@ -142,9 +144,11 @@ if (command === 'publish') {
     })
   } else {
     log.info('Publishing manifest to DHT...')
+    // Use ephemeral state file to avoid NodeID conflict with running Daemon
     const dht = new DHTClient({
-        stateFile: path.join(argv.dir, 'dht_state.json'),
-        bootstrap: argv.bootstrap
+        stateFile: path.join(argv.dir, 'dht_publish_state.json'),
+        bootstrap: argv.bootstrap,
+        address: argv.host
     })
     dht.putManifest(keypair, sequence, manifest).then(hash => {
       log.info('Published!')
@@ -176,7 +180,8 @@ if (command === 'serve') {
     announceAddress: argv['announce-address'],
     p2pPort: argv['p2p-port'],
     dhtPort: argv['dht-port'],
-    i2pSession: samSession
+    i2pSession: samSession,
+    host: argv.host
   })
 
   client.start().then(() => {
@@ -198,6 +203,14 @@ if (command === 'serve') {
             if (method === 'addSubscription') {
               await client.subscribe(params.uri)
               result = { status: 'ok' }
+            } else if (method === 'publishManifest') {
+                const { manifest, secretKeyHex, publicKeyHex } = params
+                const keypair = {
+                    publicKey: Buffer.from(publicKeyHex, 'hex'),
+                    secretKey: Buffer.from(secretKeyHex, 'hex')
+                }
+                const hash = await client.dht.putManifest(keypair, manifest.sequence, manifest)
+                result = { status: 'ok', hash: hash.toString('hex') }
             } else if (method === 'getSubscriptions') {
               result = {
                 subscriptions: Array.from(client.subscriptions).map(uri => ({
@@ -238,7 +251,8 @@ if (command === 'subscribe') {
     proxy: argv.proxy,
     bootstrap: argv.bootstrap,
     announceAddress: argv['announce-address'],
-    p2pPort: argv['p2p-port']
+    p2pPort: argv['p2p-port'],
+    host: argv.host
   })
   client.start().then(() => {
     client.subscribe(argv._[1])

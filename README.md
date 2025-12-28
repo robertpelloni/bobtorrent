@@ -1,6 +1,6 @@
 # Megatorrent Reference Implementation
 
-**Status:** v1.0.0 (Release Candidate)
+**Status:** v1.5.0
 
 Megatorrent is a **decentralized, anonymous, and resilient** successor to the BitTorrent protocol. This repository contains the official **Node.js Reference Client** and **C++ Integration Stubs** for qBittorrent.
 
