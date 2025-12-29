@@ -11,6 +11,7 @@ import { createManifest } from './lib/manifest.js'
 import { publishViaGateway } from './lib/secure-transport.js'
 import { DHTClient } from './lib/dht-real.js'
 import { SamSession } from './lib/i2p-sam.js'
+import { BobcoinService } from './lib/bobcoin.js'
 
 const argv = minimist(process.argv.slice(2), {
   alias: {
@@ -27,13 +28,15 @@ const argv = minimist(process.argv.slice(2), {
     D: 'dht-port',
     j: 'json',
     I: 'i2p',
-    H: 'host'
+    H: 'host',
+    B: 'bobcoin'
   },
   default: {
     keyfile: './identity.json',
     dir: './storage',
     port: 3000,
-    i2p: false
+    i2p: false,
+    bobcoin: false
   }
 })
 
@@ -170,6 +173,11 @@ if (command === 'serve') {
     samSession = new SamSession()
     await samSession.connect()
     log.info('[I2P] Connected to SAM bridge')
+  }
+
+  if (argv.bobcoin) {
+      const bobcoin = new BobcoinService({ enabled: true })
+      await bobcoin.start()
   }
 
   const client = new MegatorrentClient({

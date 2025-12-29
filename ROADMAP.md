@@ -10,6 +10,11 @@
 *   **Mechanism:** Encapsulate KRPC messages inside the Encrypted TCP Transport (`MSG_DHT_QUERY`, `MSG_DHT_RESPONSE`).
 *   **Status:** Protocol Definition.
 
+### 2. Bobcoin Integration
+*   **Goal:** Native economy for file sharing and arcade games.
+*   **Mechanism:** Embedded Bobcoin Node (Solana/Monero Hybrid).
+*   **Status:** Submodule Initialized.
+
 ## ✅ Accomplished Features (v1.x)
 
 ### 1. Core Architecture

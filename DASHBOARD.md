@@ -8,6 +8,9 @@
 *   **`qbittorrent/` (Submodule):** Fork of qBittorrent.
     *   *Status:* Points to `release-5.1.0beta1` (approx).
     *   *Modifications:* Contains untracked files in `src/base/` implementing Megatorrent.
+*   **`bobcoin/` (Submodule):** The Bobcoin Token (Economy).
+    *   *Vision:* Solana/Monero Hybrid, Mining-by-Dancing.
+    *   *Status:* Initial Scaffold.
 *   **`cpp-reference/`:** The Canonical Source of Truth for the C++ integration.
     *   `megatorrent/`: Core C++ classes (`DHTClient`, `SecureSocket`, `Manifest`, `BlobDownloader`).
     *   `qbittorrent-patches/`: Modified qBittorrent files (`sessionimpl`, `CMakeLists.txt`).
@@ -19,6 +22,7 @@
 | Submodule | Path | Branch/Commit | Status |
 | :--- | :--- | :--- | :--- |
 | **qBittorrent** | `qbittorrent/` | `5abf458e6` | **Dirty** (Contains integration stubs) |
+| **Bobcoin** | `bobcoin/` | `master` | **Initial** |
 
 ## 🛠 Feature Matrix
 

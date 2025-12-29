@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-dev] - 2024-05-23
+
+### Added
+- **Bobcoin Submodule:** Added `bobcoin` (Solana/Monero hybrid token) as a submodule.
+- **Documentation:** Consolidated Agent instructions into `LLM_INSTRUCTIONS.md`. Created `DASHBOARD.md`.
+- **Protocol:** Defined `MSG_DHT_QUERY` (0x09) and `MSG_DHT_RESPONSE` (0x0A) for DHT-over-TCP (Protocol v6).
+
 ## [1.5.0] - 2024-05-23
 
 ### Added
