@@ -8,12 +8,12 @@
 - **Integration:** Added `BobcoinService` stub in Node.js client.
 
 ## Current State
-- **Node.js Client:** v2.0.0-dev. Supports v5 protocol (fully) and v6 protocol constants (DHT-over-TCP). Includes Bobcoin service stub.
+- **Node.js Client:** v2.0.0-dev. Supports v5 protocol (fully) and v6 protocol constants (DHT-over-TCP). Includes functional Bobcoin mining prototype.
 - **C++ Reference:** Matches Node.js protocol v5. Includes WebAPI publishing.
-- **Bobcoin:** Initial scaffold (Node.js stub).
+- **Bobcoin:** Functional Node.js prototype with "Proof of Dance" consensus and Ring Signature stubs.
 
 ## Next Steps
-1.  **Bobcoin:** Develop the actual Bobcoin node logic (or integrate the real C++/Rust implementation) in the `bobcoin` submodule.
+1.  **Bobcoin:** Integrate hardware input (DDR pads) into `DanceMiner`.
 2.  **DHT-over-TCP:** Implement the logic to encapsulate `bittorrent-dht` packets into `MSG_DHT_QUERY` frames in `lib/secure-transport.js`.
 3.  **UI:** Build Qt widgets for Subscription Manager in `qbittorrent`.
 

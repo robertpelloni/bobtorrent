@@ -57,6 +57,7 @@ if (!command) {
   gen-key [-k identity.json]
   ingest -i <file> [-d ./storage] [--json]
   publish [-k identity.json] -i <file_entry.json>
+  mine (Simulate Proof-of-Dance)
   serve [-d ./storage]
   subscribe <uri> [-d ./storage]
   `)
@@ -116,6 +117,22 @@ if (command === 'ingest') {
       }, 500)
     })
   }
+}
+
+if (command === 'mine') {
+    const bobcoin = new BobcoinService({ enabled: true })
+    await bobcoin.start()
+    // Simulate a "Perfect" combo
+    const danceData = Array(50).fill({ arrow: 'UP', timing: 'PERFECT' })
+    const block = await bobcoin.submitDance(danceData)
+    if (block) {
+        log.info('Mining Successful!')
+        log.json(block)
+        process.exit(0)
+    } else {
+        log.error('Mining Failed')
+        process.exit(1)
+    }
 }
 
 if (command === 'publish') {
