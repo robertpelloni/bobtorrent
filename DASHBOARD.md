@@ -22,7 +22,7 @@
 | Submodule | Path | Branch/Commit | Status |
 | :--- | :--- | :--- | :--- |
 | **qBittorrent** | `qbittorrent/` | `9447cbd` | **Patched** (Megatorrent v1.5 Stubs) |
-| **Bobcoin** | `bobcoin/` | `00a048e` | **Prototype** (Proof of Dance) |
+| **Bobcoin** | `bobcoin/` | `fd8830c` | **Prototype** (Ecosystem Stubs) |
 
 ## 🛠 Feature Matrix
 
