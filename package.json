@@ -1,6 +1,6 @@
 {
   "name": "megatorrent-reference-client",
-  "version": "2.0.0-dev",
+  "version": "2.0.0-alpha.1",
   "description": "Reference implementation of the Megatorrent Protocol (Decentralized, Anonymous, Resilient)",
   "type": "module",
   "main": "index.js",

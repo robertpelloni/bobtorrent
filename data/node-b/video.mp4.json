@@ -1,13 +1,14 @@
+Bobcoin Library Loaded (v0.1.0)
 {
   "name": "video.mp4",
   "size": 1048576,
   "chunks": [
     {
-      "blobId": "638c54640c78c887141de5bef73af4fd703e22547a7b4a6275fd1c7979c2d01a",
+      "blobId": "dbd7b277c9260941471632bd499ad49ab545f71a9a098263d248c98ac6fd0ab4",
       "offset": 0,
       "length": 1048592,
-      "key": "441a7a38b58cc9335e6b2f6091354275286526e202b255967c8aeb37a16d24b8",
-      "nonce": "cf4ec5a3c9d096af5201cb1d",
+      "key": "876703e9e3948fd8dadf785a48cf339f4aa565b0b341a98def194bd08c1836fd",
+      "nonce": "61c5c1df6217a4c89c72a7a3",
       "realSize": 1048576
     }
   ]

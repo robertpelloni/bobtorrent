@@ -1,6 +1,6 @@
 # Megatorrent Project Roadmap & Status
 
-**Current Version:** v2.0.0-dev
+**Current Version:** v2.0.0-alpha.1
 **Protocol Version:** v6 (Draft)
 
 ## 🚧 In Progress: v2.0 (Anonymity++)
@@ -12,8 +12,8 @@
 
 ### 2. Bobcoin Integration
 *   **Goal:** Native economy for file sharing and arcade games.
-*   **Mechanism:** Embedded Bobcoin Node (Solana/Monero Hybrid).
-*   **Status:** Submodule Initialized.
+*   **Mechanism:** Embedded Bobcoin Node (Solana/Monero Hybrid) with "Proof of Dance".
+*   **Status:** Prototype Implemented (Node.js).
 
 ## ✅ Accomplished Features (v1.x)
 

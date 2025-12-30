@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-alpha.1] - 2024-05-23
+
+### Added
+- **Bobcoin Integration:** Working "Proof of Dance" prototype in `bobcoin/src/` and `lib/bobcoin.js`.
+- **DHT-over-TCP:** Implemented KRPC packet encapsulation (Protocol v6).
+- **Documentation:** Full roadmap update and dashboard sync.
+
 ## [2.0.0-dev] - 2024-05-23
 
 ### Added

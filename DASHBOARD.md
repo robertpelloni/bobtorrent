@@ -21,8 +21,8 @@
 
 | Submodule | Path | Branch/Commit | Status |
 | :--- | :--- | :--- | :--- |
-| **qBittorrent** | `qbittorrent/` | `5abf458e6` | **Dirty** (Contains integration stubs) |
-| **Bobcoin** | `bobcoin/` | `master` | **Initial** |
+| **qBittorrent** | `qbittorrent/` | `9447cbd` | **Patched** (Megatorrent v1.5 Stubs) |
+| **Bobcoin** | `bobcoin/` | `f96ab41` | **Prototype** (Proof of Dance) |
 
 ## 🛠 Feature Matrix
 
@@ -38,5 +38,5 @@
 
 ## 🚀 Version Information
 
-**Current Version:** `1.5.0`
-**Build Date:** 2024-05-22 (Simulated)
+**Current Version:** `2.0.0-alpha.1`
+**Build Date:** 2024-05-23
