@@ -32,6 +32,18 @@ All notable changes to Supernode Java.
   - Recovery from up to 2 lost data shards or 2 lost parity shards
   - Deterministic encoding/decoding
 
+#### Blockchain Layer
+- Enhanced `BobcoinBridge` with health monitoring and circuit breaker
+  - Added `HealthState` enum with HEALTHY, DEGRADED, UNHEALTHY, UNKNOWN states
+  - Added `HealthStatus` record with comprehensive health tracking
+  - Added `HealthChangeEvent` record for health state changes
+  - Implemented periodic health checks with 30-second intervals (configurable)
+  - Added circuit breaker pattern with threshold of 3 consecutive failures
+  - Added health event emission via `onHealthChange` consumer
+  - Enhanced connection monitoring with consecutive failure tracking
+  - Thread-safe health tracking with `AtomicInteger`, `AtomicLong`, and `volatile` fields
+  - Added `getHealthStatus()`, `triggerHealthCheck()`, and `setOnHealthChange()` public API methods
+
 #### Network Layer
 - Enhanced `BlobNetwork` with transport manager integration and multi-network routing
   - Added support for multiple transport types (CLEARNET, TOR, I2P, IPFS, HYPHANET, ZERONET)
