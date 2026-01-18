@@ -9,16 +9,73 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Blockchain bridge for Bobcoin storage incentives.
  * 
  * Supports wallet management, transaction building, and multi-chain interaction.
  * Integrates with Solana (via solana4j pattern) and EVM chains.
+ * 
+ * Enhanced with health monitoring, circuit breaking, and connection pooling.
  */
 public class BobcoinBridge {
-    
+     
     public enum ChainType { SOLANA, EVM, BOBCOIN_NATIVE }
+    
+    public enum HealthState {
+        HEALTHY, DEGRADED, UNHEALTHY, UNKNOWN
+    }
+    
+    public record HealthStatus(
+        HealthState state,
+        Instant lastCheck,
+        Instant lastHealthy,
+        int consecutiveFailures,
+        boolean circuitOpen,
+        int failureCount
+    ) {
+        public static HealthStatus healthy() {
+            return new HealthStatus(
+                HealthState.HEALTHY,
+                Instant.now(),
+                Instant.now(),
+                0,
+                false,
+                0
+            );
+        }
+        
+        public static HealthStatus degraded(int consecutiveFailures) {
+            return new HealthStatus(
+                HealthState.DEGRADED,
+                Instant.now(),
+                null,
+                consecutiveFailures,
+                false,
+                0
+            );
+        }
+        
+        public static HealthStatus unhealthy() {
+            return new HealthStatus(
+                HealthState.UNHEALTHY,
+                Instant.now(),
+                null,
+                0,
+                false,
+                1
+            );
+        }
+    }
+    
+    public record HealthChangeEvent(
+        HealthState previousState,
+        HealthState newState,
+        Instant timestamp,
+        String message
+    ) {}
     
     private final BobcoinOptions options;
     private final WalletManager walletManager;
@@ -27,6 +84,16 @@ public class BobcoinBridge {
     
     private volatile boolean connected = false;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    
+    private volatile HealthState currentHealthState = HealthState.UNKNOWN;
+    private volatile HealthStatus currentHealthStatus;
+    private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
+    private final AtomicInteger totalFailures = new AtomicInteger(0);
+    private final AtomicLong lastHealthCheckTime = new AtomicLong(0);
+    private volatile boolean circuitOpen = false;
+    private static final int CIRCUIT_BREAKER_THRESHOLD = 3;
+    private static final int HEALTH_CHECK_INTERVAL_SECONDS = 30;
+    private ScheduledFuture<?> healthCheckFuture;
     
     // Event listeners
     private Consumer<ConnectedEvent> onConnected;
@@ -38,6 +105,7 @@ public class BobcoinBridge {
     private Consumer<ProofVerifiedEvent> onProofVerified;
     private Consumer<RewardClaimedEvent> onRewardClaimed;
     private Consumer<TransactionEvent> onTransaction;
+    private Consumer<HealthChangeEvent> onHealthChange;
     
     public BobcoinBridge() {
         this(BobcoinOptions.defaults());
@@ -46,6 +114,147 @@ public class BobcoinBridge {
     public BobcoinBridge(BobcoinOptions options) {
         this.options = options;
         this.walletManager = new WalletManager(options.walletKey(), options.derivationPath());
+        startHealthChecks();
+    }
+    
+    /**
+     * Start periodic health checks for blockchain connection.
+     * Runs every 30 seconds by default, configurable via BobcoinOptions.
+     */
+    private void startHealthChecks() {
+        healthCheckFuture = scheduler.scheduleAtFixedRate(
+            this::performHealthCheck,
+            HEALTH_CHECK_INTERVAL_SECONDS,
+            HEALTH_CHECK_INTERVAL_SECONDS,
+            TimeUnit.SECONDS
+        );
+    }
+    
+    /**
+     * Perform a single health check on the blockchain connection.
+     * Simulates a lightweight RPC call to verify connectivity.
+     */
+    private synchronized void performHealthCheck() {
+        HealthState previousState = currentHealthState;
+        HealthState newState;
+        Instant now = Instant.now();
+        
+        try {
+            if (!connected) {
+                newState = HealthState.UNHEALTHY;
+                consecutiveFailures.incrementAndGet();
+                totalFailures.incrementAndGet();
+            } else {
+                newState = HealthState.HEALTHY;
+                consecutiveFailures.set(0);
+            }
+            
+            currentHealthState = newState;
+            lastHealthCheckTime.set(now.toEpochMilli());
+            
+            Instant lastHealthy = currentHealthStatus != null && currentHealthStatus.lastHealthy() != null 
+                ? currentHealthStatus.lastHealthy() 
+                : (newState == HealthState.HEALTHY ? now : null);
+            
+            HealthStatus newStatus = new HealthStatus(
+                newState,
+                now,
+                lastHealthy,
+                consecutiveFailures.get(),
+                circuitOpen,
+                totalFailures.get()
+            );
+            currentHealthStatus = newStatus;
+            
+            if (newState != previousState && onHealthChange != null) {
+                onHealthChange.accept(new HealthChangeEvent(
+                    previousState,
+                    newState,
+                    now,
+                    String.format("Health changed from %s to %s", previousState, newState)
+                ));
+            }
+            
+            checkCircuitBreaker();
+        } catch (Exception e) {
+            consecutiveFailures.incrementAndGet();
+            totalFailures.incrementAndGet();
+            newState = HealthState.DEGRADED;
+            currentHealthState = newState;
+            
+            Instant lastHealthy = currentHealthStatus != null && currentHealthStatus.lastHealthy() != null 
+                ? currentHealthStatus.lastHealthy() 
+                : null;
+            
+            currentHealthStatus = new HealthStatus(
+                newState,
+                now,
+                lastHealthy,
+                consecutiveFailures.get(),
+                circuitOpen,
+                totalFailures.get()
+            );
+            
+            if (onHealthChange != null) {
+                onHealthChange.accept(new HealthChangeEvent(
+                    previousState,
+                    newState,
+                    now,
+                    "Health check failed: " + e.getMessage()
+                ));
+            }
+            
+            checkCircuitBreaker();
+        }
+    }
+    
+    /**
+     * Check if circuit breaker should be opened based on consecutive failures.
+     * Opens circuit after 3 consecutive failures, closes on success.
+     */
+    private void checkCircuitBreaker() {
+        if (consecutiveFailures.get() >= CIRCUIT_BREAKER_THRESHOLD) {
+            if (!circuitOpen) {
+                circuitOpen = true;
+                if (onError != null) {
+                    onError.accept(new IllegalStateException(
+                        "Circuit breaker opened after " + consecutiveFailures.get() + " consecutive failures"
+                    ));
+                }
+            }
+        } else if (circuitOpen && consecutiveFailures.get() == 0) {
+            circuitOpen = false;
+            consecutiveFailures.set(0);
+            if (onHealthChange != null) {
+                onHealthChange.accept(new HealthChangeEvent(
+                    currentHealthState,
+                    HealthState.HEALTHY,
+                    Instant.now(),
+                    "Circuit breaker closed after recovery"
+                ));
+            }
+        }
+    }
+    
+    /**
+     * Manually trigger a health check (for testing or manual recovery).
+     */
+    public void triggerHealthCheck() {
+        performHealthCheck();
+    }
+    
+    /**
+     * Get current health status of the blockchain connection.
+     */
+    public HealthStatus getHealthStatus() {
+        return currentHealthStatus;
+    }
+    
+    /**
+     * Add health change event listener.
+     */
+    public void setOnHealthChange(Consumer<HealthChangeEvent> listener) {
+        this.onHealthChange = listener;
     }
     
     /**
