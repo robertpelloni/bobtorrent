@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -58,6 +59,20 @@ public class BlobNetwork {
     private final AtomicLong successfulTransfers = new AtomicLong();
     private final AtomicLong failedTransfers = new AtomicLong();
     
+    private final ConcurrentHashMap<String, PeerConnection> connectionPool = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Long> lastAccessTime = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Long> accessCount = new ConcurrentHashMap<>();
+    private final Set<String> keepAlivePeers = ConcurrentHashMap.newKeySet();
+    private final AtomicInteger activeConnections = new AtomicInteger(0);
+    private final AtomicInteger availableConnections = new AtomicInteger(0);
+    private final AtomicInteger waitingConnections = new AtomicInteger(0);
+    private final AtomicLong connectionsCreated = new AtomicLong(0);
+    private final AtomicLong connectionsClosed = new AtomicLong(0);
+    private final AtomicLong connectionsReused = new AtomicLong(0);
+    private final ScheduledExecutorService poolCleanupExecutor = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledFuture<?> cleanupTask;
+    private volatile boolean poolInitialized = false;
+    
     private volatile boolean destroyed = false;
     private volatile Transport.HealthState healthState = Transport.HealthState.STOPPED;
     private volatile Instant lastHealthCheck = Instant.now();
@@ -80,6 +95,211 @@ public class BlobNetwork {
         this.options = options;
         this.peerId = options.peerId != null ? options.peerId : generatePeerId();
         this.port = options.port;
+    }
+    
+    private void initializeConnectionPool() {
+        if (poolInitialized) return;
+        poolInitialized = true;
+        
+        if (options.connectionOptions().enableWarmup()) {
+            warmupConnections(options.connectionOptions().warmupPeers());
+        }
+        
+        scheduleCleanup();
+    }
+    
+    private void warmupConnections(Set<String> peerAddresses) {
+        if (peerAddresses == null || peerAddresses.isEmpty()) return;
+        
+        for (String address : peerAddresses) {
+            try {
+                URI uri = new URI(address);
+                String host = uri.getHost();
+                int port = uri.getPort() != -1 ? uri.getPort() : 80;
+                String peerId = host + ":" + port;
+                
+                if (!connectionPool.containsKey(peerId)) {
+                    connect(address).thenAccept(conn -> {
+                        if (conn != null && conn.channel().isActive()) {
+                            addToPool(peerId, conn);
+                            connectionsCreated.incrementAndGet();
+                        }
+                    }).exceptionally(ex -> null);
+                }
+            } catch (Exception e) {
+            }
+        }
+    }
+    
+    private void addToPool(String peerId, PeerConnection connection) {
+        if (connection == null || !connection.channel().isActive()) return;
+        
+        connectionPool.put(peerId, connection);
+        availableConnections.incrementAndGet();
+        lastAccessTime.put(peerId, System.currentTimeMillis());
+        accessCount.put(peerId, accessCount.getOrDefault(peerId, 0L) + 1);
+        updateKeepAlivePeers();
+    }
+    
+    private void removeFromPool(String peerId, PeerConnection connection) {
+        if (connection != null) {
+            connection.channel().close();
+        }
+        connectionPool.remove(peerId);
+        lastAccessTime.remove(peerId);
+        keepAlivePeers.remove(peerId);
+        availableConnections.decrementAndGet();
+        connectionsClosed.incrementAndGet();
+    }
+    
+    private void updateKeepAlivePeers() {
+        int keepAliveCount = options.connectionOptions().keepAliveCount();
+        if (keepAliveCount <= 0) return;
+        
+        accessCount.entrySet().stream()
+            .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
+            .limit(keepAliveCount)
+            .forEach(entry -> keepAlivePeers.add(entry.getKey()));
+    }
+    
+    private void scheduleCleanup() {
+        long cleanupInterval = options.connectionOptions().cleanupInterval().toMillis();
+        if (cleanupInterval > 0) {
+            cleanupTask = poolCleanupExecutor.scheduleAtFixedRate(
+                this::cleanup,
+                cleanupInterval,
+                cleanupInterval,
+                TimeUnit.MILLISECONDS
+            );
+        }
+    }
+    
+    private void cleanup() {
+        if (destroyed) return;
+        
+        long now = System.currentTimeMillis();
+        long idleTimeout = options.connectionOptions().idleTimeout().toMillis();
+        int maxPoolSize = options.connectionOptions().maxPoolSize();
+        
+        List<String> peersToRemove = new ArrayList<>();
+        
+        for (Map.Entry<String, PeerConnection> entry : connectionPool.entrySet()) {
+            String peerId = entry.getKey();
+            PeerConnection conn = entry.getValue();
+            
+            if (!conn.channel().isActive()) {
+                peersToRemove.add(peerId);
+                continue;
+            }
+            
+            Long lastAccess = lastAccessTime.get(peerId);
+            if (lastAccess != null && (now - lastAccess) > idleTimeout && !keepAlivePeers.contains(peerId)) {
+                peersToRemove.add(peerId);
+            }
+        }
+        
+        int currentPoolSize = connectionPool.size();
+        if (currentPoolSize > maxPoolSize) {
+            List<String> idlePeers = connectionPool.entrySet().stream()
+                .filter(e -> !keepAlivePeers.contains(e.getKey()))
+                .sorted((a, b) -> Long.compare(
+                    lastAccessTime.getOrDefault(a.getKey(), 0L),
+                    lastAccessTime.getOrDefault(b.getKey(), 0L)
+                ))
+                .map(Map.Entry::getKey)
+                .toList();
+            
+            int toRemove = Math.min(currentPoolSize - maxPoolSize, idlePeers.size());
+            for (int i = 0; i < toRemove; i++) {
+                peersToRemove.add(idlePeers.get(i));
+            }
+        }
+        
+        for (String peerId : peersToRemove) {
+            PeerConnection conn = connectionPool.remove(peerId);
+            if (conn != null) {
+                conn.channel().close();
+                connectionsClosed.incrementAndGet();
+            }
+            lastAccessTime.remove(peerId);
+            keepAlivePeers.remove(peerId);
+            availableConnections.decrementAndGet();
+            }
+        }
+    }
+    
+    private CompletableFuture<PeerConnection> acquireConnection(String peerId, String address) {
+        waitingConnections.incrementAndGet();
+        
+        try {
+            PeerConnection existing = connectionPool.get(peerId);
+            if (existing != null && existing.channel().isActive()) {
+                connectionsReused.incrementAndGet();
+                lastAccessTime.put(peerId, System.currentTimeMillis());
+                accessCount.put(peerId, accessCount.getOrDefault(peerId, 0L) + 1);
+                availableConnections.decrementAndGet();
+                activeConnections.incrementAndGet();
+                waitingConnections.decrementAndGet();
+                return CompletableFuture.completedFuture(existing);
+            }
+            
+            int minPoolSize = options.connectionOptions().minPoolSize();
+            int currentPoolSize = connectionPool.size();
+            
+            if (minPoolSize == 1 && currentPoolSize == 0) {
+                waitingConnections.decrementAndGet();
+                return connect(address).thenApply(conn -> {
+                    connectionsCreated.incrementAndGet();
+                    activeConnections.incrementAndGet();
+                    return conn;
+                });
+            }
+            
+            if (currentPoolSize >= options.connectionOptions().maxPoolSize()) {
+                waitingConnections.decrementAndGet();
+                return CompletableFuture.failedFuture(new IllegalStateException("Connection pool exhausted"));
+            }
+            
+            waitingConnections.decrementAndGet();
+            return connect(address).thenApply(conn -> {
+                if (conn != null && conn.channel().isActive()) {
+                    addToPool(peerId, conn);
+                    activeConnections.incrementAndGet();
+                    connectionsCreated.incrementAndGet();
+                }
+                return conn;
+            });
+        } catch (Exception e) {
+            waitingConnections.decrementAndGet();
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+    
+    private void releaseConnection(String peerId) {
+        PeerConnection conn = connectionPool.get(peerId);
+        if (conn != null && conn.channel().isActive()) {
+            activeConnections.decrementAndGet();
+            availableConnections.incrementAndGet();
+            lastAccessTime.put(peerId, System.currentTimeMillis());
+        }
+    }
+    
+    public PoolMetrics getPoolMetrics() {
+        long totalAcquired = connectionsCreated.get() + connectionsReused.get();
+        double hitRate = totalAcquired > 0 ? (double) connectionsReused.get() / totalAcquired : 0.0;
+        double reuseRate = connectionsCreated.get() > 0 ? (double) connectionsReused.get() / connectionsCreated.get() : 0.0;
+        
+        return new PoolMetrics(
+            connectionPool.size(),
+            activeConnections.get(),
+            availableConnections.get(),
+            waitingConnections.get(),
+            connectionsCreated.get(),
+            connectionsClosed.get(),
+            connectionsReused.get(),
+            hitRate,
+            reuseRate
+        );
     }
     
     public CompletableFuture<Integer> listen(int port) {
@@ -129,6 +349,33 @@ public class BlobNetwork {
     
     public CompletableFuture<PeerConnection> connect(String address) {
         return connect(address, null);
+    }
+    
+    public CompletableFuture<PeerConnection> connectWithPool(String address) {
+        try {
+            URI uri = new URI(address);
+            String host = uri.getHost();
+            int port = uri.getPort() != -1 ? uri.getPort() : 80;
+            String peerId = host + ":" + port;
+            
+            return acquireConnection(peerId, address);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+    
+    public void releaseConnection(String peerId) {
+        PeerConnection conn = connectionPool.get(peerId);
+        if (conn != null && conn.channel().isActive()) {
+            activeConnections.decrementAndGet();
+            availableConnections.incrementAndGet();
+            lastAccessTime.put(peerId, System.currentTimeMillis());
+        }
+    }
+    
+    public void releaseConnection(PeerConnection conn) {
+        if (conn == null) return;
+        releaseConnection(conn.peerId());
     }
     
     public CompletableFuture<PeerConnection> connect(String address, ConnectionOptions connOptions) {
@@ -357,6 +604,28 @@ public class BlobNetwork {
     public void destroy() {
         destroyed = true;
         updateHealthState(Transport.HealthState.STOPPED);
+        
+        if (cleanupTask != null) {
+            cleanupTask.cancel(false);
+        }
+        
+        poolCleanupExecutor.shutdown();
+        try {
+            if (!poolCleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                poolCleanupExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            poolCleanupExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        
+        for (PeerConnection conn : connectionPool.values()) {
+            conn.channel().close();
+        }
+        connectionPool.clear();
+        lastAccessTime.clear();
+        accessCount.clear();
+        keepAlivePeers.clear();
         
         if (serverChannel != null) {
             serverChannel.close();
@@ -729,6 +998,7 @@ public class BlobNetwork {
         public final Duration retryDelay;
         public final boolean autoReconnect;
         public final Duration pingInterval;
+        public final ConnectionPoolOptions connectionOptions;
         
         private BlobNetworkOptions(Builder builder) {
             this.peerId = builder.peerId;
@@ -741,6 +1011,7 @@ public class BlobNetwork {
             this.retryDelay = builder.retryDelay;
             this.autoReconnect = builder.autoReconnect;
             this.pingInterval = builder.pingInterval;
+            this.connectionOptions = builder.connectionOptions;
         }
         
         public static BlobNetworkOptions defaults() {
@@ -754,6 +1025,7 @@ public class BlobNetwork {
         public String peerId() { return peerId; }
         public int port() { return port; }
         public int maxConnections() { return maxConnections; }
+        public ConnectionPoolOptions connectionOptions() { return connectionOptions; }
         
         public static class Builder {
             private String peerId = null;
@@ -766,6 +1038,7 @@ public class BlobNetwork {
             private Duration retryDelay = Duration.ofSeconds(1);
             private boolean autoReconnect = true;
             private Duration pingInterval = Duration.ofSeconds(30);
+            private ConnectionPoolOptions connectionOptions = ConnectionPoolOptions.defaults();
             
             public Builder peerId(String peerId) { this.peerId = peerId; return this; }
             public Builder port(int port) { this.port = port; return this; }
@@ -777,6 +1050,7 @@ public class BlobNetwork {
             public Builder retryDelay(Duration delay) { this.retryDelay = delay; return this; }
             public Builder autoReconnect(boolean auto) { this.autoReconnect = auto; return this; }
             public Builder pingInterval(Duration interval) { this.pingInterval = interval; return this; }
+            public Builder connectionOptions(ConnectionPoolOptions options) { this.connectionOptions = options; return this; }
             
             public BlobNetworkOptions build() {
                 return new BlobNetworkOptions(this);
@@ -821,6 +1095,68 @@ public class BlobNetwork {
             }
         }
     }
+    
+    public static class ConnectionPoolOptions {
+        public final int minPoolSize;
+        public final int maxPoolSize;
+        public final Duration idleTimeout;
+        public final int keepAliveCount;
+        public final Duration cleanupInterval;
+        public final boolean enableWarmup;
+        public final Set<String> warmupPeers;
+        
+        private ConnectionPoolOptions(Builder builder) {
+            this.minPoolSize = builder.minPoolSize;
+            this.maxPoolSize = builder.maxPoolSize;
+            this.idleTimeout = builder.idleTimeout;
+            this.keepAliveCount = builder.keepAliveCount;
+            this.cleanupInterval = builder.cleanupInterval;
+            this.enableWarmup = builder.enableWarmup;
+            this.warmupPeers = builder.warmupPeers != null ? Set.copyOf(builder.warmupPeers) : Set.of();
+        }
+        
+        public static ConnectionPoolOptions defaults() {
+            return builder().build();
+        }
+        
+        public static Builder builder() {
+            return new Builder();
+        }
+        
+        public static class Builder {
+            private int minPoolSize = 1;
+            private int maxPoolSize = 10;
+            private Duration idleTimeout = Duration.ofSeconds(60);
+            private int keepAliveCount = 5;
+            private Duration cleanupInterval = Duration.ofSeconds(30);
+            private boolean enableWarmup = false;
+            private Set<String> warmupPeers = Set.of();
+            
+            public Builder minPoolSize(int size) { this.minPoolSize = size; return this; }
+            public Builder maxPoolSize(int size) { this.maxPoolSize = size; return this; }
+            public Builder idleTimeout(Duration timeout) { this.idleTimeout = timeout; return this; }
+            public Builder keepAliveCount(int count) { this.keepAliveCount = count; return this; }
+            public Builder cleanupInterval(Duration interval) { this.cleanupInterval = interval; return this; }
+            public Builder enableWarmup(boolean enable) { this.enableWarmup = enable; return this; }
+            public Builder warmupPeers(Set<String> peers) { this.warmupPeers = peers; return this; }
+            
+            public ConnectionPoolOptions build() {
+                return new ConnectionPoolOptions(this);
+            }
+        }
+    }
+    
+    public record PoolMetrics(
+        int poolSize,
+        int activeConnections,
+        int availableConnections,
+        int waitingConnections,
+        long connectionsCreated,
+        long connectionsClosed,
+        long connectionsReused,
+        double hitRate,
+        double reuseRate
+    ) {}
     
     public enum PeerHealthState { UNKNOWN, HEALTHY, DEGRADED, UNHEALTHY }
     
