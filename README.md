@@ -1,4 +1,4 @@
-# bittorrent-tracker [![ci][ci-image]][ci-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url]
+# bobtorrent [![ci][ci-image]][ci-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url]
 
 [ci-image]: https://img.shields.io/github/actions/workflow/status/webtorrent/bittorrent-tracker/ci.yml
 [ci-url]: https://github.com/webtorrent/bittorrent-tracker/actions
