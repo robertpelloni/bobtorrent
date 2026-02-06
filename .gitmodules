@@ -1,3 +1,6 @@
 [submodule "qbittorrent"]
 	path = qbittorrent
-	url = https://github.com/robertpelloni/qbittorrent
+	url = https://github.com/qbittorrent/qBittorrent
+[submodule "webtorrent-bittorrent-tracker"]
+	path = webtorrent-bittorrent-tracker
+	url = https://github.com/webtorrent/bittorrent-tracker

@@ -206,7 +206,14 @@ For example: `0.1.0`, `0.1.1`, `0.1.2`, etc.
 
 * export WebSocketTracker ([#558](https://github.com/webtorrent/bittorrent-tracker/issues/558)) ([1571551](https://github.com/webtorrent/bittorrent-tracker/commit/15715518decfed77d7888ba21d6ab592fa91cc85))
 
-## [11.2.1](https://github.com/webtorrent/bittorrent-tracker/compare/v11.2.0...v11.2.1) (2025-01-19)
+## [11.2.3] - 2026-02-05
+
+### Documentation
+- **Major Update**: Added comprehensive project governance documentation (`VISION.md`, `AGENTS.md`, `DASHBOARD.md`).
+- **Guidance**: Added `UNIVERSAL_LLM_INSTRUCTIONS.md` for autonomous agent coordination.
+- **Roadmap**: Updated `ROADMAP.md` and project analysis.
+
+## [11.2.1] (2025-01-19)
 
 
 ### Bug Fixes
