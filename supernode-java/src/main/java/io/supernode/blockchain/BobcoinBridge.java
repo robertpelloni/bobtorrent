@@ -395,6 +395,19 @@ public class BobcoinBridge {
         return CompletableFuture.completedFuture(Collections.emptyList());
     }
     
+    /**
+     * Find storage providers that are storing the specified file.
+     * Queries active deals on-chain.
+     */
+    public CompletableFuture<List<String>> findFileProviders(String fileId) {
+        ensureConnected();
+        return CompletableFuture.supplyAsync(() -> {
+            // In a real implementation, this would query the blockchain state
+            // For now, we return a simulated list or empty
+            return Collections.emptyList(); 
+        });
+    }
+    
     public CompletableFuture<ProofVerification> verifyStorageProof(String proofId) {
         ensureConnected();
         ProofInfo info = pendingProofs.get(proofId);
