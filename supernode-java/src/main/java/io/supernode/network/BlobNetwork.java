@@ -224,7 +224,6 @@ public class BlobNetwork {
             lastAccessTime.remove(peerId);
             keepAlivePeers.remove(peerId);
             availableConnections.decrementAndGet();
-            }
         }
     }
     

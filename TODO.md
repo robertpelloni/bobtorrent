@@ -37,7 +37,10 @@
   - Add Kademlia DHT optimization for better routing
   - Add peer exchange protocol for better discovery
   - Implement efficient blob streaming for large files
-- Add predictive resource allocation based on demand
+- [x] **Add predictive resource allocation based on demand**
+  - Implement `ResourceManager` to monitor JVM metrics
+  - Integrate with `SupernodeNetwork` stats
+  - Provide load level recommendations
 
 - [ ] **Advanced routing and content delivery**
   - Add DHT integration with Filecoin for content routing
