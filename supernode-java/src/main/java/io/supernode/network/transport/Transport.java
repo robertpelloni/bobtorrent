@@ -97,6 +97,7 @@ public interface Transport {
     }
 
     enum HealthState {
+        UNKNOWN,
         HEALTHY,
         DEGRADED,
         UNHEALTHY,

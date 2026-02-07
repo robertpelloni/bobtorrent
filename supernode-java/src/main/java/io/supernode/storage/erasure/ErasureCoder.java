@@ -1,9 +1,11 @@
 package io.supernode.storage.erasure;
 
+import io.supernode.network.transport.Transport;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
+import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
@@ -259,7 +261,7 @@ public class ErasureCoder {
             return new StreamEncodeResult(
                 totalBytesRead,
                 shardsProduced,
-                totalShardSize / totalShards,
+                (int) (totalShardSize / totalShards),
                 Instant.now()
             );
         } finally {
@@ -816,9 +818,9 @@ public class ErasureCoder {
             if (metrics == null) return 50.0;
 
             double successScore = metrics.successRate() * 40;
-            double latencyScore = Math.max(0, 100 - metrics.avgLatency() / 10.0) * 30;
+            double latencyScore = Math.max(0, (1.0 - metrics.avgLatency() / 1000.0)) * 30;
             double consistencyScore = (metrics.maxLatency() > 0 
-                ? 1.0 - ((metrics.maxLatency() - metrics.minLatency()) / metrics.maxLatency()) 
+                ? 1.0 - ((metrics.maxLatency() - metrics.minLatency()) / (double) metrics.maxLatency()) 
                 : 1.0) * 20;
             double recencyScore = 10;
 

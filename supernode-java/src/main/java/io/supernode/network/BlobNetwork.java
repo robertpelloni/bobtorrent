@@ -101,8 +101,8 @@ public class BlobNetwork {
         if (poolInitialized) return;
         poolInitialized = true;
         
-        if (options.connectionOptions().enableWarmup()) {
-            warmupConnections(options.connectionOptions().warmupPeers());
+        if (options.connectionOptions.enableWarmup) {
+            warmupConnections(options.connectionOptions.warmupPeers);
         }
         
         scheduleCleanup();
@@ -153,7 +153,7 @@ public class BlobNetwork {
     }
     
     private void updateKeepAlivePeers() {
-        int keepAliveCount = options.connectionOptions().keepAliveCount();
+        int keepAliveCount = options.connectionOptions.keepAliveCount;
         if (keepAliveCount <= 0) return;
         
         accessCount.entrySet().stream()
@@ -163,7 +163,7 @@ public class BlobNetwork {
     }
     
     private void scheduleCleanup() {
-        long cleanupInterval = options.connectionOptions().cleanupInterval().toMillis();
+        long cleanupInterval = options.connectionOptions.cleanupInterval.toMillis();
         if (cleanupInterval > 0) {
             cleanupTask = poolCleanupExecutor.scheduleAtFixedRate(
                 this::cleanup,
@@ -178,8 +178,8 @@ public class BlobNetwork {
         if (destroyed) return;
         
         long now = System.currentTimeMillis();
-        long idleTimeout = options.connectionOptions().idleTimeout().toMillis();
-        int maxPoolSize = options.connectionOptions().maxPoolSize();
+        long idleTimeout = options.connectionOptions.idleTimeout.toMillis();
+        int maxPoolSize = options.connectionOptions.maxPoolSize;
         
         List<String> peersToRemove = new ArrayList<>();
         
@@ -242,7 +242,7 @@ public class BlobNetwork {
                 return CompletableFuture.completedFuture(existing);
             }
             
-            int minPoolSize = options.connectionOptions().minPoolSize();
+            int minPoolSize = options.connectionOptions.minPoolSize;
             int currentPoolSize = connectionPool.size();
             
             if (minPoolSize == 1 && currentPoolSize == 0) {
@@ -254,7 +254,7 @@ public class BlobNetwork {
                 });
             }
             
-            if (currentPoolSize >= options.connectionOptions().maxPoolSize()) {
+            if (currentPoolSize >= options.connectionOptions.maxPoolSize) {
                 waitingConnections.decrementAndGet();
                 return CompletableFuture.failedFuture(new IllegalStateException("Connection pool exhausted"));
             }
@@ -271,15 +271,6 @@ public class BlobNetwork {
         } catch (Exception e) {
             waitingConnections.decrementAndGet();
             return CompletableFuture.failedFuture(e);
-        }
-    }
-    
-    private void releaseConnection(String peerId) {
-        PeerConnection conn = connectionPool.get(peerId);
-        if (conn != null && conn.channel().isActive()) {
-            activeConnections.decrementAndGet();
-            availableConnections.incrementAndGet();
-            lastAccessTime.put(peerId, System.currentTimeMillis());
         }
     }
     
