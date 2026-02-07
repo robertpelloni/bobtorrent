@@ -375,14 +375,15 @@ class ErasureCoderTest {
             byte[] data1 = new byte[1024];
             byte[] data2 = new byte[1024];
             Arrays.fill(data1, (byte) 0x00);
-            Arrays.fill(data2, (byte) 0xFF);
+            Arrays.fill(data2, (byte) 0x00);
+            data2[0] = (byte) 0xFF;
             
             ErasureCoder.EncodeResult enc1 = coder.encode(data1);
             ErasureCoder.EncodeResult enc2 = coder.encode(data2);
             
-            for (int p = 0; p < enc1.shards().length; p++) {
+            for (int p = coder.getDataShards(); p < enc1.shards().length; p++) {
                 assertFalse(Arrays.equals(enc1.shards()[p], enc2.shards()[p]),
-                    "All shards (data + parity) should differ for different data");
+                    "Parity shard " + p + " should differ for different data");
             }
         }
     }

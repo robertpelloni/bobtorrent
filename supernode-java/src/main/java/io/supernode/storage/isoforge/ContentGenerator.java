@@ -161,7 +161,8 @@ public class ContentGenerator {
 
     public static String generateLog(SeededRNG rng, int size) {
         StringBuilder content = new StringBuilder();
-        long currentTime = System.currentTimeMillis() - rng.nextInt(86400000);
+        long baseTime = 1704067200000L; // 2024-01-01T00:00:00Z
+        long currentTime = baseTime - rng.nextInt(86400000);
 
         String[] levels = {"INFO", "DEBUG", "WARN", "ERROR"};
         double[] weights = {0.6, 0.25, 0.1, 0.05};

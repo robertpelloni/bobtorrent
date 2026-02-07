@@ -20,7 +20,7 @@ public class ErasureCoder {
     private static final int GF_SIZE = 256;
     private static final int PRIMITIVE_POLY = 0x11d;
     private static final int DEFAULT_CHUNK_SIZE = 256 * 1024;
-    private static final int OVERLAP_SIZE = 64;
+    private static final int OVERLAP_SIZE = 0;
 
     private final int dataShards;
     private final int parityShards;
@@ -202,6 +202,10 @@ public class ErasureCoder {
                 int actualRead = bytesRead == -1 ? 0 : bytesRead;
                 int totalLen = carryOverLen + actualRead;
 
+                if (totalLen == 0) {
+                    break;
+                }
+
                 byte[] fullChunk = new byte[totalLen];
                 System.arraycopy(carryOver, 0, fullChunk, 0, carryOverLen);
                 if (actualRead > 0) {
@@ -233,6 +237,12 @@ public class ErasureCoder {
                 for (int i = 0; i < totalShards; i++) {
                     shardOutputs[i].write(shards[i], 0, shardSize);
                     totalShardSize += shardSize;
+                }
+
+                if (bytesRead == -1) {
+                    totalBytesRead += actualRead;
+                    shardsProduced++;
+                    break;
                 }
 
                 carryOverLen = Math.min(overlapSize, totalLen);
@@ -300,12 +310,15 @@ public class ErasureCoder {
 
             while (true) {
                 byte[][] shardChunks = new byte[dataShards][chunkSize];
+                int[] bytesReadPerShard = new int[dataShards];
+                int maxBytesRead = 0;
                 boolean anyData = false;
 
                 for (int i = 0; i < dataShards; i++) {
-                    int bytesRead = shardInputs[i].read(shardChunks[i]);
-                    if (bytesRead > 0) {
+                    bytesReadPerShard[i] = shardInputs[i].read(shardChunks[i]);
+                    if (bytesReadPerShard[i] > 0) {
                         anyData = true;
+                        maxBytesRead = Math.max(maxBytesRead, bytesReadPerShard[i]);
                     }
                 }
 
@@ -313,9 +326,9 @@ public class ErasureCoder {
                     break;
                 }
 
-                byte[][] decoded = new byte[dataShards][chunkSize];
+                byte[][] decoded = new byte[dataShards][maxBytesRead];
                 for (int i = 0; i < dataShards; i++) {
-                    for (int j = 0; j < chunkSize; j++) {
+                    for (int j = 0; j < maxBytesRead; j++) {
                         int value = 0;
                         for (int k = 0; k < dataShards; k++) {
                             value ^= gfMul(invMatrix[i][k], shardChunks[k][j] & 0xFF);
@@ -324,20 +337,19 @@ public class ErasureCoder {
                     }
                 }
 
-                long bytesToWrite = bytesWritten + (long) chunkSize * dataShards <= originalSize 
-                    ? (long) chunkSize * dataShards 
-                    : originalSize - bytesWritten;
+                long bytesToProcess = Math.min((long) maxBytesRead * dataShards, originalSize - bytesWritten);
 
                 for (int i = 0; i < dataShards; i++) {
-                    int start = i * chunkSize;
-                    long remaining = bytesToWrite - start;
-                    int writeLen = (int) Math.min(chunkSize, Math.max(0, remaining));
-                    if (writeLen > 0) {
-                        output.write(decoded[i], 0, writeLen);
+                    long shardStart = (long) i * maxBytesRead;
+                    long shardRemaining = bytesToProcess - shardStart;
+                    int shardWriteLen = (int) Math.min(maxBytesRead, Math.max(0, shardRemaining));
+                    
+                    if (shardWriteLen > 0) {
+                        output.write(decoded[i], 0, shardWriteLen);
                     }
                 }
 
-                bytesWritten += bytesToWrite;
+                bytesWritten += bytesToProcess;
                 shardsProduced++;
 
                 if (onDecoding != null) {

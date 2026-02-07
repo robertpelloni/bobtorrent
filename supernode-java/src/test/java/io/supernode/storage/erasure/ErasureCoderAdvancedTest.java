@@ -175,7 +175,9 @@ class ErasureCoderAdvancedTest {
 
             assertTrue(result.chunksProcessed() > 0, "Should process chunks");
             assertEquals(originalData.length, result.totalBytesProcessed());
-            assertEquals(originalData.length, Arrays.stream(outputs).mapToLong(ByteArrayOutputStream::size).sum());
+            
+            long totalSizeWritten = Arrays.stream(outputs).mapToLong(ByteArrayOutputStream::size).sum();
+            assertEquals((long) result.averageShardSize() * coder.getTotalShards(), totalSizeWritten);
         }
 
         @Test
@@ -318,7 +320,7 @@ class ErasureCoderAdvancedTest {
 
             ErasureCoder.EncodeResult encoded = coder.encode(data);
 
-            encoded.shards()[DATA_SHARDS][0] = (byte) 0xFF;
+            encoded.shards()[DATA_SHARDS][0] ^= (byte) 0xFF;
 
             ErasureCoder.VerificationResult result = coder.verifyParity(encoded.shards());
 
@@ -336,8 +338,8 @@ class ErasureCoderAdvancedTest {
 
             ErasureCoder.EncodeResult encoded = coder.encode(data);
 
-            encoded.shards()[DATA_SHARDS][50] = (byte) 0xAA;
-            encoded.shards()[DATA_SHARDS + 1][100] = (byte) 0xBB;
+            encoded.shards()[DATA_SHARDS][50] ^= (byte) 0xFF;
+            encoded.shards()[DATA_SHARDS + 1][100] ^= (byte) 0xFF;
 
             ErasureCoder.VerificationResult result = coder.verifyParity(encoded.shards());
 
@@ -423,7 +425,7 @@ class ErasureCoderAdvancedTest {
             byte[][] shards = encoded.shards().clone();
             shards[DATA_SHARDS + 1] = null;
 
-            int[] presentIndices = {0, 1, 2, 3}; // 5 is missing
+            int[] presentIndices = {0, 1, 2, 3, 4}; // Only index 5 is missing
 
             ErasureCoder.RepairResult result = coder.repairParity(
                     shards,

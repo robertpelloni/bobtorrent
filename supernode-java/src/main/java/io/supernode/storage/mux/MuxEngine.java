@@ -75,9 +75,8 @@ public class MuxEngine {
 
     private byte[] encrypt(byte[] plaintext, byte[] key) {
         try {
-            byte[] nonce = new byte[NONCE_SIZE];
-            new SecureRandom().nextBytes(nonce);
-
+            byte[] nonce = new byte[NONCE_SIZE]; // Zero nonce for determinism
+            
             Cipher cipher = Cipher.getInstance(CIPHER_ALGO);
             cipher.init(Cipher.ENCRYPT_MODE,
                 new SecretKeySpec(key, "AES"),

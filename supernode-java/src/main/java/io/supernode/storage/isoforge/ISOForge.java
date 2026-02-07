@@ -65,7 +65,7 @@ public class ISOForge {
             SeededRNG contentRng = rng.derive("content");
             int contentStart = 25 * SECTOR_SIZE;
             int contentSize = totalSectors * SECTOR_SIZE - contentStart;
-            byte[] content = contentRng.bytes(contentSize);
+            byte[] content = ContentGenerator.generate(contentRng, contentSize);
             System.arraycopy(content, 0, iso, contentStart, contentSize);
         } else {
             byte[] vdt = createVolumeDescriptorTerminator();
@@ -77,7 +77,7 @@ public class ISOForge {
             SeededRNG contentRng = rng.derive("content");
             int contentStart = 19 * SECTOR_SIZE;
             int contentSize = totalSectors * SECTOR_SIZE - contentStart;
-            byte[] content = contentRng.bytes(contentSize);
+            byte[] content = ContentGenerator.generate(contentRng, contentSize);
             System.arraycopy(content, 0, iso, contentStart, contentSize);
         }
 

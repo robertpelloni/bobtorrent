@@ -28,6 +28,7 @@ tasks.test {
     testLogging {
         events("passed", "skipped", "failed")
     }
+    maxHeapSize = "2g"
 }
 
 java {

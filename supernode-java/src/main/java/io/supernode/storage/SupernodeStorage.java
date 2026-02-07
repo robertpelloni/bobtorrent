@@ -116,7 +116,6 @@ public class SupernodeStorage {
         operations.put(operationId, state);
         
         try {
-            String fileId = "sha256:" + sha256Hex(fileBuffer);
             List<Segment> segments = new ArrayList<>();
             List<String> chunkHashes = new ArrayList<>();
             
