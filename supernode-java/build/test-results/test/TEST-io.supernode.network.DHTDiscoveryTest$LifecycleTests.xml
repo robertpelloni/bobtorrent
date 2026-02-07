@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Lifecycle" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:28" hostname="PINK" time="0.211">
+  <properties/>
+  <testcase name="should destroy cleanly" classname="io.supernode.network.DHTDiscoveryTest$LifecycleTests" time="0.103"/>
+  <testcase name="should start successfully" classname="io.supernode.network.DHTDiscoveryTest$LifecycleTests" time="0.104"/>
+  <testcase name="should fail start after destroy" classname="io.supernode.network.DHTDiscoveryTest$LifecycleTests" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

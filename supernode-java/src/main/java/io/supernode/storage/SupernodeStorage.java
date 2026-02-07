@@ -80,6 +80,37 @@ public class SupernodeStorage {
     }
     
     public IngestResult ingest(byte[] fileBuffer, String fileName, byte[] masterKey, Consumer<Progress> progress) {
+        String fileId = "sha256:" + sha256Hex(fileBuffer);
+        
+        // CAS Deduplication: Check if file already exists
+        if (manifestStore.containsKey(fileId)) {
+            try {
+                byte[] encryptedManifest = manifestStore.get(fileId);
+                byte[] manifestKey = Manifest.deriveManifestKey(masterKey, fileId);
+                Manifest manifest = Manifest.decrypt(encryptedManifest, manifestKey);
+                
+                List<String> chunkHashes = new ArrayList<>();
+                for (Segment s : manifest.getSegments()) {
+                    if (s.shards() != null && !s.shards().isEmpty()) {
+                        for (ShardInfo shard : s.shards()) {
+                            chunkHashes.add(shard.hash());
+                        }
+                    } else {
+                        chunkHashes.add(s.chunkHash());
+                    }
+                }
+                
+                if (onFileIngested != null) {
+                    onFileIngested.accept(new FileIngestedEvent(fileId, fileName, fileBuffer.length, chunkHashes.size()));
+                }
+                
+                // Return result immediately, skipping processing
+                return new IngestResult(fileId, chunkHashes, encryptedManifest, "dedup-" + fileId);
+            } catch (Exception e) {
+                // Deduplication failed (e.g. key mismatch or corruption), proceed with full ingest
+            }
+        }
+
         String operationId = generateOperationId();
         OperationState state = new OperationState(operationId, OperationType.INGEST, Instant.now());
         operations.put(operationId, state);

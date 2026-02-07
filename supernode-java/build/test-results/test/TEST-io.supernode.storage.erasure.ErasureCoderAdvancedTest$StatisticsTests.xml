@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Statistics Tracking" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:22:03" hostname="PINK" time="0.006">
+  <properties/>
+  <testcase name="should track decode count" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StatisticsTests" time="0.002"/>
+  <testcase name="should track repair count" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StatisticsTests" time="0.003"/>
+  <testcase name="should track encode count" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StatisticsTests" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

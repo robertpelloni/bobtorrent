@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Lifecycle" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:52" hostname="PINK" time="0.459">
+  <properties/>
+  <testcase name="should stop all registered transports" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.16"/>
+  <testcase name="should report running state" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.139"/>
+  <testcase name="should handle empty manager start" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.003"/>
+  <testcase name="should handle empty manager stop" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.001"/>
+  <testcase name="should start all registered transports" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.153"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Manifest Operations" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:59" hostname="PINK" time="0.004">
+  <properties/>
+  <testcase name="should store and retrieve manifest" classname="io.supernode.storage.SupernodeStorageTest$ManifestOperationsTests" time="0.002"/>
+  <testcase name="should return empty for unknown manifest" classname="io.supernode.storage.SupernodeStorageTest$ManifestOperationsTests" time="0.001"/>
+  <testcase name="should allow external manifest storage" classname="io.supernode.storage.SupernodeStorageTest$ManifestOperationsTests" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

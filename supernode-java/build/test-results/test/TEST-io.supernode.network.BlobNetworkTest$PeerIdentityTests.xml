@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Peer Identity" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:25" hostname="PINK" time="0.987">
+  <properties/>
+  <testcase name="should generate unique peer IDs" classname="io.supernode.network.BlobNetworkTest$PeerIdentityTests" time="0.409"/>
+  <testcase name="should have peer ID" classname="io.supernode.network.BlobNetworkTest$PeerIdentityTests" time="0.221"/>
+  <testcase name="should use provided peer ID" classname="io.supernode.network.BlobNetworkTest$PeerIdentityTests" time="0.353"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

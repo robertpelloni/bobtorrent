@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Blob Announcements" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:25" hostname="PINK" time="0.262">
+  <properties/>
+  <testcase name="should track announced blobs" classname="io.supernode.network.BlobNetworkTest$AnnouncementTests" time="0.262"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

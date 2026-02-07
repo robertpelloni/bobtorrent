@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Options Record" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:43" hostname="PINK" time="0.359">
+  <properties/>
+  <testcase name="should create erasure options via factory method" classname="io.supernode.network.SupernodeNetworkTest$OptionsRecordTests" time="0.166"/>
+  <testcase name="should create default options" classname="io.supernode.network.SupernodeNetworkTest$OptionsRecordTests" time="0.192"/>
+  <system-out><![CDATA[13:21:43.302 [nioEventLoopGroup-45-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 9 thread-local buffer(s) from thread: nioEventLoopGroup-45-1
+13:21:43.310 [nioEventLoopGroup-47-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 8 thread-local buffer(s) from thread: nioEventLoopGroup-47-1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

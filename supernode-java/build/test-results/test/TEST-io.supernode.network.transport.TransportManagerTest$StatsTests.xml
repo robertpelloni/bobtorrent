@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Stats" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:51" hostname="PINK" time="0.483">
+  <properties/>
+  <testcase name="should track failover count in stats" classname="io.supernode.network.transport.TransportManagerTest$StatsTests" time="0.149"/>
+  <testcase name="should track circuit breaker trips in stats" classname="io.supernode.network.transport.TransportManagerTest$StatsTests" time="0.176"/>
+  <testcase name="should return empty stats when no transports" classname="io.supernode.network.transport.TransportManagerTest$StatsTests" time="0.001"/>
+  <testcase name="should return aggregate stats" classname="io.supernode.network.transport.TransportManagerTest$StatsTests" time="0.156"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

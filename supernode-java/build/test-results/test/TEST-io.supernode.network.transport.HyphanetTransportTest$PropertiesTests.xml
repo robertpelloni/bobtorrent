@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Transport Properties" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:48" hostname="PINK" time="0.014">
+  <properties/>
+  <testcase name="should have HYPHANET type" classname="io.supernode.network.transport.HyphanetTransportTest$PropertiesTests" time="0.011"/>
+  <testcase name="should not be running initially" classname="io.supernode.network.transport.HyphanetTransportTest$PropertiesTests" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

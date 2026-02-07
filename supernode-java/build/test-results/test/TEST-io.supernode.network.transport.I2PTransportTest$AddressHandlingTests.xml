@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Address Handling" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:48" hostname="PINK" time="0.032">
+  <properties/>
+  <testcase name="should handle i2p addresses" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.012"/>
+  <testcase name="should handle b32 addresses" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.002"/>
+  <testcase name="should not handle clearnet addresses" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.012"/>
+  <testcase name="should parse i2p address" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.002"/>
+  <testcase name="should handle addresses ending with .i2p" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

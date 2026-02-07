@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Statistics" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:44" hostname="PINK" time="0.627">
+  <properties/>
+  <testcase name="should track blob count after ingest" classname="io.supernode.network.SupernodeNetworkTest$StatisticsTests" time="0.351"/>
+  <testcase name="should return combined network stats" classname="io.supernode.network.SupernodeNetworkTest$StatisticsTests" time="0.276"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

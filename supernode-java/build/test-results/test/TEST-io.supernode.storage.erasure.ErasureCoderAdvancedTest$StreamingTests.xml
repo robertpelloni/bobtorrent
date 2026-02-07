@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Streaming Encode/Decode" tests="1" skipped="1" failures="0" errors="0" timestamp="2026-02-07T18:22:03" hostname="PINK" time="162.176">
+  <properties/>
+  <testcase name="should encode small file via streaming" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests" time="162.176">
+    <skipped/>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
