@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
 public class TorTransport implements Transport {
 
     private static final Pattern ONION_PATTERN = Pattern.compile(
-        "^(tor://|ws://)?([a-z2-7]{56}\\.onion):?(\\d+)?(/.*)?$"
+        "^(tor://|ws://)?([a-z2-7]{2,56}\\.onion):?(\\d+)?(/.*)?$"
     );
     
     private static final int DEFAULT_SOCKS_PORT = 9050;

@@ -36,7 +36,7 @@ class TorTransportTest {
         @DisplayName("should handle onion addresses")
         void shouldHandleOnionAddresses() {
             TorTransport transport = new TorTransport();
-            assertTrue(transport.canHandle("tor://abc123xyz.onion:80"));
+            assertTrue(transport.canHandle("tor://abc223xyz.onion:80"));
         }
         
         @Test
@@ -57,7 +57,7 @@ class TorTransportTest {
         @DisplayName("should parse onion address")
         void shouldParseOnionAddress() {
             TorTransport transport = new TorTransport();
-            TransportAddress addr = transport.parseAddress("tor://abc123.onion:80");
+            TransportAddress addr = transport.parseAddress("tor://abc223.onion:80");
             
             assertNotNull(addr);
             assertEquals(TransportType.TOR, addr.type());

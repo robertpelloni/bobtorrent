@@ -441,7 +441,8 @@ public class ErasureCoder {
                 );
             }
 
-            for (int missingIdx : neededIndices) {
+            for (int i = 0; i < neededCount; i++) {
+                int missingIdx = neededIndices[i];
                 shards[missingIdx] = new byte[shardSize];
 
                 for (int j = 0; j < shardSize; j++) {
@@ -464,8 +465,8 @@ public class ErasureCoder {
             }
 
             List<Integer> repairedIndices = new ArrayList<>();
-            for (int idx : neededIndices) {
-                repairedIndices.add(idx);
+            for (int i = 0; i < neededCount; i++) {
+                repairedIndices.add(neededIndices[i]);
             }
 
             return new RepairResult(

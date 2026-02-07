@@ -238,6 +238,11 @@ public class IPFSTransport implements Transport {
             return TransportAddress.ipfs(peerId);
         }
         
+        if (address.startsWith("ipfs://")) {
+            String peerId = address.substring("ipfs://".length());
+            return TransportAddress.ipfs(peerId);
+        }
+        
         return null;
     }
 
@@ -245,7 +250,8 @@ public class IPFSTransport implements Transport {
     public boolean canHandle(String address) {
         return PEER_ID_PATTERN.matcher(address).matches() ||
                address.startsWith("/p2p/") ||
-               address.startsWith("/ipfs/");
+               address.startsWith("/ipfs/") ||
+               address.startsWith("ipfs://");
     }
 
     @Override

@@ -21,13 +21,13 @@ import java.util.regex.Pattern;
 public class HyphanetTransport implements Transport {
 
     private static final Pattern CHK_PATTERN = Pattern.compile(
-        "^(CHK@[A-Za-z0-9~-]+,[A-Za-z0-9~-]+,[A-Za-z0-9~-]+)$"
+        "^(CHK@[A-Za-z0-9~-]+(,[A-Za-z0-9~-]+)+)$"
     );
     private static final Pattern SSK_PATTERN = Pattern.compile(
-        "^(SSK@[A-Za-z0-9~-]+,[A-Za-z0-9~-]+,[A-Za-z0-9~-]+/.*)$"
+        "^(SSK@[A-Za-z0-9~-]+(,[A-Za-z0-9~-]+)+/.*)$"
     );
     private static final Pattern USK_PATTERN = Pattern.compile(
-        "^(USK@[A-Za-z0-9~-]+,[A-Za-z0-9~-]+,[A-Za-z0-9~-]+/.*/\\d+/.*)$"
+        "^(USK@[A-Za-z0-9~-]+(,[A-Za-z0-9~-]+)+/.*/\\d+/.*)$"
     );
     
     private static final int DEFAULT_FCP_PORT = 9481;

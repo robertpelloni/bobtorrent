@@ -423,11 +423,11 @@ class ErasureCoderAdvancedTest {
             byte[][] shards = encoded.shards().clone();
             shards[DATA_SHARDS + 1] = null;
 
-            int[] presentIndices = {0, 1, 2, 3, 5};
+            int[] presentIndices = {0, 1, 2, 3}; // 5 is missing
 
             ErasureCoder.RepairResult result = coder.repairParity(
                     shards,
-                    new int[]{0, 1, 2, 3, 5},
+                    presentIndices,
                     encoded.originalSize(),
                     encoded.shardSize()
             );
@@ -435,7 +435,7 @@ class ErasureCoderAdvancedTest {
             assertTrue(result.success());
             assertEquals(1, result.repairedCount());
             assertEquals(1, result.repairedShardIndices().size());
-            assertTrue(result.repairedShardIndices().contains(DATA_SHARDS));
+            assertTrue(result.repairedShardIndices().contains(DATA_SHARDS + 1));
             assertTrue(result.bytesRepaired() > 0);
             assertTrue(result.nanosecondsTaken() > 0);
         }
