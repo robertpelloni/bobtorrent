@@ -1,0 +1,73 @@
+<!-- Megatorrent Tab Content -->
+<div id="Megatorrent" class="invisible">
+    <div style="padding: 20px; color: #ccc;">
+        <h2>Megatorrent <span class="badge">Reference Integration</span></h2>
+
+        <div id="mega-status-bar" style="margin-bottom: 20px; padding: 10px; background: #333; border-radius: 4px;">
+            <span>DHT: <b id="mega-dht">Loading...</b></span> |
+            <span>Network: <b id="mega-net">Loading...</b></span> |
+            <span>Blobs: <b id="mega-blobs-count">0</b></span>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showMegaTab('mega-identity')">Identity</button>
+            <button class="tab-btn" onclick="showMegaTab('mega-publish')">Publish</button>
+            <button class="tab-btn" onclick="showMegaTab('mega-subscribe')">Subscribe</button>
+        </div>
+        <hr style="border-color: #444;">
+
+        <!-- Identity -->
+        <div id="mega-identity" class="mega-tab">
+            <h3>Identity Management</h3>
+            <p>Your identity consists of a Public/Private keypair used to sign manifests.</p>
+            <div style="background: #222; padding: 15px; border-radius: 4px;">
+                <label>Public Key:</label>
+                <input type="text" id="mega-pub" readonly style="width: 100%; margin-bottom: 10px; background: #111; color: #fff; border: 1px solid #444; padding: 5px;">
+
+                <label>Private Key:</label>
+                <input type="password" id="mega-priv" readonly style="width: 100%; margin-bottom: 10px; background: #111; color: #fff; border: 1px solid #444; padding: 5px;">
+
+                <button onclick="megaGenerateKey()" style="background: #007bff; color: white; border: none; padding: 8px 16px; cursor: pointer;">Generate New Identity</button>
+            </div>
+        </div>
+
+        <!-- Publish -->
+        <div id="mega-publish" class="mega-tab invisible">
+            <h3>Publish Content</h3>
+            <div style="background: #222; padding: 15px; border-radius: 4px;">
+                <label>File Path (Server):</label>
+                <input type="text" id="mega-ingest-path" placeholder="/path/to/file.mkv" style="width: 100%; margin-bottom: 10px; background: #111; color: #fff; border: 1px solid #444; padding: 5px;">
+
+                <button onclick="megaIngest()" style="background: #28a745; color: white; border: none; padding: 8px 16px; cursor: pointer;">Ingest & Publish</button>
+
+                <div id="mega-publish-result" class="invisible" style="margin-top: 10px; padding: 10px; background: #111;">
+                    <pre id="mega-publish-log"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subscribe -->
+        <div id="mega-subscribe" class="mega-tab invisible">
+            <h3>Subscriptions</h3>
+            <div style="margin-bottom: 15px;">
+                <input type="text" id="mega-sub-key" placeholder="Enter Public Key" style="width: 300px; background: #111; color: #fff; border: 1px solid #444; padding: 5px;">
+                <button onclick="megaSubscribe()" style="background: #007bff; color: white; border: none; padding: 6px 12px; cursor: pointer;">Subscribe</button>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #222;">
+                        <th style="padding: 8px; text-align: left;">Channel Key</th>
+                        <th style="padding: 8px; text-align: left;">Last Sequence</th>
+                        <th style="padding: 8px; text-align: left;">Status</th>
+                        <th style="padding: 8px; text-align: left;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="mega-subs-list">
+                    <tr><td colspan="4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="scripts/megatorrent.js"></script>
