@@ -15,7 +15,7 @@ import parseHttpRequest from './lib/server/parse-http.js'
 import parseUdpRequest from './lib/server/parse-udp.js'
 import parseWebSocketRequest from './lib/server/parse-websocket.js'
 import { validateManifest } from './lib/manifest.js'
-import { LRUCache } from 'lru-cache'
+import LRU from 'lru'
 
 const debug = Debug('bittorrent-tracker:server')
 const hasOwnProperty = Object.prototype.hasOwnProperty
@@ -57,7 +57,7 @@ class Server extends EventEmitter {
     this.torrents = {}
 
     // LRU Cache for Manifests (max 1000 items)
-    this.manifests = new LRUCache({ max: 1000 })
+    this.manifests = new LRU({ max: 1000 })
 
     this.subscriptions = {} // PublicKey -> Set<Socket>
 
@@ -496,7 +496,7 @@ class Server extends EventEmitter {
         socket.send(JSON.stringify({
           action: params.action === common.ACTIONS.ANNOUNCE ? 'announce' : 'scrape',
           'failure reason': err.message,
-          info_hash: hex2bin(params.info_hash)
+          info_hash: params.info_hash ? hex2bin(params.info_hash) : null
         }), socket.onSend)
 
         this.emit('warning', err)
