@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Events" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:59" hostname="PINK" time="0.766">
+<testsuite name="Events" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:38" hostname="PINK" time="0.462">
   <properties/>
   <testcase name="should emit file ingested event" classname="io.supernode.storage.SupernodeStorageTest$EventTests" time="0.002"/>
   <testcase name="should emit file retrieved event" classname="io.supernode.storage.SupernodeStorageTest$EventTests" time="0.005"/>
-  <testcase name="should emit chunk ingested events" classname="io.supernode.storage.SupernodeStorageTest$EventTests" time="0.757"/>
+  <testcase name="should emit chunk ingested events" classname="io.supernode.storage.SupernodeStorageTest$EventTests" time="0.454"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

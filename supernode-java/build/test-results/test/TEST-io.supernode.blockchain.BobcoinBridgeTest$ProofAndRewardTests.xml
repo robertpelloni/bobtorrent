@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Proofs &amp; Rewards" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:16" hostname="PINK" time="0.225">
+<testsuite name="Proofs &amp; Rewards" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:00:54" hostname="PINK" time="0.241">
   <properties/>
-  <testcase name="should submit and verify storage proof" classname="io.supernode.blockchain.BobcoinBridgeTest$ProofAndRewardTests" time="0.115"/>
-  <testcase name="should claim storage rewards" classname="io.supernode.blockchain.BobcoinBridgeTest$ProofAndRewardTests" time="0.108"/>
+  <testcase name="should submit and verify storage proof" classname="io.supernode.blockchain.BobcoinBridgeTest$ProofAndRewardTests" time="0.126"/>
+  <testcase name="should claim storage rewards" classname="io.supernode.blockchain.BobcoinBridgeTest$ProofAndRewardTests" time="0.114"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

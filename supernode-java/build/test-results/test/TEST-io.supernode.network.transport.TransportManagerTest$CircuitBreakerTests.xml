@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Circuit Breaker" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:50" hostname="PINK" time="0.286">
+<testsuite name="Circuit Breaker" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:28" hostname="PINK" time="0.25">
   <properties/>
-  <testcase name="should get circuit breaker status" classname="io.supernode.network.transport.TransportManagerTest$CircuitBreakerTests" time="0.137"/>
+  <testcase name="should get circuit breaker status" classname="io.supernode.network.transport.TransportManagerTest$CircuitBreakerTests" time="0.119"/>
   <testcase name="should return null status for unregistered transport" classname="io.supernode.network.transport.TransportManagerTest$CircuitBreakerTests" time="0.0"/>
-  <testcase name="should reset circuit breaker" classname="io.supernode.network.transport.TransportManagerTest$CircuitBreakerTests" time="0.147"/>
+  <testcase name="should reset circuit breaker" classname="io.supernode.network.transport.TransportManagerTest$CircuitBreakerTests" time="0.13"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

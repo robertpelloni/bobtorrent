@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Edge Cases" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:50" hostname="PINK" time="0.009">
+  <properties/>
+  <testcase name="should work with all-ones seed" classname="io.supernode.storage.isoforge.SeededRNGTest$EdgeCaseTests" time="0.0"/>
+  <testcase name="should handle large requests" classname="io.supernode.storage.isoforge.SeededRNGTest$EdgeCaseTests" time="0.005"/>
+  <testcase name="should handle zero-length request" classname="io.supernode.storage.isoforge.SeededRNGTest$EdgeCaseTests" time="0.001"/>
+  <testcase name="should work with all-zero seed" classname="io.supernode.storage.isoforge.SeededRNGTest$EdgeCaseTests" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

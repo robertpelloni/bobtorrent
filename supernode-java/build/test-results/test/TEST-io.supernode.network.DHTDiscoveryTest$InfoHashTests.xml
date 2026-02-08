@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Info Hash Conversion" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:28" hostname="PINK" time="0.011">
+<testsuite name="Info Hash Conversion" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:07" hostname="PINK" time="0.01">
   <properties/>
-  <testcase name="should convert blob ID to 20-byte info hash" classname="io.supernode.network.DHTDiscoveryTest$InfoHashTests" time="0.002"/>
-  <testcase name="should produce consistent info hashes" classname="io.supernode.network.DHTDiscoveryTest$InfoHashTests" time="0.005"/>
-  <testcase name="should produce different hashes for different IDs" classname="io.supernode.network.DHTDiscoveryTest$InfoHashTests" time="0.002"/>
+  <testcase name="should convert blob ID to 20-byte info hash" classname="io.supernode.network.DHTDiscoveryTest$InfoHashTests" time="0.001"/>
+  <testcase name="should produce consistent info hashes" classname="io.supernode.network.DHTDiscoveryTest$InfoHashTests" time="0.002"/>
+  <testcase name="should produce different hashes for different IDs" classname="io.supernode.network.DHTDiscoveryTest$InfoHashTests" time="0.005"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

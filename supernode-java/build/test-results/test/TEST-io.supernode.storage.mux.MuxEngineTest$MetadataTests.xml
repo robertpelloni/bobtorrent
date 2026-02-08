@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="MuxResult Metadata" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:50" hostname="PINK" time="0.002">
+  <properties/>
+  <testcase name="sector start should be within ISO bounds" classname="io.supernode.storage.mux.MuxEngineTest$MetadataTests" time="0.001"/>
+  <testcase name="should report correct encrypted size" classname="io.supernode.storage.mux.MuxEngineTest$MetadataTests" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

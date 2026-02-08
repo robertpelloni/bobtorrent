@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Event Listeners" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:43" hostname="PINK" time="0.171">
+<testsuite name="Event Listeners" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:22" hostname="PINK" time="0.638">
   <properties/>
-  <testcase name="should accept all event listeners" classname="io.supernode.network.SupernodeNetworkTest$EventListenerTests" time="0.171"/>
-  <system-out><![CDATA[]]></system-out>
+  <testcase name="should accept all event listeners" classname="io.supernode.network.SupernodeNetworkTest$EventListenerTests" time="0.638"/>
+  <system-out><![CDATA[17:01:22.298 [nioEventLoopGroup-47-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 8 thread-local buffer(s) from thread: nioEventLoopGroup-47-1
+17:01:22.303 [nioEventLoopGroup-45-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 9 thread-local buffer(s) from thread: nioEventLoopGroup-45-1
+17:01:22.771 [nioEventLoopGroup-49-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 5 thread-local buffer(s) from thread: nioEventLoopGroup-49-1
+17:01:22.776 [nioEventLoopGroup-51-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 5 thread-local buffer(s) from thread: nioEventLoopGroup-51-1
+]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

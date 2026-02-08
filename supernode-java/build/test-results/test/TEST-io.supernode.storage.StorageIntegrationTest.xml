@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Storage Layer Integration" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:53" hostname="PINK" time="6.591">
+<testsuite name="Storage Layer Integration" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:32" hostname="PINK" time="5.636">
   <properties/>
-  <testcase name="should track operations and cleanup correctly" classname="io.supernode.storage.StorageIntegrationTest" time="1.731"/>
-  <testcase name="should fail recovery when too many shards are lost" classname="io.supernode.storage.StorageIntegrationTest" time="0.043"/>
-  <testcase name="should perform full async ingest and retrieve cycle with progress" classname="io.supernode.storage.StorageIntegrationTest" time="4.81"/>
-  <testcase name="should recover from partial shard loss using erasure coding" classname="io.supernode.storage.StorageIntegrationTest" time="0.005"/>
+  <testcase name="should track operations and cleanup correctly" classname="io.supernode.storage.StorageIntegrationTest" time="2.095"/>
+  <testcase name="should fail recovery when too many shards are lost" classname="io.supernode.storage.StorageIntegrationTest" time="0.029"/>
+  <testcase name="should perform full async ingest and retrieve cycle with progress" classname="io.supernode.storage.StorageIntegrationTest" time="3.506"/>
+  <testcase name="should recover from partial shard loss using erasure coding" classname="io.supernode.storage.StorageIntegrationTest" time="0.004"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

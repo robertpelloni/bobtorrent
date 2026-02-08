@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Storage Deals &amp; Tracking" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:16" hostname="PINK" time="0.212">
+<testsuite name="Storage Deals &amp; Tracking" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:00:54" hostname="PINK" time="0.216">
   <properties/>
-  <testcase name="should get deal status" classname="io.supernode.blockchain.BobcoinBridgeTest$StorageDealTests" time="0.105"/>
-  <testcase name="should create storage deal" classname="io.supernode.blockchain.BobcoinBridgeTest$StorageDealTests" time="0.106"/>
+  <testcase name="should get deal status" classname="io.supernode.blockchain.BobcoinBridgeTest$StorageDealTests" time="0.106"/>
+  <testcase name="should create storage deal" classname="io.supernode.blockchain.BobcoinBridgeTest$StorageDealTests" time="0.109"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="ISO Structure" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:47" hostname="PINK" time="2.245">
+  <properties/>
+  <testcase name="should have correct system area with boot signature" classname="io.supernode.storage.isoforge.ISOForgeTest$ISOStructureTests" time="0.387"/>
+  <testcase name="[1] NANO" classname="io.supernode.storage.isoforge.ISOForgeTest$ISOStructureTests" time="0.379"/>
+  <testcase name="[2] MICRO" classname="io.supernode.storage.isoforge.ISOForgeTest$ISOStructureTests" time="0.713"/>
+  <testcase name="should generate valid ISO 9660 primary volume descriptor" classname="io.supernode.storage.isoforge.ISOForgeTest$ISOStructureTests" time="0.403"/>
+  <testcase name="should have volume descriptor terminator" classname="io.supernode.storage.isoforge.ISOForgeTest$ISOStructureTests" time="0.351"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

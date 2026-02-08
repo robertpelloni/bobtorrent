@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Stats" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:48" hostname="PINK" time="0.016">
+<testsuite name="Stats" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:27" hostname="PINK" time="0.015">
   <properties/>
-  <testcase name="should return stats" classname="io.supernode.network.transport.IPFSTransportTest$StatsTests" time="0.016"/>
+  <testcase name="should return stats" classname="io.supernode.network.transport.IPFSTransportTest$StatsTests" time="0.015"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

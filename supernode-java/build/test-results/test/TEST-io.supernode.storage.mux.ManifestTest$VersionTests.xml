@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Version" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:50" hostname="PINK" time="0.001">
+  <properties/>
+  <testcase name="created manifest should have current version" classname="io.supernode.storage.mux.ManifestTest$VersionTests" time="0.001"/>
+  <testcase name="should have version constant" classname="io.supernode.storage.mux.ManifestTest$VersionTests" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

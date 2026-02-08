@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Creation" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:50" hostname="PINK" time="0.001">
+  <properties/>
+  <testcase name="should create manifest with byte array seed" classname="io.supernode.storage.mux.ManifestTest$CreationTests" time="0.001"/>
+  <testcase name="should allow setting ISO hash after creation" classname="io.supernode.storage.mux.ManifestTest$CreationTests" time="0.0"/>
+  <testcase name="should create manifest with all fields" classname="io.supernode.storage.mux.ManifestTest$CreationTests" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

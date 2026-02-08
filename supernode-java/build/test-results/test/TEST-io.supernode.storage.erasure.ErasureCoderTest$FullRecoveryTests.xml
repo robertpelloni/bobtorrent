@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Decoding - Full Recovery" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:41" hostname="PINK" time="0.002">
+  <properties/>
+  <testcase name="should recover data with all shards present" classname="io.supernode.storage.erasure.ErasureCoderTest$FullRecoveryTests" time="0.001"/>
+  <testcase name="should recover data with minimum data shards only" classname="io.supernode.storage.erasure.ErasureCoderTest$FullRecoveryTests" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

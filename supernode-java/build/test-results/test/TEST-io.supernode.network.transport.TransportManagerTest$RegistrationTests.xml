@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Transport Registration" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:52" hostname="PINK" time="0.569">
+<testsuite name="Transport Registration" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:30" hostname="PINK" time="1.314">
   <properties/>
-  <testcase name="should unregister transport" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.134"/>
-  <testcase name="should get registered transport" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.142"/>
-  <testcase name="should track multiple transports" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.15"/>
+  <testcase name="should unregister transport" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.143"/>
+  <testcase name="should get registered transport" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.165"/>
+  <testcase name="should track multiple transports" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.84"/>
   <testcase name="should return null for unregistered type" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.0"/>
-  <testcase name="should register transport" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.14"/>
+  <testcase name="should register transport" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.162"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
