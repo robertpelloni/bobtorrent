@@ -110,7 +110,20 @@ On the **Downloads** tab, you can view the status of active file transfers.
 *   The client automatically attempts to download content from subscribed channels (in a full implementation).
 *   *Note: In this reference implementation, manual fetching via CLI `blob-fetch` is sometimes required for advanced scenarios.*
 
-### 7. Dashboard
+### 7. Wallet
+
+The **Wallet** tab manages Bobcoin earnings from hosting content (Supernode feature).
+*   **Balance**: Confirmed and Pending earnings.
+*   **Address**: Your payout address.
+*   **Transactions**: History of payments and rewards.
+
+### 8. Remote Management
+
+You can use this Web UI to manage a remote Supernode (Java) or another Reference Client.
+1.  Use the selector in the top header (next to the logo) to switch between **Local Node** and **Remote Supernode**.
+2.  The UI will automatically proxy requests to the configured target.
+
+### 9. Dashboard
 
 The **Dashboard** provides an overview of:
 *   **Storage Usage**: Total size of blobs stored locally.

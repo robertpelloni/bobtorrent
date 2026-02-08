@@ -9,7 +9,13 @@
 <body>
     <div class="app-container">
         <header>
-            <h1>Megatorrent <span class="badge">Reference Client</span> <span id="app-version" class="version-tag"></span></h1>
+            <div style="display: flex; align-items: center;">
+                <h1>Megatorrent <span class="badge">Reference Client</span> <span id="app-version" class="version-tag"></span></h1>
+                <select id="node-selector" style="margin-left: 20px; background: #333; color: #fff; border: 1px solid #555; padding: 5px;">
+                    <option value="local">Local Node (JS)</option>
+                    <option value="http://localhost:8080">Remote Supernode (Java)</option>
+                </select>
+            </div>
             <div id="status-bar" class="status-bar">
                 <span id="dht-status" class="status-item">DHT: <span class="value">Loading...</span></span>
                 <span id="network-status" class="status-item">Network: <span class="value">Loading...</span></span>
@@ -24,6 +30,7 @@
             <button class="tab-btn" data-tab="subscribe">Subscribe</button>
             <button class="tab-btn" data-tab="downloads">Downloads</button>
             <button class="tab-btn" data-tab="files">Files</button>
+            <button class="tab-btn" data-tab="wallet">Wallet</button>
         </nav>
 
         <main class="content">
@@ -82,6 +89,45 @@
                         </thead>
                         <tbody>
                             <tr><td colspan="3">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Wallet Tab -->
+            <section id="wallet" class="tab-content">
+                <h2>Bobcoin Wallet</h2>
+                <p class="description">Manage earnings from hosting content.</p>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3>Balance</h3>
+                        <div class="stat-row">
+                            <label>Confirmed:</label> <span class="value" id="wallet-balance">0.00 BOB</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Pending:</label> <span class="value" id="wallet-pending">0.00 BOB</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>Address</h3>
+                        <input type="text" id="wallet-address" readonly value="Not connected" style="width: 100%; margin-top: 5px;">
+                    </div>
+                </div>
+
+                <h3>Recent Transactions</h3>
+                <div class="table-container">
+                    <table id="wallet-txs">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4">No transactions.</td></tr>
                         </tbody>
                     </table>
                 </div>

@@ -1,4 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
+    let targetNode = localStorage.getItem('targetNode') || 'local';
+    const nodeSelector = document.getElementById('node-selector');
+    if (nodeSelector) {
+        nodeSelector.value = targetNode;
+        nodeSelector.addEventListener('change', () => {
+            targetNode = nodeSelector.value;
+            localStorage.setItem('targetNode', targetNode);
+            location.reload(); // Simple reload to refresh all data
+        });
+    }
+
+    const apiFetch = async (url, options = {}) => {
+        if (targetNode !== 'local') {
+            options.headers = { ...options.headers, 'x-target-node': targetNode };
+        }
+        return fetch(url, options);
+    };
+
     // Tabs
     const tabs = document.querySelectorAll('.tab-btn');
     const contents = document.querySelectorAll('.tab-content');
@@ -22,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentIdentity = null;
 
     btnGenKey.addEventListener('click', async () => {
-        const res = await fetch('/api/key/generate', { method: 'POST' });
+        const res = await apiFetch('/api/key/generate', { method: 'POST' });
         const data = await res.json();
         currentIdentity = data;
         inputPub.value = data.publicKey;
@@ -48,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnIngest.disabled = true;
 
         try {
-            const res = await fetch('/api/ingest', {
+            const res = await apiFetch('/api/ingest', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ filePath: path })
@@ -79,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnPublish.disabled = true;
 
         try {
-            const res = await fetch('/api/publish', {
+            const res = await apiFetch('/api/publish', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -101,51 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Subscribe
-    const btnSubscribe = document.getElementById('btn-subscribe');
-    const inputSubKey = document.getElementById('sub-key');
-    const subsTable = document.getElementById('subs-table').querySelector('tbody');
-
-    btnSubscribe.addEventListener('click', async () => {
-        const key = inputSubKey.value;
-        if (!key) return alert('Enter public key');
-
-        try {
-            const res = await fetch('/api/subscribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ publicKey: key })
-            });
-
-            if (!res.ok) throw new Error('Subscribe failed');
-
-            inputSubKey.value = '';
-            refreshSubscriptions();
-        } catch (err) {
-            alert(err.message);
-        }
-    });
-
-    async function refreshSubscriptions() {
-        try {
-            const res = await fetch('/api/subscriptions');
-            const subs = await res.json();
-
-            subsTable.innerHTML = subs.length ? '' : '<tr><td colspan="4">No subscriptions yet.</td></tr>';
-
-            subs.forEach(sub => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${sub.topicPath.substring(0, 16)}...</td>
-                    <td>${sub.lastSequence || '-'}</td>
-                    <td><span class="badge" style="background:#28a745">Active</span></td>
-                    <td><button class="secondary-btn" style="padding: 2px 5px; font-size: 0.8rem">Details</button></td>
-                `;
-                subsTable.appendChild(tr);
-            });
-        } catch (e) {}
-    }
-
     // Discovery
     const btnBrowse = document.getElementById('btn-browse');
     const inputDiscoveryPath = document.getElementById('discovery-path');
@@ -159,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnBrowse.textContent = 'Searching...';
 
         try {
-            const res = await fetch(`/api/channels/browse?topic=${encodeURIComponent(topic)}`);
+            const res = await apiFetch(`/api/channels/browse?topic=${encodeURIComponent(topic)}`);
             if (!res.ok) throw new Error('Browse failed');
             const result = await res.json();
 
@@ -191,10 +164,76 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Subscribe
+    const btnSubscribe = document.getElementById('btn-subscribe');
+    const inputSubKey = document.getElementById('sub-key');
+    const subsTable = document.getElementById('subs-table').querySelector('tbody');
+
+    btnSubscribe.addEventListener('click', async () => {
+        const key = inputSubKey.value;
+        if (!key) return alert('Enter public key');
+
+        try {
+            const res = await apiFetch('/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ publicKey: key })
+            });
+
+            if (!res.ok) throw new Error('Subscribe failed');
+
+            inputSubKey.value = '';
+            refreshSubscriptions();
+        } catch (err) {
+            alert(err.message);
+        }
+    });
+
+    async function refreshSubscriptions() {
+        try {
+            const res = await apiFetch('/api/subscriptions');
+            const subs = await res.json();
+
+            subsTable.innerHTML = subs.length ? '' : '<tr><td colspan="4">No subscriptions yet.</td></tr>';
+
+            subs.forEach(sub => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${sub.topicPath.substring(0, 16)}...</td>
+                    <td>${sub.lastSequence || '-'}</td>
+                    <td><span class="badge" style="background:#28a745">Active</span></td>
+                    <td><button class="secondary-btn" style="padding: 2px 5px; font-size: 0.8rem">Details</button></td>
+                `;
+                subsTable.appendChild(tr);
+            });
+        } catch (e) {}
+    }
+
+    // Wallet
+    async function updateWallet() {
+        try {
+            const res = await apiFetch('/api/wallet');
+            const data = await res.json();
+
+            document.getElementById('wallet-address').value = data.address;
+            document.getElementById('wallet-balance').textContent = data.balance + ' BOB';
+            document.getElementById('wallet-pending').textContent = data.pending + ' BOB';
+
+            const table = document.getElementById('wallet-txs').querySelector('tbody');
+            table.innerHTML = data.transactions.length ? '' : '<tr><td colspan="4">No transactions.</td></tr>';
+
+            data.transactions.forEach(tx => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${tx.id}</td><td>${tx.type}</td><td>${tx.amount}</td><td>${tx.time}</td>`;
+                table.appendChild(tr);
+            });
+        } catch (e) {}
+    }
+
     // Files Table
     async function updateFiles() {
         try {
-            const res = await fetch('/api/files');
+            const res = await apiFetch('/api/files');
             const files = await res.json();
             const table = document.getElementById('files-table').querySelector('tbody');
 
@@ -216,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dashboard Status
     async function updateStatus() {
         try {
-            const res = await fetch('/api/status');
+            const res = await apiFetch('/api/status');
             const data = await res.json();
 
             if (data.version) {
@@ -238,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Blobs Table
     async function updateBlobs() {
         try {
-            const res = await fetch('/api/blobs');
+            const res = await apiFetch('/api/blobs');
             const blobs = await res.json();
             const table = document.getElementById('blobs-table').querySelector('tbody');
 
@@ -261,10 +300,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(refreshSubscriptions, 5000);
     setInterval(updateBlobs, 5000);
     setInterval(updateFiles, 5000);
+    setInterval(updateWallet, 10000);
 
     // Initial Load
     updateStatus();
     refreshSubscriptions();
     updateBlobs();
     updateFiles();
+    updateWallet();
 });

@@ -2,6 +2,13 @@
 
 All notable changes to the Megatorrent (formerly Bobtorrent) project.
 
+## [11.2.5] - 2026-02-08
+
+### Added
+- **Wallet Tab**: Web UI integration for Bobcoin earnings and transactions.
+- **Remote Management**: Web UI can now connect to remote Supernodes via the node selector.
+- **Encryption**: Standardized Reference Client on `AES-256-GCM` to match Java Supernode.
+
 ## [11.2.4] - 2026-02-08
 
 ### Added

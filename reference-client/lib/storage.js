@@ -1,8 +1,10 @@
-import sodium from 'sodium-native'
 import crypto from 'crypto'
 import { EventEmitter } from 'events'
 
 const CHUNK_SIZE = 1024 * 1024
+const ALGORITHM = 'aes-256-gcm'
+const KEY_SIZE = 32 // 256 bits
+const NONCE_SIZE = 12 // 96 bits
 
 function sha256 (buffer) {
   const hash = crypto.createHash('sha256')
@@ -20,22 +22,26 @@ export function ingest (fileBuffer, fileName) {
     const end = Math.min(offset + CHUNK_SIZE, totalSize)
     const chunkData = fileBuffer.slice(offset, end)
 
-    const key = Buffer.alloc(sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES)
-    const nonce = Buffer.alloc(sodium.crypto_aead_chacha20poly1305_ietf_NPUBBYTES)
-    sodium.randombytes_buf(key)
-    sodium.randombytes_buf(nonce)
+    // Generate random key
+    const key = crypto.randomBytes(KEY_SIZE)
 
-    const ciphertext = Buffer.alloc(chunkData.length + sodium.crypto_aead_chacha20poly1305_ietf_ABYTES)
-    sodium.crypto_aead_chacha20poly1305_ietf_encrypt(
-      ciphertext,
-      chunkData,
-      null,
-      null,
-      nonce,
-      key
-    )
+    // To match Java MuxEngine, we use a zero nonce for determinism per key
+    // (Note: Java generates a new key per session/file, or per chunk?
+    // MuxEngine encrypt(plaintext, key) uses zero nonce.
+    // Here we generate a UNIQUE random key for EVERY chunk, so zero nonce is safe.)
+    const nonce = Buffer.alloc(NONCE_SIZE) // Zeros
 
-    const blobBuffer = ciphertext
+    const cipher = crypto.createCipheriv(ALGORITHM, key, nonce)
+    const encrypted = Buffer.concat([cipher.update(chunkData), cipher.final()])
+    const tag = cipher.getAuthTag()
+
+    // Java MuxEngine format: Nonce (12) + Ciphertext (N) + Tag (16)
+    // Wait, MuxEngine.java:
+    // ByteBuffer result = ByteBuffer.allocate(NONCE_SIZE + ciphertext.length); // GCM ciphertext includes tag usually in Java?
+    // Java doFinal() returns ciphertext + tag appended.
+    // So result = Nonce + Ciphertext + Tag.
+
+    const blobBuffer = Buffer.concat([nonce, encrypted, tag])
     const blobId = sha256(blobBuffer)
 
     blobs.push({
@@ -71,26 +77,26 @@ export async function reassemble (fileEntry, getBlobFn) {
     const blobBuffer = await getBlobFn(chunkMeta.blobId)
     if (!blobBuffer) throw new Error(`Blob ${chunkMeta.blobId} not found`)
 
-    const ciphertext = blobBuffer.slice(chunkMeta.offset, chunkMeta.offset + chunkMeta.length)
+    // Extract parts based on Java format: Nonce (12) + Ciphertext + Tag (16)
+    const nonce = blobBuffer.slice(chunkMeta.offset, chunkMeta.offset + NONCE_SIZE)
+    const encryptedWithTag = blobBuffer.slice(chunkMeta.offset + NONCE_SIZE, chunkMeta.offset + chunkMeta.length)
+
+    const authTag = encryptedWithTag.slice(encryptedWithTag.length - 16)
+    const ciphertext = encryptedWithTag.slice(0, encryptedWithTag.length - 16)
 
     const key = Buffer.from(chunkMeta.key, 'hex')
-    const nonce = Buffer.from(chunkMeta.nonce, 'hex')
-    const plaintext = Buffer.alloc(ciphertext.length - sodium.crypto_aead_chacha20poly1305_ietf_ABYTES)
+    // We expect the stored nonce to match the one in metadata (if stored), or we just use the one in the blob
+    // Java MuxEngine puts nonce at start of blob.
+
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, nonce)
+    decipher.setAuthTag(authTag)
 
     try {
-      sodium.crypto_aead_chacha20poly1305_ietf_decrypt(
-        plaintext,
-        null,
-        ciphertext,
-        null,
-        nonce,
-        key
-      )
+      const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()])
+      parts.push(plaintext)
     } catch (err) {
-      throw new Error(`Decryption failed for blob ${chunkMeta.blobId}`)
+      throw new Error(`Decryption failed for blob ${chunkMeta.blobId}: ${err.message}`)
     }
-
-    parts.push(plaintext)
   }
 
   return Buffer.concat(parts)

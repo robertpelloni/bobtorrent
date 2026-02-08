@@ -74,6 +74,11 @@ const server = http.createServer(async (req, res) => {
   // API Routes
   if (req.url.startsWith('/api/')) {
     try {
+      // Proxy to Remote Supernode if configured
+      if (req.headers['x-target-node'] && req.headers['x-target-node'] !== 'local') {
+          await proxyToSupernode(req, res, req.headers['x-target-node'])
+          return
+      }
       await handleApi(req, res)
     } catch (err) {
       console.error('API Error:', err)
@@ -124,6 +129,31 @@ const server = http.createServer(async (req, res) => {
   })
 })
 
+async function proxyToSupernode(req, res, targetUrl) {
+    // Simple proxy logic
+    const url = new URL(req.url, targetUrl) // e.g. http://supernode:8080/api/...
+    const options = {
+        method: req.method,
+        headers: { ...req.headers, host: new URL(targetUrl).host }
+    }
+
+    return new Promise((resolve, reject) => {
+        const proxyReq = http.request(url, options, (proxyRes) => {
+            res.writeHead(proxyRes.statusCode, proxyRes.headers)
+            proxyRes.pipe(res)
+            proxyRes.on('end', resolve)
+        })
+
+        proxyReq.on('error', (err) => {
+            res.writeHead(502, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Supernode Proxy Error: ' + err.message }))
+            resolve()
+        })
+
+        req.pipe(proxyReq)
+    })
+}
+
 async function handleApi (req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`)
   const route = url.pathname.replace('/api/', '')
@@ -171,6 +201,18 @@ async function handleApi (req, res) {
             res.writeHead(500)
             res.end(JSON.stringify({ error: err.message }))
         }
+        return
+    }
+
+    if (route === 'wallet') {
+        // Mock wallet data for Reference Client (Supernode will override this)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+            address: '0xReferenceClientWallet',
+            balance: 0,
+            pending: 0,
+            transactions: []
+        }))
         return
     }
 
