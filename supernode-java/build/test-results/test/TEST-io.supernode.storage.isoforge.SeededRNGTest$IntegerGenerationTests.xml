@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Integer Generation" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:20:24" hostname="devbox" time="0.007">
+  <properties/>
+  <testcase name="should generate integers within range" classname="io.supernode.storage.isoforge.SeededRNGTest$IntegerGenerationTests" time="0.004"/>
+  <testcase name="should produce uniform distribution" classname="io.supernode.storage.isoforge.SeededRNGTest$IntegerGenerationTests" time="0.002"/>
+  <testcase name="should be deterministic for integers too" classname="io.supernode.storage.isoforge.SeededRNGTest$IntegerGenerationTests" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

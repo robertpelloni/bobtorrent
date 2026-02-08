@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Address Handling" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:48" hostname="PINK" time="0.545">
+<testsuite name="Address Handling" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:40" hostname="devbox" time="0.009">
   <properties/>
-  <testcase name="should handle onion addresses" classname="io.supernode.network.transport.TorTransportTest$AddressHandlingTests" time="0.147"/>
-  <testcase name="should parse onion address" classname="io.supernode.network.transport.TorTransportTest$AddressHandlingTests" time="0.131"/>
-  <testcase name="should not handle clearnet addresses" classname="io.supernode.network.transport.TorTransportTest$AddressHandlingTests" time="0.141"/>
-  <testcase name="should handle addresses ending with .onion" classname="io.supernode.network.transport.TorTransportTest$AddressHandlingTests" time="0.124"/>
+  <testcase name="should handle onion addresses" classname="io.supernode.network.transport.TorTransportTest$AddressHandlingTests" time="0.002"/>
+  <testcase name="should parse onion address" classname="io.supernode.network.transport.TorTransportTest$AddressHandlingTests" time="0.003"/>
+  <testcase name="should not handle clearnet addresses" classname="io.supernode.network.transport.TorTransportTest$AddressHandlingTests" time="0.002"/>
+  <testcase name="should handle addresses ending with .onion" classname="io.supernode.network.transport.TorTransportTest$AddressHandlingTests" time="0.002"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

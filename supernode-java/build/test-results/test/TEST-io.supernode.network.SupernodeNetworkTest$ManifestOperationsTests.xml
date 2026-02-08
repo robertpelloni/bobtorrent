@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Manifest Operations" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:43" hostname="PINK" time="0.42">
+<testsuite name="Manifest Operations" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:39" hostname="devbox" time="0.191">
   <properties/>
-  <testcase name="should share manifest without error" classname="io.supernode.network.SupernodeNetworkTest$ManifestOperationsTests" time="0.42"/>
-  <system-out><![CDATA[13:21:43.849 [nioEventLoopGroup-49-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 5 thread-local buffer(s) from thread: nioEventLoopGroup-49-1
-13:21:43.858 [nioEventLoopGroup-51-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 5 thread-local buffer(s) from thread: nioEventLoopGroup-51-1
-]]></system-out>
+  <testcase name="should share manifest without error" classname="io.supernode.network.SupernodeNetworkTest$ManifestOperationsTests" time="0.191"/>
+  <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

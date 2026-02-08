@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Decoding - Lost Shards" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:20:03" hostname="devbox" time="0.005">
+  <properties/>
+  <testcase name="should recover with one lost data shard" classname="io.supernode.storage.erasure.ErasureCoderTest$LostShardsTests" time="0.001"/>
+  <testcase name="should fail with too many lost shards" classname="io.supernode.storage.erasure.ErasureCoderTest$LostShardsTests" time="0.001"/>
+  <testcase name="should recover with lost parity shards" classname="io.supernode.storage.erasure.ErasureCoderTest$LostShardsTests" time="0.001"/>
+  <testcase name="should recover with two lost data shards" classname="io.supernode.storage.erasure.ErasureCoderTest$LostShardsTests" time="0.001"/>
+  <testcase name="should recover with mixed lost shards" classname="io.supernode.storage.erasure.ErasureCoderTest$LostShardsTests" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

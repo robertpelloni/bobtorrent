@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2024-05-23
+### Added
+-   **Supernode-Java Web API**: Implemented a Netty-based HTTP Controller in `supernode-java` to support the Web UI via `WebController`.
+-   **Cross-Client Compatibility**: Verified `ingest`, `retrieve`, `status`, and `files` endpoints work seamlessly between Node.js Web UI and Java Supernode backend.
+-   **Java Streaming**: Added HTTP Range request support to Java Supernode for video playback.
+-   **Standalone Supernode**: Created `io.supernode.Supernode` main class and updated Gradle build to produce a runnable application.
+
 ## [1.6.0] - 2024-05-23
 ### Added
 -   **Streaming Support**: Added HTTP Range request support to `reference-client/web-server.js` and `lib/storage.js` for streaming video playback.

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Node Identity" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:28" hostname="PINK" time="0.011">
+<testsuite name="Node Identity" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:27" hostname="devbox" time="0.016">
   <properties/>
   <testcase name="should generate unique node IDs" classname="io.supernode.network.DHTDiscoveryTest$NodeIdentityTests" time="0.003"/>
   <testcase name="should have 20-byte node ID" classname="io.supernode.network.DHTDiscoveryTest$NodeIdentityTests" time="0.003"/>
-  <testcase name="should use provided node ID" classname="io.supernode.network.DHTDiscoveryTest$NodeIdentityTests" time="0.003"/>
+  <testcase name="should use provided node ID" classname="io.supernode.network.DHTDiscoveryTest$NodeIdentityTests" time="0.005"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

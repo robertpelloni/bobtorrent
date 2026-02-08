@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Events" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:21" hostname="PINK" time="0.624">
+<testsuite name="Events" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:25" hostname="devbox" time="0.058">
   <properties/>
-  <testcase name="should emit upload events" classname="io.supernode.network.BlobNetworkTest$EventTests" time="0.217"/>
-  <testcase name="should emit download events" classname="io.supernode.network.BlobNetworkTest$EventTests" time="0.207"/>
-  <testcase name="should emit have events" classname="io.supernode.network.BlobNetworkTest$EventTests" time="0.196"/>
+  <testcase name="should emit upload events" classname="io.supernode.network.BlobNetworkTest$EventTests" time="0.016"/>
+  <testcase name="should emit download events" classname="io.supernode.network.BlobNetworkTest$EventTests" time="0.012"/>
+  <testcase name="should emit have events" classname="io.supernode.network.BlobNetworkTest$EventTests" time="0.025"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

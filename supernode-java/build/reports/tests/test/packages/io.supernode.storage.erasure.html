@@ -22,7 +22,7 @@
 <tr>
 <td>
 <div class="infoBox" id="tests">
-<div class="counter">39</div>
+<div class="counter">80</div>
 <p>tests</p>
 </div>
 </td>
@@ -34,13 +34,13 @@
 </td>
 <td>
 <div class="infoBox" id="ignored">
-<div class="counter">2</div>
+<div class="counter">0</div>
 <p>ignored</p>
 </div>
 </td>
 <td>
 <div class="infoBox" id="duration">
-<div class="counter">5m24.66s</div>
+<div class="counter">0.570s</div>
 <p>duration</p>
 </div>
 </td>
@@ -49,7 +49,7 @@
 </div>
 </td>
 <td>
-<div class="infoBox skipped" id="successRate">
+<div class="infoBox success" id="successRate">
 <div class="percent">100%</div>
 <p>successful</p>
 </div>
@@ -60,26 +60,10 @@
 <div id="tabs">
 <ul class="tabLinks">
 <li>
-<a href="#tab0">Ignored tests</a>
-</li>
-<li>
-<a href="#tab1">Classes</a>
+<a href="#tab0">Classes</a>
 </li>
 </ul>
 <div id="tab0" class="tab">
-<h2>Ignored tests</h2>
-<ul class="linkList">
-<li>
-<a href="../classes/io.supernode.storage.erasure.ErasureCoderAdvancedTest.html">Streaming Encode/Decode</a>.
-<a href="../classes/io.supernode.storage.erasure.ErasureCoderAdvancedTest.html#io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests">io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests</a>
-</li>
-<li>
-<a href="../classes/io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests.html">Streaming Encode/Decode</a>.
-<a href="../classes/io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests.html#shouldEncodeSmallFileViaStreaming()">should encode small file via streaming</a>
-</li>
-</ul>
-</div>
-<div id="tab1" class="tab">
 <h2>Classes</h2>
 <table>
 <thead>
@@ -93,23 +77,13 @@
 </tr>
 </thead>
 <tr>
-<td class="skipped">
-<a href="../classes/io.supernode.storage.erasure.ErasureCoderAdvancedTest.html">Streaming Encode/Decode</a>
-</td>
-<td>1</td>
-<td>0</td>
-<td>1</td>
-<td>2m42.18s</td>
-<td class="skipped">-</td>
-</tr>
-<tr>
 <td class="success">
 <a href="../classes/io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests.html">Adaptive Shard Selection</a>
 </td>
 <td>9</td>
 <td>0</td>
 <td>0</td>
-<td>0.013s</td>
+<td>0.008s</td>
 <td class="success">100%</td>
 </tr>
 <tr>
@@ -119,7 +93,7 @@
 <td>3</td>
 <td>0</td>
 <td>0</td>
-<td>0.195s</td>
+<td>0.182s</td>
 <td class="success">100%</td>
 </tr>
 <tr>
@@ -129,7 +103,7 @@
 <td>3</td>
 <td>0</td>
 <td>0</td>
-<td>0.005s</td>
+<td>0.003s</td>
 <td class="success">100%</td>
 </tr>
 <tr>
@@ -139,7 +113,7 @@
 <td>4</td>
 <td>0</td>
 <td>0</td>
-<td>0.003s</td>
+<td>0.002s</td>
 <td class="success">100%</td>
 </tr>
 <tr>
@@ -149,7 +123,7 @@
 <td>4</td>
 <td>0</td>
 <td>0</td>
-<td>0.073s</td>
+<td>0.015s</td>
 <td class="success">100%</td>
 </tr>
 <tr>
@@ -159,7 +133,7 @@
 <td>4</td>
 <td>0</td>
 <td>0</td>
-<td>0.005s</td>
+<td>0.004s</td>
 <td class="success">100%</td>
 </tr>
 <tr>
@@ -169,7 +143,17 @@
 <td>7</td>
 <td>0</td>
 <td>0</td>
-<td>0.008s</td>
+<td>0.004s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">
+<a href="../classes/io.supernode.storage.erasure.ErasureCoderAdvancedTest$ReedSolomonConfigurationTests.html">Reed-Solomon Configuration (6+2)</a>
+</td>
+<td>15</td>
+<td>0</td>
+<td>0</td>
+<td>0.046s</td>
 <td class="success">100%</td>
 </tr>
 <tr>
@@ -179,18 +163,88 @@
 <td>3</td>
 <td>0</td>
 <td>0</td>
-<td>0.006s</td>
+<td>0.001s</td>
 <td class="success">100%</td>
 </tr>
 <tr>
-<td class="skipped">
+<td class="success">
 <a href="../classes/io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests.html">Streaming Encode/Decode</a>
+</td>
+<td>6</td>
+<td>0</td>
+<td>0</td>
+<td>0.201s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">
+<a href="../classes/io.supernode.storage.erasure.ErasureCoderTest$ConfigurationTests.html">Configuration</a>
+</td>
+<td>2</td>
+<td>0</td>
+<td>0</td>
+<td>0.003s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">
+<a href="../classes/io.supernode.storage.erasure.ErasureCoderTest$DataSizeTests.html">Various Data Sizes</a>
+</td>
+<td>7</td>
+<td>0</td>
+<td>0</td>
+<td>0.089s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">
+<a href="../classes/io.supernode.storage.erasure.ErasureCoderTest$DeterminismTests.html">Determinism</a>
 </td>
 <td>1</td>
 <td>0</td>
+<td>0</td>
+<td>0.001s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">
+<a href="../classes/io.supernode.storage.erasure.ErasureCoderTest$EncodingTests.html">Encoding</a>
+</td>
+<td>4</td>
+<td>0</td>
+<td>0</td>
+<td>0.003s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">
+<a href="../classes/io.supernode.storage.erasure.ErasureCoderTest$FullRecoveryTests.html">Decoding - Full Recovery</a>
+</td>
+<td>2</td>
+<td>0</td>
+<td>0</td>
+<td>0.001s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">
+<a href="../classes/io.supernode.storage.erasure.ErasureCoderTest$GaloisFieldTests.html">GF(2^8) Math</a>
+</td>
 <td>1</td>
-<td>2m42.18s</td>
-<td class="skipped">-</td>
+<td>0</td>
+<td>0</td>
+<td>0.002s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">
+<a href="../classes/io.supernode.storage.erasure.ErasureCoderTest$LostShardsTests.html">Decoding - Lost Shards</a>
+</td>
+<td>5</td>
+<td>0</td>
+<td>0</td>
+<td>0.005s</td>
+<td class="success">100%</td>
 </tr>
 </table>
 </div>
@@ -202,7 +256,7 @@
 <input id="line-wrapping-toggle" type="checkbox" autocomplete="off"/>
 </label>
 </div>Generated by 
-<a href="http://www.gradle.org">Gradle 8.5</a> at Feb 7, 2026, 1:24:46 PM</p>
+<a href="http://www.gradle.org">Gradle 8.5</a> at Feb 8, 2026, 7:20:27 AM</p>
 </div>
 </div>
 </body>

@@ -492,6 +492,10 @@ public class SupernodeStorage {
     public Optional<byte[]> getManifest(String fileId) {
         return Optional.ofNullable(manifestStore.get(fileId));
     }
+
+    public List<String> listFiles() {
+        return new ArrayList<>(manifestStore.keySet());
+    }
     
     public void storeManifest(String fileId, byte[] encryptedManifest) {
         manifestStore.put(fileId, encryptedManifest);

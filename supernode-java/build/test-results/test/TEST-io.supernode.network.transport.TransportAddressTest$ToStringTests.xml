@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="ToString" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T18:21:49" hostname="PINK" time="0.001">
+<testsuite name="ToString" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:40" hostname="devbox" time="0.001">
   <properties/>
   <testcase name="should return key for hyphanet toString" classname="io.supernode.network.transport.TransportAddressTest$ToStringTests" time="0.0"/>
-  <testcase name="should return raw address from toString" classname="io.supernode.network.transport.TransportAddressTest$ToStringTests" time="0.0"/>
+  <testcase name="should return raw address from toString" classname="io.supernode.network.transport.TransportAddressTest$ToStringTests" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

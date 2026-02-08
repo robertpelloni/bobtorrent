@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Encoding" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:20:03" hostname="devbox" time="0.003">
+  <properties/>
+  <testcase name="should produce equal-sized shards" classname="io.supernode.storage.erasure.ErasureCoderTest$EncodingTests" time="0.001"/>
+  <testcase name="data shards should contain original data" classname="io.supernode.storage.erasure.ErasureCoderTest$EncodingTests" time="0.001"/>
+  <testcase name="parity shards should differ from data shards" classname="io.supernode.storage.erasure.ErasureCoderTest$EncodingTests" time="0.001"/>
+  <testcase name="should produce correct number of shards" classname="io.supernode.storage.erasure.ErasureCoderTest$EncodingTests" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
