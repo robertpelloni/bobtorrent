@@ -1,10 +1,12 @@
 import crypto from 'crypto'
 import { EventEmitter } from 'events'
+import { Readable } from 'stream'
 
 const CHUNK_SIZE = 1024 * 1024
 const ALGORITHM = 'aes-256-gcm'
 const KEY_SIZE = 32 // 256 bits
 const NONCE_SIZE = 12 // 96 bits
+const OVERHEAD_SIZE = NONCE_SIZE + 16 // Tag size is 16
 
 function sha256 (buffer) {
   const hash = crypto.createHash('sha256')
@@ -36,10 +38,6 @@ export function ingest (fileBuffer, fileName) {
     const tag = cipher.getAuthTag()
 
     // Java MuxEngine format: Nonce (12) + Ciphertext (N) + Tag (16)
-    // Wait, MuxEngine.java:
-    // ByteBuffer result = ByteBuffer.allocate(NONCE_SIZE + ciphertext.length); // GCM ciphertext includes tag usually in Java?
-    // Java doFinal() returns ciphertext + tag appended.
-    // So result = Nonce + Ciphertext + Tag.
 
     const blobBuffer = Buffer.concat([nonce, encrypted, tag])
     const blobId = sha256(blobBuffer)
@@ -100,6 +98,79 @@ export async function reassemble (fileEntry, getBlobFn) {
   }
 
   return Buffer.concat(parts)
+}
+
+export function createReadStream (fileEntry, getBlobFn, options = {}) {
+  const start = options.start || 0
+  const end = options.end || (fileEntry.size - 1)
+
+  let cursor = start
+  let currentChunkIndex = 0
+  let chunkStartOffset = 0
+
+  // Fast-forward to start chunk
+  for (let i = 0; i < fileEntry.chunks.length; i++) {
+    const len = fileEntry.chunks[i].length - OVERHEAD_SIZE
+    if (cursor < chunkStartOffset + len) {
+      currentChunkIndex = i
+      break
+    }
+    chunkStartOffset += len
+  }
+
+  return new Readable({
+    async read (size) {
+      if (cursor > end) {
+        this.push(null)
+        return
+      }
+
+      if (currentChunkIndex >= fileEntry.chunks.length) {
+        this.push(null)
+        return
+      }
+
+      const chunkMeta = fileEntry.chunks[currentChunkIndex]
+      const plaintextSize = chunkMeta.length - OVERHEAD_SIZE
+      const chunkEndOffset = chunkStartOffset + plaintextSize - 1
+
+      const sliceStart = cursor
+      const sliceEnd = Math.min(end, chunkEndOffset)
+
+      const relStart = sliceStart - chunkStartOffset
+      const relEnd = sliceEnd - chunkStartOffset
+
+      try {
+        const blobBuffer = await getBlobFn(chunkMeta.blobId)
+        if (!blobBuffer) {
+          this.destroy(new Error(`Blob ${chunkMeta.blobId} missing`))
+          return
+        }
+
+        const nonce = blobBuffer.slice(chunkMeta.offset, chunkMeta.offset + NONCE_SIZE)
+        const encryptedWithTag = blobBuffer.slice(chunkMeta.offset + NONCE_SIZE, chunkMeta.offset + chunkMeta.length)
+        const authTag = encryptedWithTag.slice(encryptedWithTag.length - 16)
+        const ciphertext = encryptedWithTag.slice(0, encryptedWithTag.length - 16)
+        const key = Buffer.from(chunkMeta.key, 'hex')
+
+        const decipher = crypto.createDecipheriv(ALGORITHM, key, nonce)
+        decipher.setAuthTag(authTag)
+        const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()])
+
+        const data = plaintext.slice(relStart, relEnd + 1)
+        this.push(data)
+
+        cursor += data.length
+
+        if (cursor > chunkEndOffset) {
+          currentChunkIndex++
+          chunkStartOffset += plaintextSize
+        }
+      } catch (err) {
+        this.destroy(err)
+      }
+    }
+  })
 }
 
 export class BlobClient extends EventEmitter {

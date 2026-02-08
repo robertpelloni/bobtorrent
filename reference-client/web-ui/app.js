@@ -241,16 +241,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
             files.forEach(f => {
                 const tr = document.createElement('tr');
+
+                let action = '';
+                const ext = f.name.split('.').pop().toLowerCase();
+                if (['mp4', 'webm', 'mp3', 'mkv'].includes(ext)) {
+                    action = `<button class="secondary-btn" style="padding: 2px 8px; margin-left: 10px;" onclick="playFile('${f.id}', '${f.name}')">▶ Play</button>`;
+                }
+
                 tr.innerHTML = `
                     <td>${f.name}</td>
                     <td>${(f.size / 1024 / 1024).toFixed(2)} MB</td>
                     <td>${f.status}</td>
-                    <td><progress value="${f.progress}" max="100"></progress> ${f.progress}%</td>
+                    <td><progress value="${f.progress}" max="100"></progress> ${f.progress}% ${action}</td>
                 `;
                 table.appendChild(tr);
             });
         } catch (e) {}
     }
+
+    // Video Player
+    window.playFile = (id, name) => {
+        const container = document.getElementById('video-container');
+        const player = document.getElementById('video-player');
+        const title = document.getElementById('video-title');
+
+        container.classList.remove('hidden');
+        container.style.display = 'flex'; // Override hidden class logic if needed, or rely on CSS
+        title.textContent = name;
+        player.src = `/api/stream/${id}`;
+        player.play().catch(e => console.log('Auto-play blocked:', e));
+    };
+
+    window.closeVideo = () => {
+        const container = document.getElementById('video-container');
+        const player = document.getElementById('video-player');
+
+        container.classList.add('hidden');
+        container.style.display = 'none';
+        player.pause();
+        player.src = '';
+    };
 
     // Dashboard Status
     async function updateStatus() {

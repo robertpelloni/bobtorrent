@@ -4,7 +4,7 @@ import http from 'http'
 import { fileURLToPath } from 'url'
 import { generateKeypair } from './lib/crypto.js'
 import { createManifest } from './lib/manifest.js'
-import { ingest, reassemble, createBlobClient } from './lib/storage.js'
+import { ingest, reassemble, createBlobClient, createReadStream } from './lib/storage.js'
 import { BlobStore } from './lib/blob-store.js'
 import { BlobNetwork } from './lib/blob-network.js'
 import { BlobTracker } from './lib/blob-tracker.js'
@@ -231,6 +231,57 @@ async function handleApi (req, res) {
         })
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify(files))
+        return
+    }
+
+    if (route.startsWith('stream/')) {
+        const fileId = route.replace('stream/', '')
+        const fileEntry = filesIndex.find(f => f.chunks && f.chunks[0].blobId === fileId)
+
+        if (!fileEntry) {
+            res.writeHead(404)
+            res.end('File not found')
+            return
+        }
+
+        // Detect Mime Type roughly
+        let mime = 'application/octet-stream'
+        if (fileEntry.name.endsWith('.mp4')) mime = 'video/mp4'
+        if (fileEntry.name.endsWith('.webm')) mime = 'video/webm'
+        if (fileEntry.name.endsWith('.mp3')) mime = 'audio/mpeg'
+
+        const getBlobFn = async (id) => blobStore.has(id) ? blobStore.get(id) : null
+
+        const range = req.headers.range
+        const fileSize = fileEntry.size
+
+        if (range) {
+            const parts = range.replace(/bytes=/, "").split("-")
+            const start = parseInt(parts[0], 10)
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1
+            const chunksize = (end - start) + 1
+
+            res.writeHead(206, {
+                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': chunksize,
+                'Content-Type': mime
+            })
+
+            const stream = createReadStream(fileEntry, getBlobFn, { start, end })
+            stream.pipe(res)
+            stream.on('error', (err) => {
+                console.error('Stream error:', err)
+                if (!res.headersSent) res.writeHead(500)
+                res.end()
+            })
+        } else {
+             res.writeHead(200, {
+                'Content-Length': fileSize,
+                'Content-Type': mime
+            })
+            createReadStream(fileEntry, getBlobFn).pipe(res)
+        }
         return
     }
   }

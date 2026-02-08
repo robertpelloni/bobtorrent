@@ -1,43 +1,37 @@
 # Project Dashboard
 
-## 📂 Project Structure
+## 📁 Directory Structure
 
-This monorepo contains the following components of the Megatorrent (formerly Bobtorrent) ecosystem:
+*   **`reference-client/`**: The Node.js Reference Implementation.
+    *   `web-server.js`: Web UI Backend.
+    *   `web-ui/`: Single Page Application (HTML/JS).
+    *   `lib/`: Core protocol logic (Storage, Manifests, Crypto).
+*   **`supernode-java/`**: The High-Performance Java Supernode (Gradle project).
+    *   Implements the MuxEngine (AES-GCM storage layer) and high-concurrency network stack.
+*   **`qbittorrent/`**: Official qBittorrent submodule (C++).
+    *   Contains the core BitTorrent client logic.
+*   **`cpp-reference/`**: Canonical C++ Integration Stubs & Patches.
+    *   `megatorrent/`: C++ implementation of Megatorrent protocol.
+    *   `qbittorrent-patches/`: Patches to integrate Megatorrent into qBittorrent.
+*   **`docs/`**: Project Documentation.
+    *   `UNIVERSAL_LLM_INSTRUCTIONS.md`: Directives for all AI agents.
+*   **`verification/`**: Test scripts and verification artifacts.
 
--   `root` (Tracker/Client) - JavaScript-based BitTorrent Tracker & Reference Client.
-    -   `reference-client/` - Reference implementation of the Megatorrent Client (Node.js).
-    -   `supernode-java/` - Core Java implementation of the Supernode logic, Erasure Coding, and Blockchain integration.
-    -   `qbittorrent/` - [Submodule] Native C++ qBittorrent client integration.
-    -   `cpp-reference/` - Canonical source for C++ reference implementation files.
-    -   `docs/` - Project documentation.
+## 📊 Status
 
-## 📦 Submodules
+*   **Version**: 1.6.0 (Streaming & Polish)
+*   **Core Protocol**: v1.0 (Stable)
+*   **Reference Client**: Feature Complete (Web UI + Streaming)
+*   **Supernode (Java)**: Active Development
+*   **qBittorrent Integration**: Prototype/Stubs
 
-| Submodule | Path | Commit | Description |
-| :--- | :--- | :--- | :--- |
-| **qbittorrent** | `qbittorrent` | `5abf458e...` | Native C++ BitTorrent client core. Forked to implement Megatorrent protocol. |
+## 🔗 Submodules
 
-*Note: `webtorrent-bittorrent-tracker` functionality has been merged into the root package.*
+*   `qbittorrent` (tracked at specific commit)
+*   `supernode-java` (monorepo component)
 
-## 📊 Key Components
+## 🛠 Build Status
 
-### Reference Client (`reference-client`)
--   **Runtime**: Node.js
--   **Protocol**: Megatorrent v1
--   **Web UI**: `http://localhost:3000` (Identity, Publish, Subscribe, Discovery)
--   **Features**: Encrypted Blobs, Manifest Signing, Channel Subscriptions.
-
-### Supernode Java (`supernode-java`)
--   **Cipher**: `AES/GCM` (MuxEngine)
--   **Erasure Coding**: Reed-Solomon (4+2, 6+2)
--   **Blockchain**: BobcoinBridge (Filecoin/Solana)
--   **Network**: DHTDiscovery (Kademlia)
-
-### Megatorrent Tracker (`root`)
--   **Type**: HTTP/UDP/WebSocket Tracker
--   **Runtime**: Node.js
--   **Role**: Coordinates peer discovery for blobs and channels.
-
-## 📅 Build Info
--   **Version**: 11.2.3 (Tracker/Client)
--   **Last Updated**: 2026-02-08
+*   **Node.js**: Passing (CI)
+*   **Java**: Gradle Build (Manual)
+*   **C++**: CMake Configuration (Manual)
