@@ -9,7 +9,7 @@
 <body>
     <div class="app-container">
         <header>
-            <h1>Megatorrent <span class="badge">Reference Client</span></h1>
+            <h1>Megatorrent <span class="badge">Reference Client</span> <span id="app-version" class="version-tag"></span></h1>
             <div id="status-bar" class="status-bar">
                 <span id="dht-status" class="status-item">DHT: <span class="value">Loading...</span></span>
                 <span id="network-status" class="status-item">Network: <span class="value">Loading...</span></span>
@@ -58,6 +58,16 @@
                             <label>Subscriptions:</label> <span id="dash-subs">0</span>
                         </div>
                     </div>
+                </div>
+
+                <div class="card">
+                    <h3>About</h3>
+                    <p>Megatorrent Reference Client. Part of the Bobtorrent ecosystem.</p>
+                    <ul style="list-style: none; padding: 0; color: #aaa;">
+                        <li><strong>Protocol Version:</strong> 1.0 (Blob/Manifest)</li>
+                        <li><strong>Storage Engine:</strong> AES/GCM + ChaCha20-Poly1305</li>
+                        <li><strong>Submodules:</strong> qBittorrent, Supernode-Java</li>
+                    </ul>
                 </div>
 
                 <h3>Recent Blobs</h3>

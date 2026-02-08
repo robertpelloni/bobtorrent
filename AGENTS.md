@@ -2,6 +2,11 @@
 
 This project utilizes a multi-agent architecture to achieve autonomous development.
 
+## 📜 Universal Instructions
+
+**ALL AGENTS MUST STRICTLY FOLLOW:**
+[UNIVERSAL_LLM_INSTRUCTIONS.md](docs/UNIVERSAL_LLM_INSTRUCTIONS.md)
+
 ## 🤖 Active Agents
 
 ### 1. Director (The Architect)
@@ -21,18 +26,6 @@ This project utilizes a multi-agent architecture to achieve autonomous developme
 ### 3. QA (The Tester)
 -   **Role**: Verification and Validation.
 -   **Responsibilities**:
-    -   Running test suites (`gradle test`).
+    -   Running test suites.
     -   Ensuring "Zero Data Loss" guarantees.
     -   Verifying fixes and regressions.
-
-## 📜 Instructions
-
-All agents must strictly follow the **Universal LLM Instructions**:
-[UNIVERSAL_LLM_INSTRUCTIONS.md](docs/UNIVERSAL_LLM_INSTRUCTIONS.md)
-
-## 🔄 Workflow
-
-1.  **Plan**: Director creates a plan in `task.md`.
-2.  **Act**: Builder implements the plan.
-3.  **Verify**: QA runs tests and confirms stability.
-4.  **Document**: All agents update documentation continuously.

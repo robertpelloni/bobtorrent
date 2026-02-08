@@ -1,4 +1,4 @@
-# Project Vision: Supernode Java & Bobtorrent Network
+# Project Vision: Megatorrent Network
 
 ## 🌟 Ultimate Goal
 To build a **Production-Grade, Autonomous P2P Storage Supernode Network** that bridges the gap between traditional BitTorrent swarms and incentivized blockchain storage (Filecoin/Bobcoin). The system is designed to be self-healing, high-performance, and fully autonomous, capable of managing petabytes of data with "Zero Data Loss" guarantees via advanced erasure coding and redundancy.
@@ -11,9 +11,10 @@ To build a **Production-Grade, Autonomous P2P Storage Supernode Network** that b
     -   **Health-Aware**: Integrated circuit breakers (`BobcoinBridge`) and reputation systems (`DHTDiscovery`) to isolate faulty peers instantly.
 
 2.  **Hybrid Storage Layer**
-    -   **MuxEngine**: An encryption-first storage engine using AES/GCM for confidentiality.
+    -   **MuxEngine**: An encryption-first storage engine using AES/GCM (Java) and ChaCha20-Poly1305 (Node/C++) for confidentiality.
     -   **Erasure Coding**: Reed-Solomon (4+2, 6+2) sharding to ensure data availability even if 30% of nodes fail.
     -   **Content Addressing**: Deduplication and integrity verification using cryptographic hashes (SHA-256/CID), enabling a "store once, serve everywhere" model.
+    -   **Megatorrent Protocol**: Encrypted "Blobs" + Signed Manifests for mutable, channel-based content distribution.
 
 3.  **Incentivized Participation**
     -   **Bobcoin Integration**: A bridge to the Bobcoin/Filecoin blockchain for automated storage deals, proofs of storage (PoS), and rewards.
@@ -28,14 +29,17 @@ To build a **Production-Grade, Autonomous P2P Storage Supernode Network** that b
 
 ### Phase 1: Foundation (Completed)
 -   [x] Core Storage Engine with Erasure Coding.
--   [x] Secure AES/GCM Encryption.
--   [x] Basic P2P Transport (TCP/UDP).
--   [x] Blockchain Bridge Scaffolding.
+-   [x] Secure Encryption (AES/GCM & ChaCha20).
+-   [x] Basic P2P Transport (TCP/UDP/WebSocket).
+-   [x] Megatorrent Protocol Specification (Blobs, Channels, Manifests).
+-   [x] Reference Client (Node.js) with Web UI.
+-   [x] qBittorrent Integration Stubs.
 
 ### Phase 2: Intelligence & Optimization (Current Focus)
 -   [x] Advanced Health Monitoring & Circuit Breakers.
--   [ ] **Content-Addressed Storage (CAS)**: Implement `ContentStore` for automatic deduplication and content routing.
--   [ ] **DHT Integration**: Bridge internal peer finding with Filecoin's content routing.
+-   [x] **Content-Addressed Storage (CAS)**: Implement `ContentStore` for automatic deduplication and content routing.
+-   [x] **Web UI**: Comprehensive interface for Discovery, Publishing, and Management.
+-   [ ] **Cross-Client Compatibility**: Full interoperability between Java Supernode and Node/C++ Clients.
 -   [ ] **Streaming Erasure Coding**: Enable playback of large media files while they are being reconstructed.
 
 ### Phase 3: Production Scale (Future)

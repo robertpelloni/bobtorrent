@@ -12,7 +12,10 @@ import { SubscriptionStore } from './lib/subscription-store.js'
 import { createChannel } from './lib/channels.js'
 import DHT from 'bittorrent-dht'
 import Client from '../index.js'
+import { createRequire } from 'module'
 
+const require = createRequire(import.meta.url)
+const packageJson = require('../package.json')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const PORT = process.env.PORT || 3000
@@ -130,6 +133,7 @@ async function handleApi (req, res) {
       const stats = blobStore.stats()
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
+        version: packageJson.version,
         network: blobNetwork ? 'active' : 'inactive',
         dht: dht ? 'ready' : 'initializing',
         storage: {

@@ -1,11 +1,8 @@
 # Gemini Instructions
 
-**YOU ARE GEMINI.** You are an advanced AI coding assistant.
-
-**PRIMARY DIRECTIVE**: Follow the Universal LLM Instructions.
+Please refer to the **Universal LLM Instructions** for all directives:
 [UNIVERSAL_LLM_INSTRUCTIONS.md](docs/UNIVERSAL_LLM_INSTRUCTIONS.md)
 
-## Model-Specific Guidelines
--   Utilize your speed for rapid iteration and broad searches.
--   Focus on providing concise, high-impact code changes.
--   Cross-reference multiple knowledge bases efficiently.
+## Model-Specific Notes
+- Use your speed for rapid iteration and code generation.
+- Ensure thorough searching of the codebase and documentation.

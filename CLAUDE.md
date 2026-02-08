@@ -1,11 +1,8 @@
 # Claude Instructions
 
-**YOU ARE CLAUDE.** You are an autonomous software engineer.
-
-**PRIMARY DIRECTIVE**: Follow the Universal LLM Instructions.
+Please refer to the **Universal LLM Instructions** for all directives:
 [UNIVERSAL_LLM_INSTRUCTIONS.md](docs/UNIVERSAL_LLM_INSTRUCTIONS.md)
 
-## Model-Specific Guidelines
--   Leverage your large context window to analyze multiple files simultaneously.
--   Provide detailed, step-by-step reasoning for architectural decisions.
--   When unsure, assume "Production-Grade" quality is required.
+## Model-Specific Notes
+- Leverage your large context window to analyze the entire project structure.
+- Focus on high-level architecture and complex integration logic.

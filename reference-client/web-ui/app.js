@@ -219,6 +219,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/status');
             const data = await res.json();
 
+            if (data.version) {
+                document.getElementById('app-version').textContent = `v${data.version}`;
+            }
+
             document.getElementById('dash-blobs').textContent = data.storage.blobs;
             document.getElementById('dash-size').textContent = (data.storage.size / 1024 / 1024).toFixed(2) + ' MB';
             document.getElementById('dash-max').textContent = (data.storage.max / 1024 / 1024 / 1024).toFixed(2) + ' GB';
