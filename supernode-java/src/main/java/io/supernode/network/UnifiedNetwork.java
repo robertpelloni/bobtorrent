@@ -19,6 +19,10 @@ public class UnifiedNetwork {
     private final SupernodeStorage storage;
     private final Map<String, PeerInfo> peers = new ConcurrentHashMap<>();
     
+    // Components
+    private final DHTDiscovery dht;
+    private final ManifestDistributor manifestDistributor;
+
     private Consumer<ListeningEvent> onListening;
     private Consumer<PeerEvent> onPeer;
     private Consumer<DisconnectEvent> onDisconnect;
@@ -62,10 +66,18 @@ public class UnifiedNetwork {
             : SupernodeStorage.StorageOptions.defaults();
         this.storage = new SupernodeStorage(primaryBlobStore, storageOptions);
         
+        // Initialize DHT
+        this.dht = new DHTDiscovery(DHTDiscovery.DHTOptions.defaults());
+
+        // Initialize ManifestDistributor
+        this.manifestDistributor = new ManifestDistributor(new ManifestDistributor.ManifestDistributorOptions(dht, storage));
+
         setupEventHandlers();
     }
 
     public CompletableFuture<Map<TransportType, TransportAddress>> start() {
+        // Start DHT
+        dht.start();
         return transportManager.startAll()
             .thenApply(addresses -> {
                 Map<TransportType, TransportAddress> result = new EnumMap<>(TransportType.class);
@@ -182,6 +194,14 @@ public class UnifiedNetwork {
 
     public SupernodeStorage getStorage() {
         return storage;
+    }
+
+    public DHTDiscovery getDht() {
+        return dht;
+    }
+
+    public ManifestDistributor getManifestDistributor() {
+        return manifestDistributor;
     }
 
     public boolean isDestroyed() {

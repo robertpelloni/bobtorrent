@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0] - 2024-05-24
+### Added
+-   **Full Supernode Web API Coverage**: Expanded `supernode-java` to include endpoints for Identity, Publishing, Subscriptions, Discovery, and Wallet.
+-   **API Parity**: Java Supernode now fully mimics the Reference Client API, enabling seamless Web UI usage.
+-   **Component Integration**: `UnifiedNetwork` now exposes `DHTDiscovery` and `ManifestDistributor` for API consumption.
+
 ## [1.7.0] - 2024-05-23
 ### Added
 -   **Supernode-Java Web API**: Implemented a Netty-based HTTP Controller in `supernode-java` to support the Web UI via `WebController`.

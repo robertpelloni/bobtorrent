@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.supernode.intelligence.ResourceManagerTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:22" hostname="devbox" time="1.87">
+<testsuite name="io.supernode.intelligence.ResourceManagerTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:54:51" hostname="devbox" time="2.021">
   <properties/>
-  <testcase name="testAnalysisUpdate()" classname="io.supernode.intelligence.ResourceManagerTest" time="1.857"/>
-  <testcase name="testInitialState()" classname="io.supernode.intelligence.ResourceManagerTest" time="0.006"/>
+  <testcase name="testAnalysisUpdate()" classname="io.supernode.intelligence.ResourceManagerTest" time="2.007"/>
+  <testcase name="testInitialState()" classname="io.supernode.intelligence.ResourceManagerTest" time="0.007"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[WARNING: A Java agent has been loaded dynamically (/home/jules/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy-agent/1.14.10/90ed94ac044ea8953b224304c762316e91fd6b31/byte-buddy-agent-1.14.10.jar)
 WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning

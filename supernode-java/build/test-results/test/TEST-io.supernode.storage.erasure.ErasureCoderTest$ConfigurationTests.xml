@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Configuration" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:20:03" hostname="devbox" time="0.004">
+<testsuite name="Configuration" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:28" hostname="devbox" time="0.004">
   <properties/>
   <testcase name="should support different shard configurations" classname="io.supernode.storage.erasure.ErasureCoderTest$ConfigurationTests" time="0.003"/>
-  <testcase name="should report correct shard counts" classname="io.supernode.storage.erasure.ErasureCoderTest$ConfigurationTests" time="0.0"/>
+  <testcase name="should report correct shard counts" classname="io.supernode.storage.erasure.ErasureCoderTest$ConfigurationTests" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Encryption and Decryption" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:20:24" hostname="devbox" time="0.012">
+<testsuite name="Encryption and Decryption" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:53" hostname="devbox" time="0.011">
   <properties/>
   <testcase name="should preserve all segment data through encryption" classname="io.supernode.storage.mux.ManifestTest$EncryptionTests" time="0.005"/>
   <testcase name="should encrypt and decrypt manifest successfully" classname="io.supernode.storage.mux.ManifestTest$EncryptionTests" time="0.001"/>
   <testcase name="should fail to decrypt corrupted data" classname="io.supernode.storage.mux.ManifestTest$EncryptionTests" time="0.003"/>
-  <testcase name="should fail to decrypt with wrong key" classname="io.supernode.storage.mux.ManifestTest$EncryptionTests" time="0.001"/>
+  <testcase name="should fail to decrypt with wrong key" classname="io.supernode.storage.mux.ManifestTest$EncryptionTests" time="0.0"/>
   <testcase name="should produce different ciphertext each time due to random nonce" classname="io.supernode.storage.mux.ManifestTest$EncryptionTests" time="0.0"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

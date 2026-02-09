@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Announce/Unannounce" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:27" hostname="devbox" time="0.438">
+<testsuite name="Announce/Unannounce" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:54:56" hostname="devbox" time="0.421">
   <properties/>
-  <testcase name="should emit announced event" classname="io.supernode.network.DHTDiscoveryTest$AnnounceTests" time="0.214"/>
-  <testcase name="should track announced hashes in stats" classname="io.supernode.network.DHTDiscoveryTest$AnnounceTests" time="0.109"/>
-  <testcase name="should remove hash on unannounce" classname="io.supernode.network.DHTDiscoveryTest$AnnounceTests" time="0.112"/>
+  <testcase name="should emit announced event" classname="io.supernode.network.DHTDiscoveryTest$AnnounceTests" time="0.206"/>
+  <testcase name="should track announced hashes in stats" classname="io.supernode.network.DHTDiscoveryTest$AnnounceTests" time="0.104"/>
+  <testcase name="should remove hash on unannounce" classname="io.supernode.network.DHTDiscoveryTest$AnnounceTests" time="0.109"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

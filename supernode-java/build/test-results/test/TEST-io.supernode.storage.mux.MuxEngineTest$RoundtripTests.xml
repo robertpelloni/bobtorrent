@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Mux/Demux Roundtrip" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:20:26" hostname="devbox" time="0.901">
+<testsuite name="Mux/Demux Roundtrip" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:54" hostname="devbox" time="0.887">
   <properties/>
-  <testcase name="should handle empty data" classname="io.supernode.storage.mux.MuxEngineTest$RoundtripTests" time="0.001"/>
+  <testcase name="should handle empty data" classname="io.supernode.storage.mux.MuxEngineTest$RoundtripTests" time="0.0"/>
   <testcase name="should handle data exactly sector-sized" classname="io.supernode.storage.mux.MuxEngineTest$RoundtripTests" time="0.001"/>
-  <testcase name="should handle large data (1MB)" classname="io.supernode.storage.mux.MuxEngineTest$RoundtripTests" time="0.878"/>
-  <testcase name="should recover original data after mux/demux" classname="io.supernode.storage.mux.MuxEngineTest$RoundtripTests" time="0.007"/>
+  <testcase name="should handle large data (1MB)" classname="io.supernode.storage.mux.MuxEngineTest$RoundtripTests" time="0.866"/>
+  <testcase name="should recover original data after mux/demux" classname="io.supernode.storage.mux.MuxEngineTest$RoundtripTests" time="0.004"/>
   <testcase name="should handle data of various sizes" classname="io.supernode.storage.mux.MuxEngineTest$RoundtripTests" time="0.008"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

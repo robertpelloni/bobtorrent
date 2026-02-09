@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Statistics" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:58" hostname="devbox" time="0.005">
+<testsuite name="Statistics" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:22" hostname="devbox" time="0.008">
   <properties/>
-  <testcase name="should track blob count" classname="io.supernode.storage.SupernodeStorageTest$StatisticsTests" time="0.002"/>
+  <testcase name="should track blob count" classname="io.supernode.storage.SupernodeStorageTest$StatisticsTests" time="0.003"/>
   <testcase name="should report ISO size preset" classname="io.supernode.storage.SupernodeStorageTest$StatisticsTests" time="0.0"/>
-  <testcase name="should track manifest count" classname="io.supernode.storage.SupernodeStorageTest$StatisticsTests" time="0.002"/>
+  <testcase name="should track manifest count" classname="io.supernode.storage.SupernodeStorageTest$StatisticsTests" time="0.003"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

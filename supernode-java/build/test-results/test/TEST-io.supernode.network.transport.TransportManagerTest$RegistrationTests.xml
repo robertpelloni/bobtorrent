@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Transport Registration" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:40" hostname="devbox" time="0.014">
+<testsuite name="Transport Registration" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:10" hostname="devbox" time="0.009">
   <properties/>
   <testcase name="should unregister transport" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.001"/>
-  <testcase name="should get registered transport" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.003"/>
-  <testcase name="should track multiple transports" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.003"/>
+  <testcase name="should get registered transport" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.001"/>
+  <testcase name="should track multiple transports" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.001"/>
   <testcase name="should return null for unregistered type" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.001"/>
   <testcase name="should register transport" classname="io.supernode.network.transport.TransportManagerTest$RegistrationTests" time="0.002"/>
   <system-out><![CDATA[]]></system-out>

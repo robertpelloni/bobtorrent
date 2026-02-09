@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Address Handling" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:40" hostname="devbox" time="0.014">
+<testsuite name="Address Handling" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:09" hostname="devbox" time="0.013">
   <properties/>
-  <testcase name="should parse CHK address" classname="io.supernode.network.transport.HyphanetTransportTest$AddressHandlingTests" time="0.003"/>
+  <testcase name="should parse CHK address" classname="io.supernode.network.transport.HyphanetTransportTest$AddressHandlingTests" time="0.002"/>
   <testcase name="should handle USK keys" classname="io.supernode.network.transport.HyphanetTransportTest$AddressHandlingTests" time="0.002"/>
   <testcase name="should not handle clearnet addresses" classname="io.supernode.network.transport.HyphanetTransportTest$AddressHandlingTests" time="0.002"/>
   <testcase name="should handle CHK keys" classname="io.supernode.network.transport.HyphanetTransportTest$AddressHandlingTests" time="0.001"/>
   <testcase name="should handle SSK keys" classname="io.supernode.network.transport.HyphanetTransportTest$AddressHandlingTests" time="0.001"/>
-  <testcase name="should handle freenet scheme" classname="io.supernode.network.transport.HyphanetTransportTest$AddressHandlingTests" time="0.002"/>
+  <testcase name="should handle freenet scheme" classname="io.supernode.network.transport.HyphanetTransportTest$AddressHandlingTests" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

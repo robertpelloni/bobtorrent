@@ -13,10 +13,16 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.supernode.network.UnifiedNetwork;
+import io.supernode.network.DHTDiscovery;
+import io.supernode.network.ManifestDistributor;
 import io.supernode.storage.SupernodeStorage;
 import io.supernode.storage.mux.Manifest;
 
 import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 
@@ -80,6 +86,18 @@ public class WebController {
                 handleIngest(ctx, req);
             } else if (uri.startsWith("/api/stream/") && method.equals(HttpMethod.GET)) {
                 handleStream(ctx, req);
+            } else if (uri.equals("/api/key/generate") && method.equals(HttpMethod.POST)) {
+                handleKeyGenerate(ctx);
+            } else if (uri.equals("/api/publish") && method.equals(HttpMethod.POST)) {
+                handlePublish(ctx, req);
+            } else if (uri.equals("/api/subscriptions") && method.equals(HttpMethod.GET)) {
+                handleSubscriptions(ctx);
+            } else if (uri.equals("/api/subscribe") && method.equals(HttpMethod.POST)) {
+                handleSubscribe(ctx, req);
+            } else if (uri.startsWith("/api/channels/browse") && method.equals(HttpMethod.GET)) {
+                handleBrowse(ctx, req);
+            } else if (uri.equals("/api/wallet") && method.equals(HttpMethod.GET)) {
+                handleWallet(ctx);
             } else {
                 sendError(ctx, HttpResponseStatus.NOT_FOUND);
             }
@@ -202,6 +220,105 @@ public class WebController {
             e.printStackTrace();
             sendError(ctx, HttpResponseStatus.NOT_FOUND);
         }
+    }
+
+    private void handleKeyGenerate(ChannelHandlerContext ctx) {
+        try {
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+            kpg.initialize(256);
+            KeyPair kp = kpg.generateKeyPair();
+
+            ObjectNode json = mapper.createObjectNode();
+            json.put("publicKey", HexFormat.of().formatHex(kp.getPublic().getEncoded()));
+            json.put("secretKey", HexFormat.of().formatHex(kp.getPrivate().getEncoded()));
+
+            sendJson(ctx, json);
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private void handlePublish(ChannelHandlerContext ctx, FullHttpRequest req) {
+        try {
+            ByteBuf content = req.content();
+            ObjectNode body = (ObjectNode) mapper.readTree(content.toString(StandardCharsets.UTF_8));
+
+            // Extract fileEntry
+            ObjectNode fileEntry = (ObjectNode) body.get("fileEntry");
+            String fileId = fileEntry.get("chunks").get(0).get("blobId").asText(); // Assuming first chunk for now
+
+            // In a real impl, we'd sign with identity. Here we just announce via DHT/ManifestDistributor
+            network.getManifestDistributor().announceManifest(fileId);
+
+            ObjectNode json = mapper.createObjectNode();
+            json.put("status", "published");
+            ObjectNode manifest = json.putObject("manifest");
+            manifest.put("fileId", fileId);
+
+            sendJson(ctx, json);
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendError(ctx, HttpResponseStatus.BAD_REQUEST);
+        }
+    }
+
+    private void handleSubscriptions(ChannelHandlerContext ctx) {
+        ArrayNode subs = mapper.createArrayNode();
+        for (ManifestDistributor.AnnouncedManifest am : network.getManifestDistributor().getAnnouncedManifests()) {
+            ObjectNode sub = subs.addObject();
+            sub.put("topicPath", am.fileId());
+            sub.put("lastSequence", am.announcedAt());
+        }
+        sendJson(ctx, subs);
+    }
+
+    private void handleSubscribe(ChannelHandlerContext ctx, FullHttpRequest req) {
+        try {
+            ByteBuf content = req.content();
+            ObjectNode body = (ObjectNode) mapper.readTree(content.toString(StandardCharsets.UTF_8));
+            String key = body.get("publicKey").asText();
+
+            // For now, we treat subscription as "finding manifest peers"
+            network.getManifestDistributor().findManifestPeers(key, 5000);
+
+            ObjectNode json = mapper.createObjectNode();
+            json.put("status", "subscribed");
+            json.put("publicKey", key);
+            sendJson(ctx, json);
+        } catch (Exception e) {
+            sendError(ctx, HttpResponseStatus.BAD_REQUEST);
+        }
+    }
+
+    private void handleBrowse(ChannelHandlerContext ctx, FullHttpRequest req) {
+        // DHT Browse simulation
+        QueryStringDecoder query = new QueryStringDecoder(req.uri());
+        String topic = query.parameters().containsKey("topic") ? query.parameters().get("topic").get(0) : "";
+
+        ObjectNode result = mapper.createObjectNode();
+        ArrayNode subtopics = result.putArray("subtopics");
+        ArrayNode publishers = result.putArray("publishers");
+
+        // Mock data or real DHT query if supported
+        if (topic.isEmpty()) {
+            subtopics.add("video");
+            subtopics.add("audio");
+        } else if (topic.equals("video")) {
+            subtopics.add("movies");
+        }
+
+        sendJson(ctx, result);
+    }
+
+    private void handleWallet(ChannelHandlerContext ctx) {
+        ObjectNode wallet = mapper.createObjectNode();
+        wallet.put("address", "0xSupernodeWalletJava");
+        wallet.put("balance", 1000);
+        wallet.put("pending", 50);
+        wallet.putArray("transactions");
+
+        sendJson(ctx, wallet);
     }
 
     private void sendJson(ChannelHandlerContext ctx, ObjectNode json) {

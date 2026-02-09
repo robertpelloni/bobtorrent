@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Transport Properties" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:40" hostname="devbox" time="0.006">
+<testsuite name="Transport Properties" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:09" hostname="devbox" time="0.005">
   <properties/>
-  <testcase name="should have IPFS type" classname="io.supernode.network.transport.IPFSTransportTest$PropertiesTests" time="0.003"/>
+  <testcase name="should have IPFS type" classname="io.supernode.network.transport.IPFSTransportTest$PropertiesTests" time="0.002"/>
   <testcase name="should not be running initially" classname="io.supernode.network.transport.IPFSTransportTest$PropertiesTests" time="0.002"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

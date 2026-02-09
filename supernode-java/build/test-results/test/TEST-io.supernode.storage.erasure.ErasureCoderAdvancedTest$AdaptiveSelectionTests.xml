@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Adaptive Shard Selection" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:20:02" hostname="devbox" time="0.01">
+<testsuite name="Adaptive Shard Selection" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:27" hostname="devbox" time="0.024">
   <properties/>
   <testcase name="should default to 2 parity shards on healthy network" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.001"/>
-  <testcase name="should increase parity on high packet loss" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.0"/>
-  <testcase name="should handle peer failures correctly" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.002"/>
+  <testcase name="should increase parity on high packet loss" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.001"/>
+  <testcase name="should handle peer failures correctly" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.005"/>
   <testcase name="should track peer metrics correctly" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.001"/>
-  <testcase name="should select optimal peers based on metrics" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.003"/>
-  <testcase name="should calculate peer score correctly" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.0"/>
-  <testcase name="should increase parity on degraded network" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.0"/>
+  <testcase name="should select optimal peers based on metrics" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.006"/>
+  <testcase name="should calculate peer score correctly" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.002"/>
+  <testcase name="should increase parity on degraded network" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.001"/>
   <testcase name="should use maximum parity on unhealthy network" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.001"/>
-  <testcase name="should reduce parity on low latency network" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.0"/>
+  <testcase name="should reduce parity on low latency network" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$AdaptiveSelectionTests" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Determinism" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:20:03" hostname="devbox" time="0.001">
+<testsuite name="Determinism" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:28" hostname="devbox" time="0.001">
   <properties/>
   <testcase name="encoding should be deterministic" classname="io.supernode.storage.erasure.ErasureCoderTest$DeterminismTests" time="0.001"/>
   <system-out><![CDATA[]]></system-out>

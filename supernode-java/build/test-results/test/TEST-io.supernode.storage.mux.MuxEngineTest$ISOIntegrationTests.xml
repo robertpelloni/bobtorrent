@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="ISO Integration" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:20:24" hostname="devbox" time="1.008">
+<testsuite name="ISO Integration" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:53" hostname="devbox" time="0.856">
   <properties/>
-  <testcase name="muxed data should look like ISO when XORed back" classname="io.supernode.storage.mux.MuxEngineTest$ISOIntegrationTests" time="0.996"/>
-  <testcase name="muxed data should be sector-aligned" classname="io.supernode.storage.mux.MuxEngineTest$ISOIntegrationTests" time="0.006"/>
+  <testcase name="muxed data should look like ISO when XORed back" classname="io.supernode.storage.mux.MuxEngineTest$ISOIntegrationTests" time="0.844"/>
+  <testcase name="muxed data should be sector-aligned" classname="io.supernode.storage.mux.MuxEngineTest$ISOIntegrationTests" time="0.005"/>
   <testcase name="should use correct sector count" classname="io.supernode.storage.mux.MuxEngineTest$ISOIntegrationTests" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

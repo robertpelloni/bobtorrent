@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Statistics" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-08T07:19:40" hostname="devbox" time="0.223">
+<testsuite name="Statistics" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:09" hostname="devbox" time="0.224">
   <properties/>
-  <testcase name="should track blob count after ingest" classname="io.supernode.network.SupernodeNetworkTest$StatisticsTests" time="0.114"/>
-  <testcase name="should return combined network stats" classname="io.supernode.network.SupernodeNetworkTest$StatisticsTests" time="0.108"/>
+  <testcase name="should track blob count after ingest" classname="io.supernode.network.SupernodeNetworkTest$StatisticsTests" time="0.117"/>
+  <testcase name="should return combined network stats" classname="io.supernode.network.SupernodeNetworkTest$StatisticsTests" time="0.107"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
