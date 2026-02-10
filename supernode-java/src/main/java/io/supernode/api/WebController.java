@@ -21,6 +21,7 @@ import io.supernode.storage.mux.Manifest;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -292,7 +293,7 @@ public class WebController {
     }
 
     private void handleBrowse(ChannelHandlerContext ctx, FullHttpRequest req) {
-        // DHT Browse simulation
+        // DHT Browse logic
         QueryStringDecoder query = new QueryStringDecoder(req.uri());
         String topic = query.parameters().containsKey("topic") ? query.parameters().get("topic").get(0) : "";
 
@@ -300,20 +301,34 @@ public class WebController {
         ArrayNode subtopics = result.putArray("subtopics");
         ArrayNode publishers = result.putArray("publishers");
 
-        // Mock data or real DHT query if supported
-        if (topic.isEmpty()) {
+        // Query DHT for topic peers (using SHA1 of topic path)
+        if (!topic.isEmpty()) {
+            // This is a simplification. Real browsing involves traversing topic manifests.
+            // For now, we list active peers found via DHT for this topic/blob.
+            List<DHTDiscovery.PeerInfo> peers = network.getDht().findPeers(topic, Duration.ofMillis(2000)).join();
+            for (DHTDiscovery.PeerInfo peer : peers) {
+                ObjectNode p = publishers.addObject();
+                p.put("name", peer.host());
+                p.put("pk", "unknown"); // DHT peers don't advertise PK directly in this lookup
+            }
+        } else {
+            // Root topics
             subtopics.add("video");
             subtopics.add("audio");
-        } else if (topic.equals("video")) {
-            subtopics.add("movies");
+            subtopics.add("documents");
         }
 
         sendJson(ctx, result);
     }
 
     private void handleWallet(ChannelHandlerContext ctx) {
+        // In a full implementation, we would query BobcoinBridge here.
+        // Since BobcoinBridge is not yet fully exposed/integrated in UnifiedNetwork for access,
+        // we will stick to the mock or expose it if time permits.
+        // For v1.8.0+, we can enhance this to read from a real wallet file if present.
+
         ObjectNode wallet = mapper.createObjectNode();
-        wallet.put("address", "0xSupernodeWalletJava");
+        wallet.put("address", "0xSupernodeWalletJava"); // TODO: Load from keypair
         wallet.put("balance", 1000);
         wallet.put("pending", 50);
         wallet.putArray("transactions");

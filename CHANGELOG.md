@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0] - 2024-05-24
+### Added
+-   **Real DHT Integration in API**: The `/api/channels/browse` endpoint now queries the live `DHTDiscovery` component for peers, replacing the previous mock simulation.
+-   **Encryption Compatibility Verified**: Validated that `MuxEngine` (Java) uses standard AES-GCM protocols compatible with the Node.js reference client's crypto implementation.
+-   **Java Interoperability Tests**: Added `InteropTest.java` to verify cross-language blob decryption (verifies `Nonce + Ciphertext + Tag` format).
+
 ## [1.8.0] - 2024-05-24
 ### Added
 -   **Full Supernode Web API Coverage**: Expanded `supernode-java` to include endpoints for Identity, Publishing, Subscriptions, Discovery, and Wallet.

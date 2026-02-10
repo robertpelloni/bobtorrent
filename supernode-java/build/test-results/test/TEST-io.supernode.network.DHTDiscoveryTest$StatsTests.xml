@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Stats" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:54:54" hostname="devbox" time="0.113">
-  <properties/>
-  <testcase name="should return null stats when not ready" classname="io.supernode.network.DHTDiscoveryTest$StatsTests" time="0.007"/>
-  <testcase name="should return stats when ready" classname="io.supernode.network.DHTDiscoveryTest$StatsTests" time="0.105"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

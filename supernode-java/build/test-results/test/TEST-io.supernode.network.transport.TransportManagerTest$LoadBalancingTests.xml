@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Load Balancing" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:09" hostname="devbox" time="0.01">
-  <properties/>
-  <testcase name="should get transports by score" classname="io.supernode.network.transport.TransportManagerTest$LoadBalancingTests" time="0.004"/>
-  <testcase name="should fail load balanced connect with empty list" classname="io.supernode.network.transport.TransportManagerTest$LoadBalancingTests" time="0.002"/>
-  <testcase name="should select best transport" classname="io.supernode.network.transport.TransportManagerTest$LoadBalancingTests" time="0.002"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

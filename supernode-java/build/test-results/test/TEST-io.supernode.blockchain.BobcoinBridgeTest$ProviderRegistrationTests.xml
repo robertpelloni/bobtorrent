@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Storage Provider Operations" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:54:51" hostname="devbox" time="0.111">
-  <properties/>
-  <testcase name="should fail when not connected" classname="io.supernode.blockchain.BobcoinBridgeTest$ProviderRegistrationTests" time="0.003"/>
-  <testcase name="should register storage provider" classname="io.supernode.blockchain.BobcoinBridgeTest$ProviderRegistrationTests" time="0.107"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Wallet &amp; Balance" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:54:50" hostname="devbox" time="0.108">
-  <properties/>
-  <testcase name="should get account balance" classname="io.supernode.blockchain.BobcoinBridgeTest$WalletTests" time="0.108"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

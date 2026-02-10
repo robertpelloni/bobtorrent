@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Storage Deals &amp; Tracking" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:54:50" hostname="devbox" time="0.21">
-  <properties/>
-  <testcase name="should get deal status" classname="io.supernode.blockchain.BobcoinBridgeTest$StorageDealTests" time="0.104"/>
-  <testcase name="should create storage deal" classname="io.supernode.blockchain.BobcoinBridgeTest$StorageDealTests" time="0.105"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

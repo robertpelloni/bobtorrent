@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Stats" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:09" hostname="devbox" time="0.02">
-  <properties/>
-  <testcase name="should return stats" classname="io.supernode.network.transport.ClearnetTransportTest$StatsTests" time="0.018"/>
-  <testcase name="should return stats before start" classname="io.supernode.network.transport.ClearnetTransportTest$StatsTests" time="0.002"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

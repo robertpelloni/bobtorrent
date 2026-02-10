@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Concurrency and Thread Safety" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:27" hostname="devbox" time="0.235">
-  <properties/>
-  <testcase name="should be thread-safe for concurrent encoding" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$ConcurrencyTests" time="0.117"/>
-  <testcase name="should be thread-safe for concurrent repair" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$ConcurrencyTests" time="0.093"/>
-  <testcase name="should be thread-safe for concurrent decoding" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$ConcurrencyTests" time="0.021"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

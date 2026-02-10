@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Lookup" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:54:54" hostname="devbox" time="1.412">
-  <properties/>
-  <testcase name="should complete lookup" classname="io.supernode.network.DHTDiscoveryTest$LookupTests" time="0.306"/>
-  <testcase name="should find peers with timeout" classname="io.supernode.network.DHTDiscoveryTest$LookupTests" time="1.105"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

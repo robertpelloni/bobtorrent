@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Record Equality" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-09T01:55:09" hostname="devbox" time="0.026">
-  <properties/>
-  <testcase name="should not be equal for different types" classname="io.supernode.network.transport.TransportAddressTest$EqualityTests" time="0.022"/>
-  <testcase name="should not be equal for different values" classname="io.supernode.network.transport.TransportAddressTest$EqualityTests" time="0.0"/>
-  <testcase name="should be equal for same values" classname="io.supernode.network.transport.TransportAddressTest$EqualityTests" time="0.002"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
