@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2024-05-24
+### Added
+-   **Predictive Readahead (Node.js)**: Optimized streaming performance by pre-fetching subsequent chunks (`readahead` option in `createReadStream`).
+-   **Java Wallet Persistence**: `supernode-java` now attempts to load wallet address from `wallet.json`, persisting identity across restarts.
+-   **Documentation**: Comprehensive ROADMAP.md and TODO.md for Phase 2 development.
+-   **Vision Alignment**: Updated VISION.md to reflect the completion of Phase 1.
+
 ## [2.0.0] - 2024-05-24
 ### Added
 -   **Real Solana Wallet (Node.js)**: Implemented full wallet functionality using `@solana/web3.js` in the Reference Client.

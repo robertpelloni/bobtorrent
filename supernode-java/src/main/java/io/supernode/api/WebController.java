@@ -322,14 +322,25 @@ public class WebController {
     }
 
     private void handleWallet(ChannelHandlerContext ctx) {
-        // In a full implementation, we would query BobcoinBridge here.
-        // Since BobcoinBridge is not yet fully exposed/integrated in UnifiedNetwork for access,
-        // we will stick to the mock or expose it if time permits.
-        // For v1.8.0+, we can enhance this to read from a real wallet file if present.
-
         ObjectNode wallet = mapper.createObjectNode();
-        wallet.put("address", "0xSupernodeWalletJava"); // TODO: Load from keypair
-        wallet.put("balance", 1000);
+
+        // Simple file-based wallet persistence for reference implementation
+        String address = "0xSupernodeWalletJava";
+        java.io.File walletFile = new java.io.File("wallet.json");
+
+        if (walletFile.exists()) {
+            try {
+                ObjectNode saved = (ObjectNode) mapper.readTree(walletFile);
+                if (saved.has("publicKey")) {
+                    address = saved.get("publicKey").asText();
+                }
+            } catch (Exception e) {
+                // Ignore load error
+            }
+        }
+
+        wallet.put("address", address);
+        wallet.put("balance", 1000); // Mock balance for Java Supernode (Bridge integration is next phase)
         wallet.put("pending", 50);
         wallet.putArray("transactions");
 

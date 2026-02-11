@@ -103,6 +103,7 @@ export async function reassemble (fileEntry, getBlobFn) {
 export function createReadStream (fileEntry, getBlobFn, options = {}) {
   const start = options.start || 0
   const end = options.end || (fileEntry.size - 1)
+  const readahead = options.readahead || 3 // Number of chunks to pre-fetch
 
   let cursor = start
   let currentChunkIndex = 0
@@ -128,6 +129,19 @@ export function createReadStream (fileEntry, getBlobFn, options = {}) {
       if (currentChunkIndex >= fileEntry.chunks.length) {
         this.push(null)
         return
+      }
+
+      // Trigger predictive readahead
+      for (let i = 1; i <= readahead; i++) {
+        const nextIndex = currentChunkIndex + i
+        if (nextIndex < fileEntry.chunks.length) {
+          const nextChunk = fileEntry.chunks[nextIndex]
+          // We fire-and-forget the fetch request. The underlying blob store/network logic
+          // should handle deduplication of in-flight requests.
+          // Since getBlobFn is async, we don't await it here to avoid blocking the current read.
+          // This relies on getBlobFn caching the result or the network layer handling it.
+          getBlobFn(nextChunk.blobId).catch(() => {})
+        }
       }
 
       const chunkMeta = fileEntry.chunks[currentChunkIndex]
