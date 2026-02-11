@@ -1,5 +1,0 @@
-2026-02-08T04:31:20.701Z HTTP tracker: http://localhost:8000/announce
-2026-02-08T04:31:20.703Z UDP tracker: udp://0.0.0.0:8000
-2026-02-08T04:31:20.703Z UDP6 tracker: udp://localhost:8000
-2026-02-08T04:31:20.703Z WebSocket tracker: ws://localhost:8000
-2026-02-08T04:31:20.703Z Tracker stats: http://localhost:8000/stats

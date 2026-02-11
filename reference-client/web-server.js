@@ -10,6 +10,7 @@ import { BlobNetwork } from './lib/blob-network.js'
 import { BlobTracker } from './lib/blob-tracker.js'
 import { SubscriptionStore } from './lib/subscription-store.js'
 import { createChannel } from './lib/channels.js'
+import { WalletManager } from './lib/wallet.js'
 import DHT from 'bittorrent-dht'
 import Client from '../index.js'
 import { createRequire } from 'module'
@@ -37,6 +38,7 @@ let blobClient = null
 let channel = null
 let subscriptionStore = new SubscriptionStore(SUBSCRIPTIONS_FILE)
 let filesIndex = [] // In-memory file index (persist to file in future)
+let walletManager = new WalletManager(STORAGE_DIR)
 
 // Initialize Network (Lazy)
 async function initNetwork () {
@@ -57,6 +59,14 @@ async function initNetwork () {
 
   // Load subscriptions
   subscriptionStore.load()
+
+  // Load Wallet
+  if (!walletManager.load()) {
+      walletManager.create()
+      console.log('Created new wallet:', walletManager.getAddress())
+  } else {
+      console.log('Loaded wallet:', walletManager.getAddress())
+  }
 
   // Load files index (mock persistence)
   if (fs.existsSync(path.join(STORAGE_DIR, 'files.json'))) {
@@ -205,11 +215,11 @@ async function handleApi (req, res) {
     }
 
     if (route === 'wallet') {
-        // Mock wallet data for Reference Client (Supernode will override this)
+        const balance = await walletManager.refreshBalance()
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({
-            address: '0xReferenceClientWallet',
-            balance: 0,
+            address: walletManager.getAddress(),
+            balance: balance,
             pending: 0,
             transactions: []
         }))
@@ -391,6 +401,19 @@ async function handleApi (req, res) {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ status: 'published', manifest }))
       return
+    }
+
+    if (route === 'wallet/airdrop') {
+        try {
+            await walletManager.requestAirdrop()
+            const balance = await walletManager.refreshBalance()
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ status: 'success', balance }))
+        } catch (err) {
+            res.writeHead(500)
+            res.end(JSON.stringify({ error: err.message }))
+        }
+        return
     }
 
     if (route === 'subscribe') {

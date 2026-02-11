@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2024-05-24
+### Added
+-   **Real Solana Wallet (Node.js)**: Implemented full wallet functionality using `@solana/web3.js` in the Reference Client.
+    -   Auto-generation of keypairs (`wallet.json`).
+    -   Real balance checking on Solana Devnet.
+    -   "Request Airdrop" feature in Web UI to fund the wallet for testing.
+-   **Wallet API**: New endpoints `/api/wallet` (live data) and `/api/wallet/airdrop`.
+
 ## [1.9.0] - 2024-05-24
 ### Added
 -   **Real DHT Integration in API**: The `/api/channels/browse` endpoint now queries the live `DHTDiscovery` component for peers, replacing the previous mock simulation.

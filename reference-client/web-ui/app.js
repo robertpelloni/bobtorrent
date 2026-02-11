@@ -210,13 +210,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Wallet
+    const btnAirdrop = document.getElementById('btn-airdrop');
+    if (btnAirdrop) {
+        btnAirdrop.addEventListener('click', async () => {
+            btnAirdrop.disabled = true;
+            btnAirdrop.textContent = 'Requesting...';
+            try {
+                const res = await apiFetch('/api/wallet/airdrop', { method: 'POST' });
+                if (!res.ok) throw new Error('Airdrop failed');
+                await updateWallet();
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                btnAirdrop.disabled = false;
+                btnAirdrop.textContent = 'Request Airdrop';
+            }
+        });
+    }
+
     async function updateWallet() {
         try {
             const res = await apiFetch('/api/wallet');
             const data = await res.json();
 
             document.getElementById('wallet-address').value = data.address;
-            document.getElementById('wallet-balance').textContent = data.balance + ' BOB';
+            document.getElementById('wallet-balance').textContent = data.balance + ' SOL (Devnet)';
             document.getElementById('wallet-pending').textContent = data.pending + ' BOB';
 
             const table = document.getElementById('wallet-txs').querySelector('tbody');
