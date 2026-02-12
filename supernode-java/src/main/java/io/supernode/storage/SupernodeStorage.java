@@ -65,6 +65,8 @@ public class SupernodeStorage {
         this.isoForge = new ISOForge();
         this.manifestStore = new ConcurrentHashMap<>();
         
+        loadManifests();
+
         this.enableErasure = options.enableErasure;
         if (enableErasure) {
             this.erasureCoder = new ErasureCoder(options.dataShards, options.parityShards);
@@ -499,8 +501,45 @@ public class SupernodeStorage {
     
     public void storeManifest(String fileId, byte[] encryptedManifest) {
         manifestStore.put(fileId, encryptedManifest);
+        saveManifest(fileId, encryptedManifest);
     }
     
+    private void saveManifest(String fileId, byte[] data) {
+        try {
+            java.nio.file.Path dir = java.nio.file.Paths.get("supernode_storage", "manifests");
+            if (!java.nio.file.Files.exists(dir)) java.nio.file.Files.createDirectories(dir);
+            java.nio.file.Files.write(dir.resolve(fileId.replace(":", "_")), data);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadManifests() {
+        try {
+            java.nio.file.Path dir = java.nio.file.Paths.get("supernode_storage", "manifests");
+            if (java.nio.file.Files.exists(dir)) {
+                try (java.util.stream.Stream<java.nio.file.Path> stream = java.nio.file.Files.list(dir)) {
+                    stream.forEach(path -> {
+                        try {
+                            String filename = path.getFileName().toString();
+                            // Simple heuristic to recover ID (replace first _ with :)
+                            // Ideally we store ID inside file or use better encoding
+                            String fileId = filename.replace("_", ":");
+                            if (!fileId.startsWith("sha256:")) fileId = "sha256:" + filename;
+
+                            byte[] data = java.nio.file.Files.readAllBytes(path);
+                            manifestStore.put(fileId, data);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public StorageStats stats() {
         BlobStore.BlobStoreStats blobStats = blobStore.stats();
         ErasureStats erasureStats = null;

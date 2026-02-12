@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2024-05-24
+### Added
+-   **Java Metadata Persistence**: Implemented file-based persistence for manifests in `SupernodeStorage`. Manifests are now saved to `supernode_storage/manifests/`, ensuring file listings survive node restarts.
+-   **Persistence Verification**: Confirmed that both blobs (via `FileBlobStore`) and metadata (via `manifestStore`) are persisted and reloaded correctly.
+
 ## [2.1.0] - 2024-05-24
 ### Added
 -   **Predictive Readahead (Node.js)**: Optimized streaming performance by pre-fetching subsequent chunks (`readahead` option in `createReadStream`).

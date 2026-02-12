@@ -1,7 +1,7 @@
 {
   "name": "bobtorrent",
   "description": "Simple, robust, BitTorrent tracker (client & server) implementation (Bobtorrent Fork)",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "author": {
     "name": "WebTorrent LLC",
     "email": "feross@webtorrent.io",

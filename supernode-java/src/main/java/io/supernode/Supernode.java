@@ -16,7 +16,11 @@ public class Supernode {
             }
 
             UnifiedNetwork.UnifiedNetworkOptions options = UnifiedNetwork.UnifiedNetworkOptions.allNetworks();
-            // Configure storage options here if needed (e.g. persistent blob store path)
+
+            // Enable persistence
+            java.io.File storageDir = new java.io.File("supernode_storage");
+            if (!storageDir.exists()) storageDir.mkdirs();
+            options.blobStore = new io.supernode.storage.FileBlobStore(storageDir.toPath());
 
             UnifiedNetwork network = new UnifiedNetwork(options);
             network.start().join();
