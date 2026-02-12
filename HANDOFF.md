@@ -1,44 +1,64 @@
-# Handoff Note
+# Comprehensive Handoff Report
 
 **Date**: 2026-02-08
-**Version**: 11.2.4
-**State**: Stable, Feature Complete (Reference Client Web UI)
+**Project**: Megatorrent / Bobtorrent
+**Current Version**: 2.2.0 (Reference Client), 0.1.0-SNAPSHOT (Java Supernode)
 
-## Achievements in this Session
-1.  **Web UI Implementation**:
-    -   Built a full-featured Web UI for the Node.js Reference Client.
-    -   Implemented tabs: Dashboard, Identity, Publish, Discovery, Subscribe, Files, Downloads.
-    -   Backend: `reference-client/web-server.js` (Secure, Localhost-only).
-    -   Frontend: `reference-client/web-ui/` (HTML/JS/CSS).
+## 🏗️ System Architecture
 
-2.  **qBittorrent Integration**:
-    -   Created C++ stubs (`MegatorrentController`) and Frontend files (`megatorrent.html`).
-    -   Stored in `cpp-reference/` to avoid dirtying the submodule.
-    -   Provided `install_webui_patches.sh` for easy application.
+The project consists of three main components operating in a monorepo:
 
-3.  **Documentation & Governance**:
-    -   Consolidated instructions into `docs/UNIVERSAL_LLM_INSTRUCTIONS.md`.
-    -   Updated `VISION.md`, `DASHBOARD.md`, and `CHANGELOG.md`.
-    -   Created `reference-client/MANUAL.md`.
+1.  **Reference Client (Node.js)**:
+    *   **Location**: `reference-client/` (uses root `package.json` dependencies).
+    *   **Role**: Lightweight client for end-users. Implements the core protocol (ingest, publish, subscribe, stream).
+    *   **Key Features**:
+        *   **Web UI**: Full-featured SPA served at `http://127.0.0.1:3000` (`web-server.js`).
+        *   **Streaming**: Supports HTTP Range requests for video playback with **Predictive Readahead**.
+        *   **Wallet**: Integrated Solana wallet (`@solana/web3.js`) for devnet airdrops and balance checks.
+        *   **Encryption**: AES-256-GCM (Node `crypto`) compatible with Java `MuxEngine`.
 
-4.  **Security Fixes**:
-    -   Patched Path Traversal in `web-server.js`.
-    -   Removed wildcard CORS to prevent CSRF.
-    -   Fixed `lru-cache` vs `lru` dependency issue in `server.js`.
+2.  **Supernode (Java)**:
+    *   **Location**: `supernode-java/` (Gradle project).
+    *   **Role**: High-performance, persistent storage node.
+    *   **Key Features**:
+        *   **Unified Network**: Integrates DHT (`DHTDiscovery`), Manifests (`ManifestDistributor`), and Storage (`SupernodeStorage`).
+        *   **Persistence**: Stores blobs in `supernode_storage/` and manifests in `supernode_storage/manifests/`.
+        *   **Web API**: Netty-based HTTP server (`WebController`) that mirrors the Reference Client API (`/api/*`), allowing the Node.js Web UI to control the Java backend.
+        *   **Status**: Standalone application (`io.supernode.Supernode`).
 
-## Next Steps
-1.  **Cross-Client Compatibility**:
-    -   Ensure the Java Supernode and Node.js Client can exchange blobs seamlessly.
-    -   Verify DHT interoperability.
+3.  **qBittorrent Integration (C++)**:
+    *   **Location**: `cpp-reference/` and `qbittorrent/` submodule.
+    *   **Role**: Native integration into the popular BitTorrent client.
+    *   **Status**: Reference implementation files provided (`MegatorrentController`), but not fully compiled/linked in the submodule to avoid dirtying the tree.
 
-2.  **Streaming Erasure Coding**:
-    -   Finish implementing streaming EC in the Java layer (started in previous sessions).
+## 🚀 Recent Achievements (v2.0.0 - v2.2.0)
 
-3.  **Real-World Testing**:
-    -   Deploy on a public testnet.
-    -   Test NAT traversal and performance.
+*   **UI/UX**: Launched a comprehensive Web UI covering all major features (Identity, Files, Wallet).
+*   **Streaming**: Implemented "Click-to-Play" video streaming with intelligent buffering (readahead).
+*   **Blockchain**: Integrated real Solana Devnet wallet management.
+*   **Persistence**: Upgraded Java Supernode to persist data and metadata across restarts.
+*   **Parity**: Achieved API parity between Node.js and Java backends.
 
-## Important Files
--   `reference-client/web-server.js`: The backend for the UI.
--   `cpp-reference/`: The source of truth for C++ changes.
--   `docs/UNIVERSAL_LLM_INSTRUCTIONS.md`: The guide for all future agents.
+## ⚠️ Known Issues & Action Items
+
+1.  **Dependency Mismatch**:
+    *   `server.js` imports `lru` (v3+ syntax) but `package.json` might be missing the explicit dependency (relying on `lru-cache` or hoisted deps). **Action**: Verify and fix `package.json` to include `lru` if needed.
+    *   `reference-client/lib/wallet.js` uses `@solana/web3.js`. **Action**: Ensure this is listed in `package.json`.
+
+2.  **Java Ingest Interoperability**:
+    *   The Java `WebController` `/api/ingest` endpoint expects raw bytes. The Web UI currently sends a JSON object `{ filePath: "..." }`. **Action**: Update Java controller to support file path ingest OR update UI to upload bytes (multipart).
+
+3.  **Repo Hygiene**:
+    *   Previous commits may have included build artifacts. **Action**: Ensure `.gitignore` is strict and artifacts are removed.
+
+## 🗺️ Roadmap Priorities (Phase 2)
+
+1.  **Optimization**: Refine the predictive readahead algorithm (currently linear 3-chunk fetch).
+2.  **Reliability**: Implement "Circuit Breakers" in Java to ban bad peers.
+3.  **Cluster Management**: Automated discovery of other Supernodes.
+
+## 📝 Developer Instructions
+
+*   **Build Java**: `cd supernode-java && ./gradlew build` (Requires Java 21).
+*   **Run Node Client**: `node reference-client/web-server.js`
+*   **Docs**: See `docs/UNIVERSAL_LLM_INSTRUCTIONS.md` for agent protocols.
