@@ -25,7 +25,7 @@ export class BlobNetwork extends EventEmitter {
     this.port = options.port || 0
     this.peerId = options.peerId || crypto.randomBytes(20).toString('hex')
     this.maxConnections = options.maxConnections || 50
-    
+
     this.server = null
     this.peers = new Map()
     this.pendingRequests = new Map()
@@ -36,15 +36,15 @@ export class BlobNetwork extends EventEmitter {
   async listen (port = this.port) {
     return new Promise((resolve, reject) => {
       this.server = new WebSocketServer({ port })
-      
+
       this.server.on('listening', () => {
         this.port = this.server.address().port
         this.emit('listening', { port: this.port })
         resolve(this.port)
       })
-      
+
       this.server.on('error', reject)
-      
+
       this.server.on('connection', (socket, req) => {
         const addr = req.socket.remoteAddress + ':' + req.socket.remotePort
         this._handleIncoming(socket, addr)
@@ -57,15 +57,15 @@ export class BlobNetwork extends EventEmitter {
       if (this.peers.has(address)) {
         return resolve(this.peers.get(address))
       }
-      
+
       const socket = new WebSocket(address)
-      
+
       socket.on('open', () => {
         const peer = this._setupPeer(socket, address, false)
         this._sendHandshake(peer)
         resolve(peer)
       })
-      
+
       socket.on('error', reject)
     })
   }
@@ -75,7 +75,7 @@ export class BlobNetwork extends EventEmitter {
       socket.close()
       return
     }
-    
+
     const peer = this._setupPeer(socket, address, true)
     this._sendHandshake(peer)
   }
@@ -90,11 +90,11 @@ export class BlobNetwork extends EventEmitter {
       haveBlobs: new Set(),
       pendingRequests: new Map()
     }
-    
+
     socket.on('message', (data) => this._handleMessage(peer, data))
     socket.on('close', () => this._handleDisconnect(peer))
     socket.on('error', () => this._handleDisconnect(peer))
-    
+
     this.peers.set(address, peer)
     return peer
   }
@@ -117,12 +117,12 @@ export class BlobNetwork extends EventEmitter {
 
   _sendBinary (peer, type, requestId, blobId, data) {
     if (peer.socket.readyState !== WebSocket.OPEN) return
-    
+
     const header = Buffer.alloc(1 + 4 + 32)
     header.writeUInt8(type, 0)
     header.writeUInt32BE(requestId, 1)
     Buffer.from(blobId, 'hex').copy(header, 5, 0, 32)
-    
+
     const packet = Buffer.concat([header, data || Buffer.alloc(0)])
     peer.socket.send(packet)
   }
@@ -132,14 +132,14 @@ export class BlobNetwork extends EventEmitter {
       this._handleBinaryMessage(peer, data)
       return
     }
-    
+
     let msg
     try {
       msg = JSON.parse(data.toString())
     } catch {
       return
     }
-    
+
     switch (msg.type) {
       case MSG.HANDSHAKE:
         this._handleHandshake(peer, msg)
@@ -167,7 +167,7 @@ export class BlobNetwork extends EventEmitter {
     const requestId = data.readUInt32BE(1)
     const blobId = data.slice(5, 37).toString('hex')
     const payload = data.slice(37)
-    
+
     if (type === MSG.RESPONSE) {
       this._handleResponse(peer, requestId, blobId, payload)
     }
@@ -178,16 +178,16 @@ export class BlobNetwork extends EventEmitter {
       peer.socket.close()
       return
     }
-    
+
     peer.peerId = msg.peerId
     peer.handshakeComplete = true
-    
+
     this._send(peer, {
       type: MSG.HANDSHAKE_ACK,
       version: PROTOCOL_VERSION,
       peerId: this.peerId
     })
-    
+
     this.emit('peer', { address: peer.address, peerId: peer.peerId })
     this._announceHaves(peer)
   }
@@ -208,18 +208,18 @@ export class BlobNetwork extends EventEmitter {
 
   _handleRequest (peer, msg) {
     const { requestId, blobId } = msg
-    
+
     if (!this.store.has(blobId)) {
       this._send(peer, { type: MSG.NOT_FOUND, requestId, blobId })
       return
     }
-    
+
     const data = this.store.get(blobId)
     if (!data) {
       this._send(peer, { type: MSG.NOT_FOUND, requestId, blobId })
       return
     }
-    
+
     this._sendBinary(peer, MSG.RESPONSE, requestId, blobId, data)
     this.emit('upload', { blobId, size: data.length, peer: peer.address })
   }
@@ -227,16 +227,16 @@ export class BlobNetwork extends EventEmitter {
   _handleResponse (peer, requestId, blobId, data) {
     const pending = this.pendingRequests.get(requestId)
     if (!pending) return
-    
+
     clearTimeout(pending.timeout)
     this.pendingRequests.delete(requestId)
-    
+
     const hash = crypto.createHash('sha256').update(data).digest('hex')
     if (hash !== blobId) {
       pending.reject(new Error('Blob hash mismatch'))
       return
     }
-    
+
     this.store.put(blobId, data)
     pending.resolve(data)
     this.emit('download', { blobId, size: data.length, peer: peer.address })
@@ -245,18 +245,18 @@ export class BlobNetwork extends EventEmitter {
   _handleHave (peer, msg) {
     const { blobIds } = msg
     if (!Array.isArray(blobIds)) return
-    
+
     for (const blobId of blobIds) {
       peer.haveBlobs.add(blobId)
     }
-    
+
     this.emit('have', { peer: peer.address, blobIds })
   }
 
   _handleWant (peer, msg) {
     const { blobIds } = msg
     if (!Array.isArray(blobIds)) return
-    
+
     const have = blobIds.filter(id => this.store.has(id))
     if (have.length > 0) {
       this._send(peer, { type: MSG.HAVE, blobIds: have })
@@ -275,13 +275,13 @@ export class BlobNetwork extends EventEmitter {
 
   _handleDisconnect (peer) {
     this.peers.delete(peer.address)
-    
+
     for (const [reqId, pending] of peer.pendingRequests) {
       clearTimeout(pending.timeout)
       this.pendingRequests.delete(reqId)
       pending.reject(new Error('Peer disconnected'))
     }
-    
+
     this.emit('disconnect', { address: peer.address, peerId: peer.peerId })
   }
 
@@ -289,19 +289,19 @@ export class BlobNetwork extends EventEmitter {
     if (this.store.has(blobId)) {
       return this.store.get(blobId)
     }
-    
+
     const candidates = preferredPeers || this._findPeersWithBlob(blobId)
-    
+
     for (const peer of candidates) {
       if (!peer.handshakeComplete) continue
-      
+
       try {
         return await this._requestFromPeer(peer, blobId)
       } catch {
         continue
       }
     }
-    
+
     throw new Error(`Blob ${blobId} not available from any peer`)
   }
 
@@ -320,14 +320,14 @@ export class BlobNetwork extends EventEmitter {
       if (this.pendingRequests.size >= MAX_CONCURRENT_REQUESTS) {
         return reject(new Error('Too many concurrent requests'))
       }
-      
+
       const requestId = ++this.requestId
-      
+
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(requestId)
         reject(new Error('Request timeout'))
       }, REQUEST_TIMEOUT_MS)
-      
+
       this.pendingRequests.set(requestId, {
         blobId,
         peer,
@@ -335,9 +335,9 @@ export class BlobNetwork extends EventEmitter {
         reject,
         timeout
       })
-      
+
       peer.pendingRequests.set(requestId, this.pendingRequests.get(requestId))
-      
+
       this._send(peer, {
         type: MSG.REQUEST,
         requestId,
@@ -374,22 +374,22 @@ export class BlobNetwork extends EventEmitter {
 
   destroy () {
     this._destroyed = true
-    
+
     for (const peer of this.peers.values()) {
       peer.socket.close()
     }
     this.peers.clear()
-    
+
     for (const [, pending] of this.pendingRequests) {
       clearTimeout(pending.timeout)
       pending.reject(new Error('Network destroyed'))
     }
     this.pendingRequests.clear()
-    
+
     if (this.server) {
       this.server.close()
     }
-    
+
     this.emit('destroyed')
   }
 }

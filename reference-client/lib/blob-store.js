@@ -72,18 +72,18 @@ export class BlobStore extends EventEmitter {
 
   get (blobId) {
     if (!this.has(blobId)) return null
-    
+
     const blobPath = this._blobPath(blobId)
     if (!fs.existsSync(blobPath)) {
       this.index.delete(blobId)
       this._saveIndex()
       return null
     }
-    
+
     const meta = this.index.get(blobId)
     meta.lastAccess = Date.now()
     this.index.set(blobId, meta)
-    
+
     return fs.readFileSync(blobPath)
   }
 
@@ -92,18 +92,18 @@ export class BlobStore extends EventEmitter {
     if (hash !== blobId) {
       throw new Error(`Blob hash mismatch: expected ${blobId}, got ${hash}`)
     }
-    
+
     if (this.has(blobId)) {
       return false
     }
-    
+
     while (this.currentSize + buffer.length > this.maxSize) {
       if (!this._evictOne()) break
     }
-    
+
     const blobPath = this._blobPath(blobId)
     fs.writeFileSync(blobPath, buffer)
-    
+
     this.index.set(blobId, {
       size: buffer.length,
       addedAt: Date.now(),
@@ -111,7 +111,7 @@ export class BlobStore extends EventEmitter {
     })
     this.currentSize += buffer.length
     this._saveIndex()
-    
+
     this.emit('added', { blobId, size: buffer.length })
     return true
   }
@@ -119,7 +119,7 @@ export class BlobStore extends EventEmitter {
   _evictOne () {
     let oldest = null
     let oldestTime = Infinity
-    
+
     for (const [blobId, meta] of this.index) {
       if (meta.pinned) continue
       if (meta.lastAccess < oldestTime) {
@@ -127,27 +127,27 @@ export class BlobStore extends EventEmitter {
         oldest = blobId
       }
     }
-    
+
     if (!oldest) return false
-    
+
     this.delete(oldest)
     return true
   }
 
   delete (blobId) {
     if (!this.has(blobId)) return false
-    
+
     const meta = this.index.get(blobId)
     const blobPath = this._blobPath(blobId)
-    
+
     if (fs.existsSync(blobPath)) {
       fs.unlinkSync(blobPath)
     }
-    
+
     this.currentSize -= meta.size
     this.index.delete(blobId)
     this._saveIndex()
-    
+
     this.emit('removed', { blobId })
     return true
   }

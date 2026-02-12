@@ -1,0 +1,6 @@
+Initializing network...
+Web UI running at http://127.0.0.1:3000
+Storage: ./storage
+Tracker: ws://localhost:8000
+Blob network listening on port 44863
+Loaded wallet: 9vcNDWmwUgWtViEUaAWPzWbw2oXhPsHtSyi7Nvk5W9Hi

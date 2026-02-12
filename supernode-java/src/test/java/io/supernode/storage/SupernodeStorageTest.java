@@ -21,6 +21,19 @@ class SupernodeStorageTest {
     
     @BeforeEach
     void setUp() {
+        // Clean up manifest storage from previous runs
+        try {
+            java.nio.file.Path dir = java.nio.file.Paths.get("supernode_storage", "manifests");
+            if (java.nio.file.Files.exists(dir)) {
+                java.nio.file.Files.walk(dir)
+                    .sorted(java.util.Comparator.reverseOrder())
+                    .map(java.nio.file.Path::toFile)
+                    .forEach(java.io.File::delete);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         blobStore = new InMemoryBlobStore();
         masterKey = new byte[32];
         Arrays.fill(masterKey, (byte) 0x42);

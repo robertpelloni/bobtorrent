@@ -122,6 +122,43 @@ public class WebController {
         json.put("dht", "ready");
         json.put("subscriptions", 0);
 
+        // Add detailed network stats
+        ObjectNode networkDetails = json.putObject("networkDetails");
+        networkDetails.put("peerCount", stats.peerCount());
+
+        ObjectNode transports = networkDetails.putObject("transports");
+        stats.transport().byTransport().forEach((type, tStats) -> {
+            ObjectNode t = transports.putObject(type.toString());
+            t.put("connectionsIn", tStats.connectionsIn());
+            t.put("connectionsOut", tStats.connectionsOut());
+            t.put("bytesReceived", tStats.bytesReceived());
+            t.put("bytesSent", tStats.bytesSent());
+            t.put("errors", tStats.errors());
+
+            // Add address if available
+            io.supernode.network.transport.TransportAddress addr = stats.addresses().get(type);
+            if (addr != null) {
+                t.put("address", addr.toString());
+                t.put("status", "Running");
+            } else {
+                t.put("status", "Stopped");
+            }
+        });
+
+        // Add detailed storage stats
+        ObjectNode storageDetails = json.putObject("storageDetails");
+        io.supernode.storage.SupernodeStorage.StorageStats sStats = stats.storage();
+        storageDetails.put("isoSize", sStats.isoSize());
+        storageDetails.put("totalFilesIngested", sStats.totalFilesIngested());
+        storageDetails.put("totalBytesIngested", sStats.totalBytesIngested());
+
+        if (sStats.erasure() != null) {
+            ObjectNode erasure = storageDetails.putObject("erasure");
+            erasure.put("dataShards", sStats.erasure().dataShards());
+            erasure.put("parityShards", sStats.erasure().parityShards());
+            erasure.put("totalShards", sStats.erasure().totalShards());
+        }
+
         sendJson(ctx, json);
     }
 

@@ -179,14 +179,14 @@ export class Channel extends EventEmitter {
 
   destroy () {
     this._destroyed = true
-    
+
     for (const [, sub] of this.subscriptions) {
       sub.destroy()
     }
     this.subscriptions.clear()
     this.filters.clear()
     this.registry.destroy()
-    
+
     this.emit('destroyed')
   }
 }

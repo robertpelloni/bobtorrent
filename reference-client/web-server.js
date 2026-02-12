@@ -4,7 +4,7 @@ import http from 'http'
 import { fileURLToPath } from 'url'
 import { generateKeypair } from './lib/crypto.js'
 import { createManifest } from './lib/manifest.js'
-import { ingest, reassemble, createBlobClient, createReadStream } from './lib/storage.js'
+import { ingest, createBlobClient, createReadStream } from './lib/storage.js'
 import { BlobStore } from './lib/blob-store.js'
 import { BlobNetwork } from './lib/blob-network.js'
 import { BlobTracker } from './lib/blob-tracker.js'
@@ -31,14 +31,13 @@ if (!fs.existsSync(STORAGE_DIR)) {
 
 // State
 let dht = null
-let blobStore = new BlobStore(STORAGE_DIR)
+const blobStore = new BlobStore(STORAGE_DIR)
 let blobNetwork = null
 let blobTracker = null
-let blobClient = null
 let channel = null
-let subscriptionStore = new SubscriptionStore(SUBSCRIPTIONS_FILE)
+const subscriptionStore = new SubscriptionStore(SUBSCRIPTIONS_FILE)
 let filesIndex = [] // In-memory file index (persist to file in future)
-let walletManager = new WalletManager(STORAGE_DIR)
+const walletManager = new WalletManager(STORAGE_DIR)
 
 // Initialize Network (Lazy)
 async function initNetwork () {
@@ -55,24 +54,24 @@ async function initNetwork () {
   await blobNetwork.listen()
   console.log(`Blob network listening on port ${blobNetwork.port}`)
 
-  blobClient = createBlobClient(blobStore, blobNetwork, blobTracker)
+  createBlobClient(blobStore, blobNetwork, blobTracker)
 
   // Load subscriptions
   subscriptionStore.load()
 
   // Load Wallet
   if (!walletManager.load()) {
-      walletManager.create()
-      console.log('Created new wallet:', walletManager.getAddress())
+    walletManager.create()
+    console.log('Created new wallet:', walletManager.getAddress())
   } else {
-      console.log('Loaded wallet:', walletManager.getAddress())
+    console.log('Loaded wallet:', walletManager.getAddress())
   }
 
   // Load files index (mock persistence)
   if (fs.existsSync(path.join(STORAGE_DIR, 'files.json'))) {
-      try {
-          filesIndex = JSON.parse(fs.readFileSync(path.join(STORAGE_DIR, 'files.json')))
-      } catch (e) { console.error('Failed to load files index', e) }
+    try {
+      filesIndex = JSON.parse(fs.readFileSync(path.join(STORAGE_DIR, 'files.json')))
+    } catch (e) { console.error('Failed to load files index', e) }
   }
 }
 
@@ -86,8 +85,8 @@ const server = http.createServer(async (req, res) => {
     try {
       // Proxy to Remote Supernode if configured
       if (req.headers['x-target-node'] && req.headers['x-target-node'] !== 'local') {
-          await proxyToSupernode(req, res, req.headers['x-target-node'])
-          return
+        await proxyToSupernode(req, res, req.headers['x-target-node'])
+        return
       }
       await handleApi(req, res)
     } catch (err) {
@@ -100,16 +99,16 @@ const server = http.createServer(async (req, res) => {
 
   // Static Files
   // Security: Sanitize path to prevent traversal
-  const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = parsedUrl.pathname;
-  const safeUrl = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
-  let filePath = path.join(__dirname, 'web-ui', safeUrl === '/' || safeUrl === '.' ? 'index.html' : safeUrl);
+  const parsedUrl = new URL(req.url, `http://${req.headers.host}`)
+  const pathname = parsedUrl.pathname
+  const safeUrl = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '')
+  const filePath = path.join(__dirname, 'web-ui', safeUrl === '/' || safeUrl === '.' ? 'index.html' : safeUrl)
 
   // Security: Ensure we stay within web-ui directory
   if (!filePath.startsWith(path.join(__dirname, 'web-ui'))) {
-    res.writeHead(403);
-    res.end('Forbidden');
-    return;
+    res.writeHead(403)
+    res.end('Forbidden')
+    return
   }
 
   const extname = path.extname(filePath)
@@ -139,29 +138,29 @@ const server = http.createServer(async (req, res) => {
   })
 })
 
-async function proxyToSupernode(req, res, targetUrl) {
-    // Simple proxy logic
-    const url = new URL(req.url, targetUrl) // e.g. http://supernode:8080/api/...
-    const options = {
-        method: req.method,
-        headers: { ...req.headers, host: new URL(targetUrl).host }
-    }
+async function proxyToSupernode (req, res, targetUrl) {
+  // Simple proxy logic
+  const url = new URL(req.url, targetUrl) // e.g. http://supernode:8080/api/...
+  const options = {
+    method: req.method,
+    headers: { ...req.headers, host: new URL(targetUrl).host }
+  }
 
-    return new Promise((resolve, reject) => {
-        const proxyReq = http.request(url, options, (proxyRes) => {
-            res.writeHead(proxyRes.statusCode, proxyRes.headers)
-            proxyRes.pipe(res)
-            proxyRes.on('end', resolve)
-        })
-
-        proxyReq.on('error', (err) => {
-            res.writeHead(502, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ error: 'Supernode Proxy Error: ' + err.message }))
-            resolve()
-        })
-
-        req.pipe(proxyReq)
+  return new Promise((resolve, reject) => {
+    const proxyReq = http.request(url, options, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, proxyRes.headers)
+      proxyRes.pipe(res)
+      proxyRes.on('end', resolve)
     })
+
+    proxyReq.on('error', (err) => {
+      res.writeHead(502, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'Supernode Proxy Error: ' + err.message }))
+      resolve()
+    })
+
+    req.pipe(proxyReq)
+  })
 }
 
 async function handleApi (req, res) {
@@ -182,7 +181,36 @@ async function handleApi (req, res) {
           max: stats.maxSize,
           utilization: stats.utilization
         },
-        subscriptions: subscriptionStore.getAllSubscriptions().length
+        subscriptions: subscriptionStore.getAllSubscriptions().length,
+        networkDetails: {
+          peerCount: dht ? dht.nodes.toArray().length : 0,
+          transports: {
+            'DHT (UDP)': {
+              status: dht ? 'Running' : 'Initializing',
+              address: `0.0.0.0:${blobTracker ? blobTracker.port : 6881}`,
+              connectionsIn: 0, // Not tracked in JS ref yet
+              connectionsOut: dht ? dht.nodes.toArray().length : 0,
+              bytesReceived: 0,
+              bytesSent: 0,
+              errors: 0
+            },
+            'Blob (TCP)': {
+              status: blobNetwork ? 'Running' : 'Stopped',
+              address: blobNetwork ? `0.0.0.0:${blobNetwork.port}` : '-',
+              connectionsIn: 0,
+              connectionsOut: 0,
+              bytesReceived: 0,
+              bytesSent: 0,
+              errors: 0
+            }
+          }
+        },
+        storageDetails: {
+          isoSize: 'N/A (Simple)',
+          totalFilesIngested: filesIndex.length,
+          totalBytesIngested: blobStore.stats().currentSize,
+          erasure: null
+        }
       }))
       return
     }
@@ -194,105 +222,105 @@ async function handleApi (req, res) {
     }
 
     if (route === 'blobs') {
-        const blobs = blobStore.list().slice(0, 50) // Limit to 50
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify(blobs))
-        return
+      const blobs = blobStore.list().slice(0, 50) // Limit to 50
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(blobs))
+      return
     }
 
     if (route === 'channels/browse') {
-        const topic = url.searchParams.get('topic') || ''
-        await initNetwork()
-        try {
-            const result = await channel.browse(topic)
-            res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify(result))
-        } catch (err) {
-            res.writeHead(500)
-            res.end(JSON.stringify({ error: err.message }))
-        }
-        return
+      const topic = url.searchParams.get('topic') || ''
+      await initNetwork()
+      try {
+        const result = await channel.browse(topic)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(result))
+      } catch (err) {
+        res.writeHead(500)
+        res.end(JSON.stringify({ error: err.message }))
+      }
+      return
     }
 
     if (route === 'wallet') {
-        const balance = await walletManager.refreshBalance()
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({
-            address: walletManager.getAddress(),
-            balance: balance,
-            pending: 0,
-            transactions: []
-        }))
-        return
+      const balance = await walletManager.refreshBalance()
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        address: walletManager.getAddress(),
+        balance,
+        pending: 0,
+        transactions: []
+      }))
+      return
     }
 
     if (route === 'files') {
-        // Calculate progress for each file
-        const files = filesIndex.map(f => {
-            const totalBlobs = f.chunks.length
-            const havingBlobs = f.chunks.filter(c => blobStore.has(c.blobId)).length
-            return {
-                name: f.name,
-                size: f.size,
-                progress: Math.round((havingBlobs / totalBlobs) * 100),
-                status: havingBlobs === totalBlobs ? 'Complete' : 'Downloading',
-                id: f.chunks[0].blobId // Use first blob as ID for now
-            }
-        })
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify(files))
-        return
+      // Calculate progress for each file
+      const files = filesIndex.map(f => {
+        const totalBlobs = f.chunks.length
+        const havingBlobs = f.chunks.filter(c => blobStore.has(c.blobId)).length
+        return {
+          name: f.name,
+          size: f.size,
+          progress: Math.round((havingBlobs / totalBlobs) * 100),
+          status: havingBlobs === totalBlobs ? 'Complete' : 'Downloading',
+          id: f.chunks[0].blobId // Use first blob as ID for now
+        }
+      })
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(files))
+      return
     }
 
     if (route.startsWith('stream/')) {
-        const fileId = route.replace('stream/', '')
-        const fileEntry = filesIndex.find(f => f.chunks && f.chunks[0].blobId === fileId)
+      const fileId = route.replace('stream/', '')
+      const fileEntry = filesIndex.find(f => f.chunks && f.chunks[0].blobId === fileId)
 
-        if (!fileEntry) {
-            res.writeHead(404)
-            res.end('File not found')
-            return
-        }
-
-        // Detect Mime Type roughly
-        let mime = 'application/octet-stream'
-        if (fileEntry.name.endsWith('.mp4')) mime = 'video/mp4'
-        if (fileEntry.name.endsWith('.webm')) mime = 'video/webm'
-        if (fileEntry.name.endsWith('.mp3')) mime = 'audio/mpeg'
-
-        const getBlobFn = async (id) => blobStore.has(id) ? blobStore.get(id) : null
-
-        const range = req.headers.range
-        const fileSize = fileEntry.size
-
-        if (range) {
-            const parts = range.replace(/bytes=/, "").split("-")
-            const start = parseInt(parts[0], 10)
-            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1
-            const chunksize = (end - start) + 1
-
-            res.writeHead(206, {
-                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-                'Accept-Ranges': 'bytes',
-                'Content-Length': chunksize,
-                'Content-Type': mime
-            })
-
-            const stream = createReadStream(fileEntry, getBlobFn, { start, end })
-            stream.pipe(res)
-            stream.on('error', (err) => {
-                console.error('Stream error:', err)
-                if (!res.headersSent) res.writeHead(500)
-                res.end()
-            })
-        } else {
-             res.writeHead(200, {
-                'Content-Length': fileSize,
-                'Content-Type': mime
-            })
-            createReadStream(fileEntry, getBlobFn).pipe(res)
-        }
+      if (!fileEntry) {
+        res.writeHead(404)
+        res.end('File not found')
         return
+      }
+
+      // Detect Mime Type roughly
+      let mime = 'application/octet-stream'
+      if (fileEntry.name.endsWith('.mp4')) mime = 'video/mp4'
+      if (fileEntry.name.endsWith('.webm')) mime = 'video/webm'
+      if (fileEntry.name.endsWith('.mp3')) mime = 'audio/mpeg'
+
+      const getBlobFn = async (id) => blobStore.has(id) ? blobStore.get(id) : null
+
+      const range = req.headers.range
+      const fileSize = fileEntry.size
+
+      if (range) {
+        const parts = range.replace(/bytes=/, '').split('-')
+        const start = parseInt(parts[0], 10)
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1
+        const chunksize = (end - start) + 1
+
+        res.writeHead(206, {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': mime
+        })
+
+        const stream = createReadStream(fileEntry, getBlobFn, { start, end })
+        stream.pipe(res)
+        stream.on('error', (err) => {
+          console.error('Stream error:', err)
+          if (!res.headersSent) res.writeHead(500)
+          res.end()
+        })
+      } else {
+        res.writeHead(200, {
+          'Content-Length': fileSize,
+          'Content-Type': mime
+        })
+        createReadStream(fileEntry, getBlobFn).pipe(res)
+      }
+      return
     }
   }
 
@@ -375,8 +403,8 @@ async function handleApi (req, res) {
       // Note: This logic mirrors the CLI but needs to wait for connection
       await new Promise((resolve, reject) => {
         client.on('error', (err) => {
-            console.error('Tracker Error:', err)
-            // Don't reject immediately, retry or wait
+          console.error('Tracker Error:', err)
+          // Don't reject immediately, retry or wait
         })
 
         // Give it a moment to connect
@@ -404,16 +432,16 @@ async function handleApi (req, res) {
     }
 
     if (route === 'wallet/airdrop') {
-        try {
-            await walletManager.requestAirdrop()
-            const balance = await walletManager.refreshBalance()
-            res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ status: 'success', balance }))
-        } catch (err) {
-            res.writeHead(500)
-            res.end(JSON.stringify({ error: err.message }))
-        }
-        return
+      try {
+        await walletManager.requestAirdrop()
+        const balance = await walletManager.refreshBalance()
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ status: 'success', balance }))
+      } catch (err) {
+        res.writeHead(500)
+        res.end(JSON.stringify({ error: err.message }))
+      }
+      return
     }
 
     if (route === 'subscribe') {
@@ -455,61 +483,60 @@ function parseBody (req) {
 
 // Subscription Loop (Simple version)
 let loopStarted = false
-function startSubscriptionLoop() {
-    if (loopStarted) return
-    loopStarted = true
+function startSubscriptionLoop () {
+  if (loopStarted) return
+  loopStarted = true
 
-    console.log('Starting subscription loop...')
-    setInterval(async () => {
-        const subs = subscriptionStore.getAllSubscriptions()
-        if (subs.length === 0) return
+  console.log('Starting subscription loop...')
+  setInterval(async () => {
+    const subs = subscriptionStore.getAllSubscriptions()
+    if (subs.length === 0) return
 
-        // Create a temporary client to poll trackers
-        // In a real app, we'd keep a persistent connection
-        const client = new Client({
-            infoHash: Buffer.alloc(20),
-            peerId: Buffer.alloc(20),
-            announce: [TRACKER_URL],
-            port: 0
-        })
+    // Create a temporary client to poll trackers
+    // In a real app, we'd keep a persistent connection
+    const client = new Client({
+      infoHash: Buffer.alloc(20),
+      peerId: Buffer.alloc(20),
+      announce: [TRACKER_URL],
+      port: 0
+    })
 
-        client.on('error', () => {}) // Ignore errors
+    client.on('error', () => {}) // Ignore errors
 
-        setTimeout(() => {
-            const trackers = client._trackers
-            for (const tracker of trackers) {
-                if (tracker.socket && tracker.socket.readyState === 1) {
-                    subs.forEach(sub => {
-                        // Send subscribe
-                        tracker.socket.send(JSON.stringify({
-                            action: 'subscribe',
-                            key: sub.topicPath // In this simplified version, topicPath is the public key
-                        }))
-                    })
+    setTimeout(() => {
+      const trackers = client._trackers
+      for (const tracker of trackers) {
+        if (tracker.socket && tracker.socket.readyState === 1) {
+          subs.forEach(sub => {
+            // Send subscribe
+            tracker.socket.send(JSON.stringify({
+              action: 'subscribe',
+              key: sub.topicPath // In this simplified version, topicPath is the public key
+            }))
+          })
 
-                    // Listen for updates
-                    tracker.socket.onmessage = (event) => {
-                        try {
-                            const data = JSON.parse(event.data)
-                            if (data.action === 'publish') {
-                                console.log('Received update for', data.manifest.publicKey)
-                                // Validate and store/download
-                                // For now, just log it
-                                subscriptionStore.updateLastSeq(data.manifest.publicKey, data.manifest.sequence)
-                            }
-                        } catch (e) {}
-                    }
-                }
-            }
-        }, 1000)
+          // Listen for updates
+          tracker.socket.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data)
+              if (data.action === 'publish') {
+                console.log('Received update for', data.manifest.publicKey)
+                // Validate and store/download
+                // For now, just log it
+                subscriptionStore.updateLastSeq(data.manifest.publicKey, data.manifest.sequence)
+              }
+            } catch (e) {}
+          }
+        }
+      }
+    }, 1000)
 
-        // Destroy client after a short poll to avoid leaking resources in this simple loop
-        // A better approach would be a persistent service
-        setTimeout(() => {
-            client.destroy()
-        }, 5000)
-
-    }, 30000) // Poll every 30s
+    // Destroy client after a short poll to avoid leaking resources in this simple loop
+    // A better approach would be a persistent service
+    setTimeout(() => {
+      client.destroy()
+    }, 5000)
+  }, 30000) // Poll every 30s
 }
 
 // Initialize

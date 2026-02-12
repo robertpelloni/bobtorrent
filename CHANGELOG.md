@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-02-12
+### Added
+-   **Network Health Dashboard**: Added a comprehensive "Network" tab to the Web UI, displaying real-time status of all transport protocols (Clearnet, Tor, I2P, etc.) and storage engine configuration.
+-   **Detailed Java Stats**: Updated `supernode-java` API (`/api/status`) to expose granular metrics for `TransportManager` (connections, traffic, errors per transport) and `SupernodeStorage` (erasure coding shards).
+-   **Node.js Parity**: Updated `reference-client/web-server.js` to provide compatible network statistics, ensuring a consistent UI experience across both implementations.
+-   **Test Fixes**: Fixed `SupernodeStorageTest` to properly clean up persistence directories between runs.
+
 ## [2.2.0] - 2024-05-24
 ### Added
 -   **Java Metadata Persistence**: Implemented file-based persistence for manifests in `SupernodeStorage`. Manifests are now saved to `supernode_storage/manifests/`, ensuring file listings survive node restarts.

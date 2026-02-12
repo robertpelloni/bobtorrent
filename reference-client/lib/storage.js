@@ -198,14 +198,14 @@ export class BlobClient extends EventEmitter {
 
   async seed (fileEntry) {
     const blobIds = fileEntry.chunks.map(c => c.blobId)
-    
+
     for (const blobId of blobIds) {
       if (this.store.has(blobId)) {
         this.tracker.announce(blobId)
         this.network.announceBlob(blobId)
       }
     }
-    
+
     this.emit('seeding', { blobIds })
     return blobIds
   }
@@ -215,14 +215,14 @@ export class BlobClient extends EventEmitter {
     const chunks = fileEntry.chunks
     const total = chunks.length
     let completed = 0
-    
+
     const getBlobFn = async (blobId) => {
       if (this.store.has(blobId)) {
         return this.store.get(blobId)
       }
-      
+
       const peers = await this.tracker.lookup(blobId)
-      
+
       for (const peer of peers) {
         try {
           await this.network.connect(peer.address)
@@ -230,19 +230,19 @@ export class BlobClient extends EventEmitter {
           continue
         }
       }
-      
+
       this.network.queryBlob(blobId)
-      
+
       await new Promise(resolve => setTimeout(resolve, 500))
-      
+
       const blob = await this.network.requestBlob(blobId)
-      
+
       completed++
       onProgress({ completed, total, blobId })
-      
+
       return blob
     }
-    
+
     return reassemble(fileEntry, getBlobFn)
   }
 
