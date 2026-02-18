@@ -592,6 +592,68 @@ public class SupernodeStorage {
     public void setOnFileRetrieved(Consumer<FileRetrievedEvent> listener) { this.onFileRetrieved = listener; }
     public void setOnErasureDecoded(Consumer<ErasureDecodedEvent> listener) { this.onErasureDecoded = listener; }
     
+    public FileHealth getFileHealth(String fileId, byte[] masterKey) {
+        try {
+            byte[] encryptedManifest = manifestStore.get(fileId);
+            if (encryptedManifest == null) {
+                return new FileHealth(fileId, "Manifest Missing", 0, 0, List.of(), null);
+            }
+
+            byte[] manifestKey = Manifest.deriveManifestKey(masterKey, fileId);
+            Manifest manifest = Manifest.decrypt(encryptedManifest, manifestKey);
+
+            List<ChunkHealth> chunks = new ArrayList<>();
+            int healthyChunks = 0;
+
+            for (int i = 0; i < manifest.getSegments().size(); i++) {
+                Segment segment = manifest.getSegments().get(i);
+                List<ShardHealth> shards = new ArrayList<>();
+                boolean isHealthy = false;
+
+                if (segment.shards() != null && !segment.shards().isEmpty()) {
+                    // Erasure Coded
+                    int presentShards = 0;
+                    for (ShardInfo shard : segment.shards()) {
+                        boolean present = blobStore.has(shard.hash());
+                        if (present) presentShards++;
+                        shards.add(new ShardHealth(shard.index(), present, shard.hash()));
+                    }
+
+                    if (manifest.getErasure() != null) {
+                        isHealthy = presentShards >= manifest.getErasure().dataShards();
+                    } else {
+                        // Fallback if erasure config missing but shards present (shouldn't happen)
+                        isHealthy = presentShards > 0;
+                    }
+
+                    chunks.add(new ChunkHealth(i, isHealthy ? "Healthy" : "Corrupt", shards));
+                } else {
+                    // Simple Replication
+                    boolean present = blobStore.has(segment.chunkHash());
+                    isHealthy = present;
+                    chunks.add(new ChunkHealth(i, isHealthy ? "Healthy" : "Missing", List.of()));
+                }
+
+                if (isHealthy) healthyChunks++;
+            }
+
+            String status = healthyChunks == manifest.getSegments().size() ? "Healthy"
+                : (healthyChunks > 0 ? "Degraded" : "Critical");
+
+            return new FileHealth(
+                fileId,
+                status,
+                manifest.getSegments().size(),
+                healthyChunks,
+                chunks,
+                manifest.getErasure()
+            );
+
+        } catch (Exception e) {
+            return new FileHealth(fileId, "Error: " + e.getMessage(), 0, 0, List.of(), null);
+        }
+    }
+
     private String generateOperationId() {
         return "op-" + operationCounter.incrementAndGet() + "-" + System.currentTimeMillis();
     }
@@ -778,4 +840,25 @@ public class SupernodeStorage {
     public record ChunkRetrievedEvent(String fileId, String chunkHash, double progress) {}
     public record FileRetrievedEvent(String fileId, String fileName, long size) {}
     public record ErasureDecodedEvent(int presentShards, int totalShards, boolean recovered) {}
+
+    public record FileHealth(
+        String fileId,
+        String status,
+        int totalChunks,
+        int healthyChunks,
+        List<ChunkHealth> chunks,
+        ErasureConfig erasure
+    ) {}
+
+    public record ChunkHealth(
+        int index,
+        String status,
+        List<ShardHealth> shards
+    ) {}
+
+    public record ShardHealth(
+        int index,
+        boolean present,
+        String hash
+    ) {}
 }

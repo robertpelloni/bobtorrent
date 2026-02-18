@@ -87,6 +87,8 @@ public class WebController {
                 handleIngest(ctx, req);
             } else if (uri.startsWith("/api/stream/") && method.equals(HttpMethod.GET)) {
                 handleStream(ctx, req);
+            } else if (uri.startsWith("/api/files/") && uri.endsWith("/health") && method.equals(HttpMethod.GET)) {
+                handleFileHealth(ctx, req);
             } else if (uri.equals("/api/key/generate") && method.equals(HttpMethod.POST)) {
                 handleKeyGenerate(ctx);
             } else if (uri.equals("/api/publish") && method.equals(HttpMethod.POST)) {
@@ -209,6 +211,44 @@ public class WebController {
         ObjectNode json = mapper.createObjectNode();
         json.put("fileId", result.fileId());
         json.put("status", "ingested");
+
+        sendJson(ctx, json);
+    }
+
+    private void handleFileHealth(ChannelHandlerContext ctx, FullHttpRequest req) {
+        // Extract fileId from /api/files/{id}/health
+        String path = req.uri();
+        String fileId = path.substring("/api/files/".length(), path.length() - "/health".length());
+
+        io.supernode.storage.SupernodeStorage.FileHealth health = network.getStorage().getFileHealth(fileId, DEFAULT_MASTER_KEY);
+
+        ObjectNode json = mapper.createObjectNode();
+        json.put("fileId", health.fileId());
+        json.put("status", health.status());
+        json.put("totalChunks", health.totalChunks());
+        json.put("healthyChunks", health.healthyChunks());
+
+        if (health.erasure() != null) {
+            ObjectNode ec = json.putObject("erasure");
+            ec.put("dataShards", health.erasure().dataShards());
+            ec.put("parityShards", health.erasure().parityShards());
+        }
+
+        ArrayNode chunks = json.putArray("chunks");
+        for (io.supernode.storage.SupernodeStorage.ChunkHealth ch : health.chunks()) {
+            ObjectNode chunk = chunks.addObject();
+            chunk.put("index", ch.index());
+            chunk.put("status", ch.status());
+
+            if (!ch.shards().isEmpty()) {
+                ArrayNode shards = chunk.putArray("shards");
+                for (io.supernode.storage.SupernodeStorage.ShardHealth sh : ch.shards()) {
+                    ObjectNode shard = shards.addObject();
+                    shard.put("index", sh.index());
+                    shard.put("present", sh.present());
+                }
+            }
+        }
 
         sendJson(ctx, json);
     }

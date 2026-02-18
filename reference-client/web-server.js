@@ -272,6 +272,40 @@ async function handleApi (req, res) {
       return
     }
 
+    if (route.startsWith('files/') && route.endsWith('/health')) {
+      const fileId = route.substring(6, route.length - 7)
+      const fileEntry = filesIndex.find(f => f.chunks && f.chunks[0].blobId === fileId)
+
+      if (!fileEntry) {
+        res.writeHead(404, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'File not found' }))
+        return
+      }
+
+      const chunks = fileEntry.chunks.map((c, i) => {
+        const present = blobStore.has(c.blobId)
+        return {
+          index: i,
+          status: present ? 'Healthy' : 'Missing',
+          shards: [] // No erasure coding in Node.js ref client yet
+        }
+      })
+
+      const healthyCount = chunks.filter(c => c.status === 'Healthy').length
+      const status = healthyCount === chunks.length ? 'Healthy' : (healthyCount > 0 ? 'Degraded' : 'Critical')
+
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        fileId,
+        status,
+        totalChunks: chunks.length,
+        healthyChunks: healthyCount,
+        erasure: null,
+        chunks
+      }))
+      return
+    }
+
     if (route.startsWith('stream/')) {
       const fileId = route.replace('stream/', '')
       const fileEntry = filesIndex.find(f => f.chunks && f.chunks[0].blobId === fileId)

@@ -1,0 +1,10 @@
+[
+  {
+    "name": "test_video.mp4",
+    "size": 10485760,
+    "chunks": [
+      { "blobId": "blob1", "offset": 0, "size": 1048576 },
+      { "blobId": "blob2", "offset": 1048576, "size": 1048576 }
+    ]
+  }
+]

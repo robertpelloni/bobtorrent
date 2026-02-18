@@ -130,6 +130,22 @@ The **Dashboard** provides an overview of:
 *   **Network Status**: Connection to DHT and Tracker.
 *   **Recent Activity**: Recently added blobs.
 
+### 10. Network Health
+
+The **Network** tab provides deep insights into the node's connectivity and storage health.
+*   **Transport Protocols**: Real-time stats for each active transport (Clearnet, Tor, I2P, etc.), including connection counts, traffic, and error rates.
+*   **Storage Engine**: Configuration details for the underlying storage (e.g., Erasure Coding settings: 4 Data + 2 Parity).
+
+### 11. File Inspection
+
+In the **Files** tab, clicking the **Inspect (🔍)** button opens the **File Health Inspector**.
+*   **Visual Grid**: Displays a map of every chunk in the file.
+*   **Shard Status**: For Erasure Coded files (Java Supernode), each chunk block shows individual shards:
+    *   <span style="color:green">Green</span>: Present Data Shard.
+    *   <span style="color:blue">Blue</span>: Present Parity Shard.
+    *   <span style="color:red">Red</span>: Missing Shard.
+*   **Health Status**: Indicates if the file is "Healthy" (recoverable) or "Critical" (data loss possible).
+
 ## Troubleshooting
 
 *   **"Tracker Error"**: Ensure the tracker is running (`node server.js` in the project root) and reachable at `ws://localhost:8000`.

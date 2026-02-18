@@ -268,6 +268,9 @@ document.addEventListener('DOMContentLoaded', () => {
           action = `<button class="secondary-btn" style="padding: 2px 8px; margin-left: 10px;" onclick="playFile('${f.id}', '${f.name}')">▶ Play</button>`
         }
 
+                // Add Inspect button
+                action += `<button class="secondary-btn" style="padding: 2px 8px; margin-left: 5px;" onclick="inspectFile('${f.id}', '${f.name}')">🔍</button>`;
+
         tr.innerHTML = `
                     <td>${f.name}</td>
                     <td>${(f.size / 1024 / 1024).toFixed(2)} MB</td>
@@ -278,6 +281,83 @@ document.addEventListener('DOMContentLoaded', () => {
       })
     } catch (e) {}
   }
+
+    // File Inspector
+    window.inspectFile = async (id, name) => {
+        const container = document.getElementById('inspector-container');
+        const title = document.getElementById('inspector-title');
+        const grid = document.getElementById('insp-grid');
+
+        title.textContent = `Health: ${name}`;
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center;">Loading...</div>';
+        container.classList.remove('hidden');
+        container.style.display = 'flex';
+
+        try {
+            const res = await apiFetch(`/api/files/${id}/health`);
+            const data = await res.json();
+
+            document.getElementById('insp-status').textContent = data.status;
+            document.getElementById('insp-status').style.color = data.status === 'Healthy' ? '#4caf50' : '#f44336';
+            document.getElementById('insp-chunks').textContent = `${data.healthyChunks} / ${data.totalChunks}`;
+
+            if (data.erasure) {
+                document.getElementById('insp-mode').textContent = 'Erasure Coding';
+                document.getElementById('insp-config').textContent = `${data.erasure.dataShards} Data + ${data.erasure.parityShards} Parity`;
+            } else {
+                document.getElementById('insp-mode').textContent = 'Simple Replication';
+                document.getElementById('insp-config').textContent = '1x';
+            }
+
+            grid.innerHTML = '';
+
+            data.chunks.forEach(chunk => {
+                const cell = document.createElement('div');
+                cell.style.background = '#333';
+                cell.style.border = '1px solid #444';
+                cell.style.height = '40px';
+                cell.style.display = 'flex';
+                cell.title = `Chunk ${chunk.index}: ${chunk.status}`;
+
+                if (data.erasure) {
+                    // Render shards
+                    if (chunk.shards && chunk.shards.length) {
+                        chunk.shards.forEach(shard => {
+                            const bar = document.createElement('div');
+                            bar.style.flex = '1';
+                            bar.style.margin = '1px';
+                            // Data shards vs Parity shards logic
+                            const isData = shard.index < data.erasure.dataShards;
+                            bar.style.background = shard.present
+                                ? (isData ? '#4caf50' : '#2196f3')
+                                : '#f44336';
+                            cell.appendChild(bar);
+                        });
+                    } else {
+                        // Should have shards but doesn't (error state)
+                        cell.style.background = '#f44336';
+                        cell.textContent = '!';
+                        cell.style.justifyContent = 'center';
+                        cell.style.alignItems = 'center';
+                    }
+                } else {
+                    // Simple replication
+                    cell.style.background = chunk.status === 'Healthy' ? '#4caf50' : '#f44336';
+                }
+
+                grid.appendChild(cell);
+            });
+
+        } catch (e) {
+            grid.innerHTML = `<div style="color:red">Error: ${e.message}</div>`;
+        }
+    };
+
+    window.closeInspector = () => {
+        const container = document.getElementById('inspector-container');
+        container.classList.add('hidden');
+        container.style.display = 'none';
+    };
 
   // Video Player
   window.playFile = (id, name) => {
