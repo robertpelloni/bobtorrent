@@ -58,11 +58,54 @@ document.addEventListener('DOMContentLoaded', () => {
   const inputPath = document.getElementById('ingest-path')
   const ingestResult = document.getElementById('ingest-result')
   const ingestJson = document.getElementById('ingest-json')
+
+    // Advanced Ingest UI Logic
+    const ingestAdvToggle = document.getElementById('ingest-adv-toggle');
+    const ingestAdvanced = document.getElementById('ingest-advanced');
+    const ingestStrategy = document.getElementById('ingest-strategy');
+    const ingestEcSettings = document.getElementById('ingest-ec-settings');
+    const inputDataShards = document.getElementById('ingest-data-shards');
+    const inputParityShards = document.getElementById('ingest-parity-shards');
+
+    ingestAdvToggle.addEventListener('change', () => {
+        if (ingestAdvToggle.checked) {
+            ingestAdvanced.classList.remove('hidden');
+        } else {
+            ingestAdvanced.classList.add('hidden');
+        }
+    });
+
+    ingestStrategy.addEventListener('change', () => {
+        if (ingestStrategy.value === 'erasure') {
+            ingestEcSettings.classList.remove('hidden');
+        } else {
+            ingestEcSettings.classList.add('hidden');
+        }
+    });
+
   let currentFileEntry = null
 
   btnIngest.addEventListener('click', async () => {
     const path = inputPath.value
     if (!path) return alert('Please enter a file path')
+
+        // Build Options
+        let options = { enableErasure: false };
+        if (ingestAdvToggle.checked) {
+            if (ingestStrategy.value === 'erasure') {
+                const data = parseInt(inputDataShards.value);
+                const parity = parseInt(inputParityShards.value);
+
+                if (data + parity > 255) return alert('Total shards cannot exceed 255');
+                if (data < 1 || parity < 1) return alert('Shards must be at least 1');
+
+                options = {
+                    enableErasure: true,
+                    dataShards: data,
+                    parityShards: parity
+                };
+            }
+        }
 
     btnIngest.textContent = 'Ingesting...'
     btnIngest.disabled = true
@@ -71,7 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await apiFetch('/api/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filePath: path })
+                body: JSON.stringify({
+                    filePath: path,
+                    options: options
+                })
       })
 
       if (!res.ok) throw new Error((await res.json()).error || 'Ingest failed')

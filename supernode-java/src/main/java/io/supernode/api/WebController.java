@@ -196,17 +196,45 @@ public class WebController {
         byte[] bytes = new byte[content.readableBytes()];
         content.readBytes(bytes);
 
-        // Simple ingest: treat body as file content
-        // In real impl, handle multipart/form-data
-        // For testing, just post raw bytes
-
+        // Default values
         String filename = "upload-" + System.currentTimeMillis() + ".bin";
-        // Check if filename header exists
-        if (req.headers().contains("X-Filename")) {
-            filename = req.headers().get("X-Filename");
+        byte[] fileData = bytes;
+        SupernodeStorage.IngestOptions options = null;
+
+        // Try to parse JSON wrapper if Content-Type is application/json
+        String contentType = req.headers().get(HttpHeaderNames.CONTENT_TYPE);
+        if (contentType != null && contentType.contains("application/json")) {
+            try {
+                // If it's a JSON request with base64 data and options
+                // { "filename": "...", "data": "base64...", "options": { "enableErasure": true, ... } }
+                // This is needed because standard multipart is hard to parse without a library in Netty raw
+                // And we want to pass options + file in one go.
+
+                ObjectNode node = (ObjectNode) mapper.readTree(new String(bytes, StandardCharsets.UTF_8));
+                if (node.has("data")) {
+                    fileData = Base64.getDecoder().decode(node.get("data").asText());
+                    if (node.has("filename")) {
+                        filename = node.get("filename").asText();
+                    }
+                    if (node.has("options")) {
+                        ObjectNode opts = (ObjectNode) node.get("options");
+                        boolean enableErasure = opts.has("enableErasure") && opts.get("enableErasure").asBoolean();
+                        int dataShards = opts.has("dataShards") ? opts.get("dataShards").asInt() : 4;
+                        int parityShards = opts.has("parityShards") ? opts.get("parityShards").asInt() : 2;
+                        options = new SupernodeStorage.IngestOptions(enableErasure, dataShards, parityShards);
+                    }
+                }
+            } catch (Exception e) {
+                // Not JSON wrapped, treat as raw body
+            }
+        } else {
+            // Raw upload, check header for filename
+            if (req.headers().contains("X-Filename")) {
+                filename = req.headers().get("X-Filename");
+            }
         }
 
-        SupernodeStorage.IngestResult result = network.ingestFile(bytes, filename, DEFAULT_MASTER_KEY);
+        SupernodeStorage.IngestResult result = network.ingestFile(fileData, filename, DEFAULT_MASTER_KEY, options);
 
         ObjectNode json = mapper.createObjectNode();
         json.put("fileId", result.fileId());

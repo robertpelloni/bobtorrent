@@ -78,12 +78,23 @@ public class SupernodeStorage {
     }
     
     public IngestResult ingest(byte[] fileBuffer, String fileName, byte[] masterKey) {
-        return ingest(fileBuffer, fileName, masterKey, null);
+        return ingest(fileBuffer, fileName, masterKey, null, null);
     }
     
     public IngestResult ingest(byte[] fileBuffer, String fileName, byte[] masterKey, Consumer<Progress> progress) {
+        return ingest(fileBuffer, fileName, masterKey, null, progress);
+    }
+
+    public IngestResult ingest(byte[] fileBuffer, String fileName, byte[] masterKey, IngestOptions options, Consumer<Progress> progress) {
         String fileId = "sha256:" + sha256Hex(fileBuffer);
         
+        // Use provided options or global defaults
+        IngestOptions effectiveOptions = options != null ? options : new IngestOptions(
+            this.options.enableErasure,
+            this.options.dataShards,
+            this.options.parityShards
+        );
+
         // CAS Deduplication: Check if file already exists
         if (manifestStore.containsKey(fileId)) {
             try {
@@ -140,8 +151,8 @@ public class SupernodeStorage {
                 MuxEngine.MuxResult muxResult = muxEngine.mux(chunk, chunkKey, isoSeed);
                 
                 Segment segment;
-                if (enableErasure) {
-                    segment = ingestWithErasure(muxResult.muxedData(), chunkKey, isoSeed, muxResult, chunk.length, chunkHashes);
+                if (effectiveOptions.enableErasure()) {
+                    segment = ingestWithErasure(muxResult.muxedData(), chunkKey, isoSeed, muxResult, chunk.length, chunkHashes, effectiveOptions);
                 } else {
                     String chunkHash = sha256Hex(muxResult.muxedData());
                     blobStore.put(chunkHash, muxResult.muxedData());
@@ -187,13 +198,18 @@ public class SupernodeStorage {
                 }
             } while (offset < fileBuffer.length);
             
+            ErasureConfig ecConfig = null;
+            if (effectiveOptions.enableErasure()) {
+                ecConfig = new ErasureConfig(effectiveOptions.dataShards(), effectiveOptions.parityShards());
+            }
+
             Manifest manifest = Manifest.create(new Manifest.ManifestOptions(
                 fileId,
                 fileName,
                 fileBuffer.length,
                 segments.get(0).isoSeed(),
                 isoSize.getBytes(),
-                enableErasure ? new ErasureConfig(erasureCoder.getDataShards(), erasureCoder.getParityShards()) : null,
+                ecConfig,
                 segments
             ));
             
@@ -220,27 +236,27 @@ public class SupernodeStorage {
     }
     
     public CompletableFuture<IngestResult> ingestAsync(byte[] fileBuffer, String fileName, byte[] masterKey) {
-        return ingestAsync(fileBuffer, fileName, masterKey, null);
+        return ingestAsync(fileBuffer, fileName, masterKey, null, null);
     }
     
-    public CompletableFuture<IngestResult> ingestAsync(byte[] fileBuffer, String fileName, byte[] masterKey, Consumer<Progress> progress) {
-        return CompletableFuture.supplyAsync(() -> ingest(fileBuffer, fileName, masterKey, progress), executor);
+    public CompletableFuture<IngestResult> ingestAsync(byte[] fileBuffer, String fileName, byte[] masterKey, IngestOptions options, Consumer<Progress> progress) {
+        return CompletableFuture.supplyAsync(() -> ingest(fileBuffer, fileName, masterKey, options, progress), executor);
     }
     
-    public IngestResult ingestStreaming(InputStream input, String fileName, byte[] masterKey, Consumer<Progress> progress) throws IOException {
+    public IngestResult ingestStreaming(InputStream input, String fileName, byte[] masterKey, IngestOptions options, Consumer<Progress> progress) throws IOException {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         byte[] chunk = new byte[8192];
         int read;
         while ((read = input.read(chunk)) != -1) {
             buffer.write(chunk, 0, read);
         }
-        return ingest(buffer.toByteArray(), fileName, masterKey, progress);
+        return ingest(buffer.toByteArray(), fileName, masterKey, options, progress);
     }
     
-    public CompletableFuture<IngestResult> ingestStreamingAsync(InputStream input, String fileName, byte[] masterKey, Consumer<Progress> progress) {
+    public CompletableFuture<IngestResult> ingestStreamingAsync(InputStream input, String fileName, byte[] masterKey, IngestOptions options, Consumer<Progress> progress) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                return ingestStreaming(input, fileName, masterKey, progress);
+                return ingestStreaming(input, fileName, masterKey, options, progress);
             } catch (IOException e) {
                 throw new CompletionException(e);
             }
@@ -249,8 +265,13 @@ public class SupernodeStorage {
     
     private Segment ingestWithErasure(byte[] muxedData, byte[] chunkKey, byte[] isoSeed, 
                                        MuxEngine.MuxResult muxResult, int originalSize,
-                                       List<String> allChunkHashes) {
-        ErasureCoder.EncodeResult encoded = erasureCoder.encode(muxedData);
+                                       List<String> allChunkHashes, IngestOptions opts) {
+        // Create coder on demand if options differ, or use default if matching?
+        // For simplicity and safety with varying options, we create a new instance or reuse if matching global.
+        // Actually, creating a new lightweight coder is cheap (it just builds tables/matrices).
+        ErasureCoder coder = new ErasureCoder(opts.dataShards, opts.parityShards);
+
+        ErasureCoder.EncodeResult encoded = coder.encode(muxedData);
         List<ShardInfo> shards = new ArrayList<>();
         
         for (int i = 0; i < encoded.shards().length; i++) {
@@ -263,8 +284,8 @@ public class SupernodeStorage {
         
         if (onErasureEncoded != null) {
             onErasureEncoded.accept(new ErasureEncodedEvent(
-                erasureCoder.getDataShards(),
-                erasureCoder.getParityShards(),
+                coder.getDataShards(),
+                coder.getParityShards(),
                 shards.size()
             ));
         }
@@ -840,6 +861,8 @@ public class SupernodeStorage {
     public record ChunkRetrievedEvent(String fileId, String chunkHash, double progress) {}
     public record FileRetrievedEvent(String fileId, String fileName, long size) {}
     public record ErasureDecodedEvent(int presentShards, int totalShards, boolean recovered) {}
+
+    public record IngestOptions(boolean enableErasure, int dataShards, int parityShards) {}
 
     public record FileHealth(
         String fileId,

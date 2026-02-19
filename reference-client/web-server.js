@@ -372,7 +372,18 @@ async function handleApi (req, res) {
     }
 
     if (route === 'ingest') {
+      // Handle both local path ingest and remote supernode proxy ingest
+      // If body has 'data', it's a proxy ingest request (handled by proxyToSupernode usually,
+      // but if we hit this locally, it means we are emulating supernode or just normal local ingest).
+      // BUT, the UI logic for 'Local Node' sends { filePath: ... }.
+      // The UI logic for 'Remote Node' proxies the request directly.
+      // So here we only care about Local Node logic.
+
       const filePath = body.filePath
+
+      // If we receive options (erasure), we should store them in metadata even if we don't use them yet
+      const options = body.options || {}
+
       if (!filePath || !fs.existsSync(filePath)) {
         throw new Error('File not found')
       }
@@ -386,6 +397,16 @@ async function handleApi (req, res) {
       console.log(`Ingesting ${filePath}...`)
       const fileBuf = fs.readFileSync(filePath)
       const result = ingest(fileBuf, path.basename(filePath))
+
+      // Attach options to result for reference
+      if (options.enableErasure) {
+          result.fileEntry.erasure = {
+              dataShards: options.dataShards,
+              parityShards: options.parityShards,
+              // Mark as fake/metadata-only for Reference Client
+              simulated: true
+          }
+      }
 
       // Save blobs
       result.blobs.forEach(blob => {

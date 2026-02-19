@@ -113,7 +113,11 @@ public class UnifiedNetwork {
     }
 
     public SupernodeStorage.IngestResult ingestFile(byte[] data, String fileName, byte[] masterKey) {
-        SupernodeStorage.IngestResult result = storage.ingest(data, fileName, masterKey);
+        return ingestFile(data, fileName, masterKey, null);
+    }
+
+    public SupernodeStorage.IngestResult ingestFile(byte[] data, String fileName, byte[] masterKey, SupernodeStorage.IngestOptions options) {
+        SupernodeStorage.IngestResult result = storage.ingest(data, fileName, masterKey, options, null);
         
         if (ipfsBlobStore != null) {
             replicateToIPFS(result);
