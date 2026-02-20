@@ -591,6 +591,10 @@ public class SupernodeStorage {
     public StorageOptions getOptions() {
         return options;
     }
+
+    public ErasureCoder.NetworkContext getErasureNetworkContext() {
+        return erasureCoder != null ? erasureCoder.getNetworkContext() : null;
+    }
     
     public CompletableFuture<Void> shutdown() {
         return CompletableFuture.runAsync(() -> {

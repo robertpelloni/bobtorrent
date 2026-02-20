@@ -101,6 +101,8 @@ public class WebController {
                 handleBrowse(ctx, req);
             } else if (uri.equals("/api/wallet") && method.equals(HttpMethod.GET)) {
                 handleWallet(ctx);
+            } else if (uri.equals("/api/peers") && method.equals(HttpMethod.GET)) {
+                handlePeers(ctx);
             } else {
                 sendError(ctx, HttpResponseStatus.NOT_FOUND);
             }
@@ -424,6 +426,25 @@ public class WebController {
         }
 
         sendJson(ctx, result);
+    }
+
+    private void handlePeers(ChannelHandlerContext ctx) {
+        ArrayNode peers = mapper.createArrayNode();
+
+        // Add DHT peers from Network component (if exposed) or storage layer contexts
+        // The unified network tracks connected peers.
+        for (io.supernode.network.UnifiedNetwork.PeerDetail pd : network.getPeerDetails()) {
+            ObjectNode p = peers.addObject();
+            p.put("id", pd.id());
+            p.put("address", pd.address());
+            p.put("transport", pd.transport());
+            p.put("latency", pd.latency());
+            p.put("score", pd.score());
+            p.put("packets", pd.packetsSuccess() + "/" + pd.packetsLost());
+            p.put("status", pd.status());
+        }
+
+        sendJson(ctx, peers);
     }
 
     private void handleWallet(ChannelHandlerContext ctx) {

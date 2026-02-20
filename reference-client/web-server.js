@@ -221,6 +221,26 @@ async function handleApi (req, res) {
       return
     }
 
+    if (route === 'peers') {
+      const peers = []
+      if (dht) {
+        dht.nodes.toArray().forEach(node => {
+          peers.push({
+            id: node.id.toString('hex'),
+            address: `${node.host}:${node.port}`,
+            transport: 'DHT (UDP)',
+            latency: 0, // Not tracked in basic DHT
+            score: 0,
+            packets: '0/0',
+            status: 'Seen'
+          })
+        })
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(peers))
+      return
+    }
+
     if (route === 'blobs') {
       const blobs = blobStore.list().slice(0, 50) // Limit to 50
       res.writeHead(200, { 'Content-Type': 'application/json' })

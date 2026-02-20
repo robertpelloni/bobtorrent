@@ -517,8 +517,40 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
 
+    // Peers Table
+    async function updatePeers() {
+        try {
+            const res = await apiFetch('/api/peers');
+            const peers = await res.json();
+            const table = document.getElementById('peers-table').querySelector('tbody');
+
+            table.innerHTML = peers.length ? '' : '<tr><td colspan="7">No peers connected.</td></tr>';
+
+            peers.forEach(p => {
+                const tr = document.createElement('tr');
+                // Colorize score
+                let scoreColor = '#fff';
+                if (p.score > 80) scoreColor = '#4caf50';
+                else if (p.score > 50) scoreColor = '#ffeb3b';
+                else scoreColor = '#f44336';
+
+                tr.innerHTML = `
+                    <td title="${p.id}">${p.id.substring(0, 16)}...</td>
+                    <td style="font-family: monospace;">${p.address}</td>
+                    <td><span class="badge" style="background:#555">${p.transport}</span></td>
+                    <td>${p.latency} ms</td>
+                    <td style="color:${scoreColor}; font-weight:bold;">${p.score.toFixed(1)}</td>
+                    <td>${p.packets}</td>
+                    <td>${p.status}</td>
+                `;
+                table.appendChild(tr);
+            });
+        } catch (e) {}
+    }
+
   // Polling
   setInterval(updateStatus, 2000)
+    setInterval(updatePeers, 3000); // Poll peers every 3s
   setInterval(refreshSubscriptions, 5000)
   setInterval(updateBlobs, 5000)
   setInterval(updateFiles, 5000)

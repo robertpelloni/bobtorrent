@@ -221,6 +221,40 @@ public class UnifiedNetwork {
         );
     }
 
+    public List<PeerDetail> getPeerDetails() {
+        List<PeerDetail> details = new ArrayList<>();
+        io.supernode.storage.erasure.ErasureCoder.NetworkContext ctx = storage.getErasureNetworkContext();
+
+        for (PeerInfo peer : peers.values()) {
+            double score = 0.0;
+            long latency = 0;
+            long successes = 0;
+            long failures = 0;
+
+            if (ctx != null) {
+                var metrics = ctx.getPeerMetrics().get(peer.peerId);
+                if (metrics != null) {
+                    score = ctx.calculatePeerScore(peer.peerId);
+                    latency = metrics.avgLatency();
+                    successes = metrics.successCount();
+                    failures = metrics.failureCount();
+                }
+            }
+
+            details.add(new PeerDetail(
+                peer.peerId,
+                peer.connection.getRemoteAddress().toString(),
+                peer.connection.getTransportType().toString(),
+                latency,
+                score,
+                successes,
+                failures,
+                peer.connection.isOpen() ? "Connected" : "Disconnected"
+            ));
+        }
+        return details;
+    }
+
     public void setOnListening(Consumer<ListeningEvent> handler) {
         this.onListening = handler;
     }
@@ -328,6 +362,17 @@ public class UnifiedNetwork {
         SupernodeStorage.StorageStats storage,
         int peerCount,
         Map<TransportType, TransportAddress> addresses
+    ) {}
+
+    public record PeerDetail(
+        String id,
+        String address,
+        String transport,
+        long latency,
+        double score,
+        long packetsSuccess,
+        long packetsLost,
+        String status
     ) {}
 
     public static class UnifiedNetworkOptions {
