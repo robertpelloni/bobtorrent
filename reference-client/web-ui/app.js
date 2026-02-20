@@ -453,6 +453,29 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
 
+    // Resources
+    async function updateResources() {
+        try {
+            const res = await apiFetch('/api/resources');
+            const data = await res.json();
+
+            const loadEl = document.getElementById('dash-load-level');
+            loadEl.textContent = data.loadLevel;
+
+            let color = '#4caf50';
+            if (data.loadLevel === 'MODERATE') color = '#ffeb3b';
+            if (data.loadLevel === 'HIGH') color = '#ff9800';
+            if (data.loadLevel === 'CRITICAL') color = '#f44336';
+
+            loadEl.style.background = color;
+            loadEl.style.color = '#000';
+
+            document.getElementById('dash-mem-bar').style.width = (data.memoryUsage * 100) + '%';
+            document.getElementById('dash-recommendation').textContent = data.recommendation.replace(/_/g, ' ');
+
+        } catch (e) {}
+    }
+
   function updateNetworkTab (data) {
     // Storage Engine Details
     if (data.storageDetails) {
@@ -550,6 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Polling
   setInterval(updateStatus, 2000)
+    setInterval(updateResources, 2000); // Poll resources
     setInterval(updatePeers, 3000); // Poll peers every 3s
   setInterval(refreshSubscriptions, 5000)
   setInterval(updateBlobs, 5000)

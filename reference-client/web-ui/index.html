@@ -158,6 +158,21 @@
                 <h2>System Status</h2>
                 <div class="card-grid">
                     <div class="card">
+                        <h3>Resources</h3>
+                        <div class="stat-row">
+                            <label>Load Level:</label> <span id="dash-load-level" class="badge">-</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Memory:</label>
+                            <div style="flex: 1; margin-left: 10px; background: #444; height: 10px; border-radius: 5px;">
+                                <div id="dash-mem-bar" style="width: 0%; height: 100%; background: #4caf50; border-radius: 5px;"></div>
+                            </div>
+                        </div>
+                        <div class="stat-row">
+                            <label>AI Advice:</label> <span id="dash-recommendation" style="font-size: 0.9em;">-</span>
+                        </div>
+                    </div>
+                    <div class="card">
                         <h3>Storage</h3>
                         <div class="stat-row">
                             <label>Blobs:</label> <span id="dash-blobs">0</span>

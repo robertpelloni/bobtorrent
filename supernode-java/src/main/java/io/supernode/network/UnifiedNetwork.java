@@ -5,6 +5,7 @@ import io.supernode.storage.BlobStore;
 import io.supernode.storage.IPFSBlobStore;
 import io.supernode.storage.InMemoryBlobStore;
 import io.supernode.storage.SupernodeStorage;
+import io.supernode.intelligence.ResourceManager;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +23,7 @@ public class UnifiedNetwork {
     // Components
     private final DHTDiscovery dht;
     private final ManifestDistributor manifestDistributor;
+    private final ResourceManager resourceManager;
 
     private Consumer<ListeningEvent> onListening;
     private Consumer<PeerEvent> onPeer;
@@ -72,12 +74,17 @@ public class UnifiedNetwork {
         // Initialize ManifestDistributor
         this.manifestDistributor = new ManifestDistributor(new ManifestDistributor.ManifestDistributorOptions(dht, storage));
 
+        // Initialize Intelligence
+        this.resourceManager = new ResourceManager(this);
+
         setupEventHandlers();
     }
 
     public CompletableFuture<Map<TransportType, TransportAddress>> start() {
-        // Start DHT
+        // Start Components
         dht.start();
+        resourceManager.start();
+
         return transportManager.startAll()
             .thenApply(addresses -> {
                 Map<TransportType, TransportAddress> result = new EnumMap<>(TransportType.class);
@@ -206,6 +213,10 @@ public class UnifiedNetwork {
 
     public ManifestDistributor getManifestDistributor() {
         return manifestDistributor;
+    }
+
+    public ResourceManager getResourceManager() {
+        return resourceManager;
     }
 
     public boolean isDestroyed() {

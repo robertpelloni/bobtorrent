@@ -103,6 +103,8 @@ public class WebController {
                 handleWallet(ctx);
             } else if (uri.equals("/api/peers") && method.equals(HttpMethod.GET)) {
                 handlePeers(ctx);
+            } else if (uri.equals("/api/resources") && method.equals(HttpMethod.GET)) {
+                handleResources(ctx);
             } else {
                 sendError(ctx, HttpResponseStatus.NOT_FOUND);
             }
@@ -445,6 +447,20 @@ public class WebController {
         }
 
         sendJson(ctx, peers);
+    }
+
+    private void handleResources(ChannelHandlerContext ctx) {
+        io.supernode.intelligence.ResourceManager.ResourceState state =
+            network.getResourceManager().getCurrentState();
+
+        ObjectNode json = mapper.createObjectNode();
+        json.put("loadLevel", state.loadLevel().toString());
+        json.put("recommendation", state.recommendation().toString());
+        json.put("memoryUsage", state.memoryUsage());
+        json.put("systemLoad", state.systemLoad());
+        json.put("activeOperations", state.activeOperations());
+
+        sendJson(ctx, json);
     }
 
     private void handleWallet(ChannelHandlerContext ctx) {

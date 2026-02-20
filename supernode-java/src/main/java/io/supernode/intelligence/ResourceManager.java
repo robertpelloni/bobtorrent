@@ -1,6 +1,6 @@
 package io.supernode.intelligence;
 
-import io.supernode.network.SupernodeNetwork;
+import io.supernode.network.UnifiedNetwork;
 import io.supernode.storage.SupernodeStorage;
 
 import java.lang.management.ManagementFactory;
@@ -19,7 +19,7 @@ import java.util.function.Consumer;
  */
 public class ResourceManager {
 
-    private final SupernodeNetwork network;
+    private final UnifiedNetwork network;
     private final ScheduledExecutorService scheduler;
     private final OperatingSystemMXBean osBean;
     private final MemoryMXBean memoryBean;
@@ -29,7 +29,7 @@ public class ResourceManager {
     
     private volatile boolean running = false;
 
-    public ResourceManager(SupernodeNetwork network) {
+    public ResourceManager(UnifiedNetwork network) {
         this.network = network;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "resource-manager");
@@ -59,7 +59,7 @@ public class ResourceManager {
         long maxMemory = memoryBean.getHeapMemoryUsage().getMax();
         double memoryUsage = (double) usedMemory / maxMemory;
 
-        SupernodeNetwork.NetworkStats netStats = network.stats();
+        UnifiedNetwork.NetworkStats netStats = network.stats();
         SupernodeStorage.StorageStats storeStats = netStats.storage();
         
         int activeOps = storeStats.activeOperations();

@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import http from 'http'
+import os from 'os'
 import { fileURLToPath } from 'url'
 import { generateKeypair } from './lib/crypto.js'
 import { createManifest } from './lib/manifest.js'
@@ -239,6 +240,31 @@ async function handleApi (req, res) {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify(peers))
       return
+    }
+
+    if (route === 'resources') {
+        const memUsed = 1 - (os.freemem() / os.totalmem())
+        const load = os.loadavg()[0]
+        const cpus = os.cpus().length
+
+        let loadLevel = 'LOW'
+        if (memUsed > 0.8 || load > cpus * 0.8) loadLevel = 'CRITICAL'
+        else if (memUsed > 0.6 || load > cpus * 0.5) loadLevel = 'HIGH'
+        else if (memUsed > 0.4) loadLevel = 'MODERATE'
+
+        const rec = loadLevel === 'CRITICAL' ? 'THROTTLE_INGEST' :
+                   (loadLevel === 'HIGH' ? 'GC_SUGGESTED' :
+                   (loadLevel === 'MODERATE' ? 'MAINTAIN' : 'INCREASE_CAPACITY'))
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+            loadLevel,
+            recommendation: rec,
+            memoryUsage: memUsed,
+            systemLoad: load,
+            activeOperations: blobNetwork ? 0 : 0 // TODO: Track active ops
+        }))
+        return
     }
 
     if (route === 'blobs') {
