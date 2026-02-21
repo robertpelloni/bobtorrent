@@ -267,8 +267,36 @@ async function handleApi (req, res) {
         return
     }
 
+    if (route === 'network/topology') {
+      const graph = {
+        nodes: [{ id: 'self', type: 'self', label: 'Reference Client (JS)' }],
+        links: []
+      }
+
+      if (dht) {
+        dht.nodes.toArray().forEach(node => {
+          const peerId = node.id.toString('hex')
+          graph.nodes.push({
+            id: peerId,
+            type: 'peer',
+            label: `${node.host}:${node.port}`,
+            transport: 'DHT',
+            score: 50 // Default score
+          })
+          graph.links.push({
+            source: 'self',
+            target: peerId,
+            type: 'DHT'
+          })
+        })
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(graph))
+      return
+    }
+
     if (route === 'blobs') {
-      const blobs = blobStore.list().slice(0, 50) // Limit to 50
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify(blobs))
       return

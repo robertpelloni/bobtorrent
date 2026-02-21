@@ -2,5 +2,23 @@ Initializing network...
 Web UI running at http://127.0.0.1:3000
 Storage: ./storage
 Tracker: ws://localhost:8000
-Blob network listening on port 36031
+Blob network listening on port 44235
 Loaded wallet: 9vcNDWmwUgWtViEUaAWPzWbw2oXhPsHtSyi7Nvk5W9Hi
+API Error: ReferenceError: blobs is not defined
+    at handleApi (file:///app/reference-client/web-server.js:301:30)
+    at Server.<anonymous> (file:///app/reference-client/web-server.js:92:13)
+    at Server.emit (node:events:519:28)
+    at parserOnIncoming (node:_http_server:1186:12)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:122:17)
+node:_http_server:354
+    throw new ERR_HTTP_HEADERS_SENT('write');
+          ^
+
+Error [ERR_HTTP_HEADERS_SENT]: Cannot write headers after they are sent to the client
+    at ServerResponse.writeHead (node:_http_server:354:11)
+    at Server.<anonymous> (file:///app/reference-client/web-server.js:95:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ERR_HTTP_HEADERS_SENT'
+}
+
+Node.js v22.22.0

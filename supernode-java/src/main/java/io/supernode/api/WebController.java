@@ -105,6 +105,8 @@ public class WebController {
                 handlePeers(ctx);
             } else if (uri.equals("/api/resources") && method.equals(HttpMethod.GET)) {
                 handleResources(ctx);
+            } else if (uri.equals("/api/network/topology") && method.equals(HttpMethod.GET)) {
+                handleTopology(ctx);
             } else {
                 sendError(ctx, HttpResponseStatus.NOT_FOUND);
             }
@@ -447,6 +449,35 @@ public class WebController {
         }
 
         sendJson(ctx, peers);
+    }
+
+    private void handleTopology(ChannelHandlerContext ctx) {
+        ObjectNode graph = mapper.createObjectNode();
+        ArrayNode nodes = graph.putArray("nodes");
+        ArrayNode links = graph.putArray("links");
+
+        // Self
+        ObjectNode self = nodes.addObject();
+        self.put("id", "self");
+        self.put("type", "self");
+        self.put("label", "Supernode (Java)");
+
+        // Connected Peers
+        for (io.supernode.network.UnifiedNetwork.PeerDetail pd : network.getPeerDetails()) {
+            ObjectNode peer = nodes.addObject();
+            peer.put("id", pd.id());
+            peer.put("type", "peer");
+            peer.put("label", pd.address());
+            peer.put("transport", pd.transport());
+            peer.put("score", pd.score());
+
+            ObjectNode link = links.addObject();
+            link.put("source", "self");
+            link.put("target", pd.id());
+            link.put("type", pd.transport());
+        }
+
+        sendJson(ctx, graph);
     }
 
     private void handleResources(ChannelHandlerContext ctx) {

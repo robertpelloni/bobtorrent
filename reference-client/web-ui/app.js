@@ -571,10 +571,103 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
     }
 
+    // Topology Visualizer
+    async function updateTopology() {
+        // Only run if visible
+        if (!document.getElementById('network').classList.contains('active')) return;
+
+        try {
+            const res = await apiFetch('/api/network/topology');
+            const graph = await res.json();
+            renderTopology(graph);
+        } catch (e) {}
+    }
+
+    function renderTopology(graph) {
+        const canvas = document.getElementById('topology-canvas');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        // Clear
+        ctx.clearRect(0, 0, width, height);
+
+        // Find Self
+        const selfNode = graph.nodes.find(n => n.type === 'self');
+        if (!selfNode) return;
+
+        // Filter peers
+        const peers = graph.nodes.filter(n => n.type === 'peer');
+
+        // Layout: Radial
+        const radius = Math.min(width, height) * 0.35;
+
+        // Draw Links first
+        ctx.lineWidth = 2;
+        peers.forEach((peer, i) => {
+            const angle = (i / peers.length) * 2 * Math.PI;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+
+            // Store coordinates for node drawing
+            peer.x = x;
+            peer.y = y;
+
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(x, y);
+
+            // Color based on transport
+            if (peer.transport.includes('TCP')) ctx.strokeStyle = 'rgba(33, 150, 243, 0.5)'; // Blue
+            else if (peer.transport.includes('DHT')) ctx.strokeStyle = 'rgba(255, 152, 0, 0.5)'; // Orange
+            else if (peer.transport.includes('TOR')) ctx.strokeStyle = 'rgba(156, 39, 176, 0.5)'; // Purple
+            else ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+
+            ctx.stroke();
+        });
+
+        // Draw Nodes
+        // Self
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.stroke();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('ME', centerX, centerY + 4);
+
+        // Peers
+        peers.forEach(peer => {
+            ctx.beginPath();
+            ctx.arc(peer.x, peer.y, 8, 0, 2 * Math.PI);
+
+            // Color based on health score
+            if (peer.score > 80) ctx.fillStyle = '#4caf50';
+            else if (peer.score > 50) ctx.fillStyle = '#ffeb3b';
+            else ctx.fillStyle = '#f44336';
+
+            ctx.fill();
+
+            // Label
+            ctx.fillStyle = '#aaa';
+            ctx.font = '10px sans-serif';
+            ctx.fillText(peer.id.substring(0, 4), peer.x, peer.y + 20);
+        });
+    }
+
   // Polling
   setInterval(updateStatus, 2000)
     setInterval(updateResources, 2000); // Poll resources
     setInterval(updatePeers, 3000); // Poll peers every 3s
+    setInterval(updateTopology, 3000); // Poll topology
   setInterval(refreshSubscriptions, 5000)
   setInterval(updateBlobs, 5000)
   setInterval(updateFiles, 5000)
