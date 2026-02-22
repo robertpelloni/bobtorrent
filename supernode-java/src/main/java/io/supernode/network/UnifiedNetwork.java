@@ -6,6 +6,7 @@ import io.supernode.storage.IPFSBlobStore;
 import io.supernode.storage.InMemoryBlobStore;
 import io.supernode.storage.SupernodeStorage;
 import io.supernode.intelligence.ResourceManager;
+import io.supernode.blockchain.BobcoinBridge;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -24,6 +25,7 @@ public class UnifiedNetwork {
     private final DHTDiscovery dht;
     private final ManifestDistributor manifestDistributor;
     private final ResourceManager resourceManager;
+    private final BobcoinBridge bobcoinBridge;
 
     private Consumer<ListeningEvent> onListening;
     private Consumer<PeerEvent> onPeer;
@@ -77,6 +79,11 @@ public class UnifiedNetwork {
         // Initialize Intelligence
         this.resourceManager = new ResourceManager(this);
 
+        // Initialize Blockchain
+        this.bobcoinBridge = new BobcoinBridge(options.bobcoinOptions != null
+            ? options.bobcoinOptions
+            : BobcoinBridge.BobcoinOptions.defaults());
+
         setupEventHandlers();
     }
 
@@ -84,6 +91,12 @@ public class UnifiedNetwork {
         // Start Components
         dht.start();
         resourceManager.start();
+
+        // Start Bridge (non-blocking)
+        bobcoinBridge.connect().exceptionally(e -> {
+            System.err.println("Failed to connect to Bobcoin Bridge: " + e.getMessage());
+            return false;
+        });
 
         return transportManager.startAll()
             .thenApply(addresses -> {
@@ -100,6 +113,7 @@ public class UnifiedNetwork {
 
     public CompletableFuture<Void> stop() {
         destroyed = true;
+        bobcoinBridge.disconnect();
         return transportManager.stopAll();
     }
 
@@ -217,6 +231,10 @@ public class UnifiedNetwork {
 
     public ResourceManager getResourceManager() {
         return resourceManager;
+    }
+
+    public BobcoinBridge getBobcoinBridge() {
+        return bobcoinBridge;
     }
 
     public boolean isDestroyed() {
@@ -412,6 +430,8 @@ public class UnifiedNetwork {
         
         public boolean enableIPFS = true;
         public IPFSTransport.IPFSOptions ipfsOptions = IPFSTransport.IPFSOptions.defaults();
+
+        public BobcoinBridge.BobcoinOptions bobcoinOptions = BobcoinBridge.BobcoinOptions.defaults();
 
         public UnifiedNetworkOptions() {}
 

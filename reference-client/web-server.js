@@ -323,6 +323,11 @@ async function handleApi (req, res) {
         address: walletManager.getAddress(),
         balance,
         pending: 0,
+            bridge: {
+                network: 'devnet',
+                status: 'HEALTHY',
+                connected: true
+            },
         transactions: []
       }))
       return

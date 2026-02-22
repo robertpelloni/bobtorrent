@@ -495,29 +495,27 @@ public class WebController {
     }
 
     private void handleWallet(ChannelHandlerContext ctx) {
-        ObjectNode wallet = mapper.createObjectNode();
+        io.supernode.blockchain.BobcoinBridge bridge = network.getBobcoinBridge();
 
-        // Simple file-based wallet persistence for reference implementation
-        String address = "0xSupernodeWalletJava";
-        java.io.File walletFile = new java.io.File("wallet.json");
+        // Use Bridge data if available
+        bridge.getBalance().thenAccept(balance -> {
+            ObjectNode wallet = mapper.createObjectNode();
+            wallet.put("address", bridge.getPublicKey());
+            wallet.put("balance", balance.bob() + " BOB");
+            wallet.put("pending", balance.pending() + " BOB");
 
-        if (walletFile.exists()) {
-            try {
-                ObjectNode saved = (ObjectNode) mapper.readTree(walletFile);
-                if (saved.has("publicKey")) {
-                    address = saved.get("publicKey").asText();
-                }
-            } catch (Exception e) {
-                // Ignore load error
-            }
-        }
+            io.supernode.blockchain.BobcoinBridge.HealthStatus health = bridge.getHealthStatus();
+            ObjectNode bridgeStatus = wallet.putObject("bridge");
+            bridgeStatus.put("network", bridge.getNetwork());
+            bridgeStatus.put("status", health != null ? health.state().toString() : "UNKNOWN");
+            bridgeStatus.put("connected", bridge.isConnected());
 
-        wallet.put("address", address);
-        wallet.put("balance", 1000); // Mock balance for Java Supernode (Bridge integration is next phase)
-        wallet.put("pending", 50);
-        wallet.putArray("transactions");
-
-        sendJson(ctx, wallet);
+            wallet.putArray("transactions");
+            sendJson(ctx, wallet);
+        }).exceptionally(e -> {
+            sendError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR);
+            return null;
+        });
     }
 
     private void sendJson(ChannelHandlerContext ctx, ObjectNode json) {

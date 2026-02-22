@@ -2,7 +2,7 @@ Initializing network...
 Web UI running at http://127.0.0.1:3000
 Storage: ./storage
 Tracker: ws://localhost:8000
-Blob network listening on port 44235
+Blob network listening on port 34539
 Loaded wallet: 9vcNDWmwUgWtViEUaAWPzWbw2oXhPsHtSyi7Nvk5W9Hi
 API Error: ReferenceError: blobs is not defined
     at handleApi (file:///app/reference-client/web-server.js:301:30)

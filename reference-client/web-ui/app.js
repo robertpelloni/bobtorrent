@@ -282,8 +282,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json()
 
       document.getElementById('wallet-address').value = data.address
-      document.getElementById('wallet-balance').textContent = data.balance + ' SOL (Devnet)'
-      document.getElementById('wallet-pending').textContent = data.pending + ' BOB'
+      document.getElementById('wallet-balance').textContent = data.balance + (String(data.balance).includes('SOL') || String(data.balance).includes('BOB') ? '' : ' BOB')
+      document.getElementById('wallet-pending').textContent = data.pending + (String(data.pending).includes('BOB') ? '' : ' BOB')
+
+      if (data.bridge) {
+        document.getElementById('bridge-network').textContent = data.bridge.network
+        const statusEl = document.getElementById('bridge-status')
+        statusEl.textContent = data.bridge.connected ? `Connected (${data.bridge.status})` : 'Disconnected'
+        statusEl.style.color = data.bridge.connected && data.bridge.status === 'HEALTHY' ? '#4caf50' : '#f44336'
+      }
 
       const table = document.getElementById('wallet-txs').querySelector('tbody')
       table.innerHTML = data.transactions.length ? '' : '<tr><td colspan="4">No transactions.</td></tr>'
