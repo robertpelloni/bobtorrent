@@ -1,52 +1,72 @@
-# Universal LLM Instructions
+# Universal AI Agent Instructions
 
-This document serves as the single source of truth for all LLMs (Claude, Gemini, GPT, etc.) interacting with the **Megatorrent / Bobtorrent** codebase. All agents must adhere to these protocols.
+**Effective Date:** 2026-02-12
+**Version:** 2.0 (Unified)
 
-## 1. Core Mandates
-
--   **Autonomous & Proactive**: Do not wait for user hand-holding. Plan, Execute, Verify, and Iterate. If a path is blocked, find a workaround or pivot strategically.
--   **"Code is Law"**: Security, encryption, and data integrity are non-negotiable. Use robust patterns (e.g., standard crypto libraries over home-rolled solutions).
--   **Documentation First**: Every major feature must have a corresponding update in `VISION.md`, `ROADMAP.md`, `CHANGELOG.md` and inline code documentation.
--   **Test-Driven**: No code is "done" until it is verified by a test. If existing tests fail, fix them before moving forward.
--   **Full Implementation**: Ensure every feature is 100% implemented, extremely robust, and well-documented with config and breadth of options. No hidden or underrepresented functionality.
--   **UI Representation**: Every feature must be well-represented in the UI with labels, descriptions, and tooltips.
-
-## 2. Project Context
-
--   **Project**: Megatorrent (formerly Bobtorrent).
--   **Goal**: Create a decentralized, incentivized, autonomous storage network and immutable content distribution protocol.
--   **Tech Stack**:
-    -   **Backend**: Node.js (Reference Client), Java (Supernode), C++ (qBittorrent/libtorrent integration).
-    -   **Frontend**: HTML/JS (Web UI), Playwright (Verification).
-    -   **Blockchain**: Solana (Bridge), Filecoin (Incentives).
-
-## 3. Communication Protocols
-
--   **Task Management**: Maintain `task.md` meticulously if used.
--   **Task Boundaries**: Use `task_boundary` tool to communicate state changes clearly.
--   **User Notifications**: Use `notify_user` only when blocked or for critical reviews. Batch questions.
--   **Detailed Logging**: Document all findings, decisions, and changes in the conversation log and `HANDOFF.md`.
-
-## 4. Coding Standards
-
--   **JavaScript/Node.js**: Modern ES6+ syntax, `import/export`, strict error handling.
--   **C++**: Qt-style for qBittorrent integration, RAII, safety.
--   **Java**: Standard Google Java Style.
--   **Safety**: Handle all exceptions gracefully. Never swallow errors without logging.
--   **Submodules**: Respect submodule boundaries. Do not modify submodule code directly unless fixing a bug to be upstreamed. Use patches or reference implementations.
-
-## 5. Branching & Versioning
-
--   **Versioning**: Semantic Versioning (MAJOR.MINOR.PATCH).
--   **Global Versioning**: The project uses a single version number stored in `VERSION` text file.
--   **Updates**: When updating version, update `package.json`, `VERSION`, and `CHANGELOG.md`.
--   **Commit Messages**: Must include the new version number if bumped.
-
-## 6. Agent Personas
-
--   **Architect**: Focus on system design, patterns, and high-level structure.
--   **Engineer**: Focus on robust implementation, testing, and optimization.
--   **Reviewer**: Focus on security auditing and code quality verification.
+## 🎯 Core Directive
+You are a highly skilled, autonomous software engineer. Your mission is to implement features for **Megatorrent**, a next-generation decentralized content distribution platform. You must strive for **comprehensive detail**, **robustness**, and **visual completeness**.
 
 ---
-*Reference this file in all agent-specific instruction files.*
+
+## 🛠 Project Structure (The Monorepo)
+
+*   **`reference-client/`**: Node.js implementation (Web UI + Client).
+    *   `web-server.js`: The API backend and static file server.
+    *   `web-ui/`: Single Page Application (HTML/JS/CSS).
+    *   `lib/`: Protocol logic.
+*   **`supernode-java/`**: High-performance Java Supernode.
+    *   `io.supernode.Supernode`: Main entry point.
+    *   `io.supernode.api.WebController`: Netty-based HTTP API (Parity with Node.js).
+    *   `io.supernode.network`: Unified networking stack (DHT, Blobs, Transports).
+    *   `io.supernode.storage`: Erasure Coding and Storage logic.
+*   **`qbittorrent/`**: C++ submodule (Reference patches).
+*   **`docs/`**: Project documentation.
+
+## 📜 Documentation Standards
+
+1.  **Single Source of Truth**:
+    *   **Version Number**: Must strictly adhere to the content of the `VERSION` file in the root.
+    *   **Changelog**: All changes must be recorded in `CHANGELOG.md` under the new version header.
+    *   **Instructions**: This file (`UNIVERSAL_LLM_INSTRUCTIONS.md`) supersedes individual model files.
+
+2.  **Version Control**:
+    *   When implementing *any* feature or fix, increment the version in `VERSION`.
+    *   Create a matching entry in `CHANGELOG.md`.
+    *   Reference the version in your commit message.
+
+3.  **Code Comments**:
+    *   Comment complex logic (Why, not just What).
+    *   Leave simple code bare.
+
+## 🚀 Deployment & Build
+
+*   **Node.js**: `cd reference-client && npm install && npm start`
+*   **Java**: `cd supernode-java && ./gradlew installDist && ./build/install/supernode/bin/supernode [PORT]`
+*   **Web UI**: Accessible at `http://localhost:3000` (Node) or `http://localhost:8080` (Java).
+
+## 🤖 Feature Implementation Guide
+
+1.  **Analyze**: Understand the requirement deeply. Ask clarifying questions if unsure.
+2.  **Plan**: Create a step-by-step plan using `set_plan`.
+3.  **Implement**:
+    *   **Backend First**: Implement core logic in Java/Node.
+    *   **API Layer**: Expose functionality via HTTP endpoints (`WebController`/`web-server.js`).
+    *   **Frontend**: Create rich, visual UI components to represent the feature. **Do not leave features invisible.**
+4.  **Verify**:
+    *   **Tests**: Run unit/integration tests (`./gradlew test`, `npm test`).
+    *   **Visual**: Use Playwright scripts to generate screenshots of the UI.
+5.  **Document**: Update `MANUAL.md`, `ROADMAP.md`, `TODO.md`.
+
+## 🔄 Handoff Protocol
+
+At the end of your session:
+1.  Merge all feature branches into `main` (if acting as a git operator) or ensure your changes are ready to commit.
+2.  Update `HANDOFF.md` with:
+    *   **Session Summary**: What was achieved?
+    *   **Current State**: What is working? What is broken?
+    *   **Next Steps**: Clear, actionable items for the next agent.
+    *   **Context**: Any specific quirks or design decisions made.
+
+---
+
+*Keep going. Don't stop. Proceed with excellence.*

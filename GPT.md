@@ -1,1 +1,1 @@
-See docs/UNIVERSAL_LLM_INSTRUCTIONS.md for all agent instructions.
+Please refer to `docs/UNIVERSAL_LLM_INSTRUCTIONS.md` for all instructions.
