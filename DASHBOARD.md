@@ -2,31 +2,34 @@
 
 ## 📂 Project Structure
 
--   `bobtorrent/` (Root) - JavaScript-based BitTorrent Tracker (v11.2.2).
+-   `bobtorrent/` (Root) - JavaScript-based BitTorrent Tracker with Universal Swarm functionality.
     -   `supernode-java/` - Core Java implementation of the Supernode logic, Erasure Coding, and Blockchain integration.
     -   `qbittorrent/` - [Submodule] C++ qBittorrent client integration.
-    -   `webtorrent-bittorrent-tracker/` - [Submodule] Upstream WebTorrent tracker reference.
-    -   `docs/` - Project documentation.
+    -   `bobcoin/` - [Submodule] Bobcoin hybrid blockchain and ZK-based minting logic.
+    -   `docs/` - Centralized universal documentation and Master Protocol definitions.
+    -   `lib/` - Node.js core logic (including Manifest encryption and validation).
 
 ## 📦 Submodules
 
-| Submodule | Path | Description |
-| :--- | :--- | :--- |
-| **qbittorrent** | `qbittorrent` | Native C++ BitTorrent client core. Used for high-performance peering. |
-| **webtorrent-bittorrent-tracker** | `webtorrent-bittorrent-tracker` | Upstream reference for the tracker protocol. |
+| Submodule | Path | Source Repository | Commit Status (Latest Build) |
+| :--- | :--- | :--- | :--- |
+| **qbittorrent** | `qbittorrent` | `https://github.com/robertpelloni/qbittorrent` | Synced |
+| **bobcoin** | `bobcoin` | `https://github.com/robertpelloni/bobcoin` | Synced |
 
 ## 📊 Key Components
 
 ### Supernode Java (`supernode-java`)
 -   **Cipher**: `AES/GCM` (MuxEngine)
--   **Erasure Coding**: Reed-Solomon (4+2, 6+2)
+-   **Erasure Coding**: Reed-Solomon (4+2, 6+2), Streaming Support
 -   **Blockchain**: BobcoinBridge (Filecoin/Solana)
--   **Network**: DHTDiscovery (Kademlia)
+-   **Network**: DHTDiscovery (Kademlia), Multi-transport (Clearnet, Tor, I2P, IPFS, Hyphanet)
 
 ### Bobtorrent Tracker (`root`)
 -   **Type**: HTTP/UDP/WebSocket Tracker
--   **Runtime**: Node.js
+-   **Runtime**: Node.js (v18+)
+-   **Manifest**: Signed and optionally encrypted JSON sequence blobs with Ed25519 & XSalsa20-Poly1305 (libsodium).
 
 ## 📅 Build Info
--   **Version**: 11.2.2 (Tracker), 0.1.0-SNAPSHOT (Java)
--   **Last Updated**: 2026-02-05
+-   **Tracker Version**: 11.2.4
+-   **Supernode Java Version**: 0.2.0-SNAPSHOT
+-   **Last Build Date**: 2026-03-09

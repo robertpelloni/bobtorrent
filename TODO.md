@@ -1,65 +1,32 @@
-# TODO
+# TODO (Autonomous Development Backlog)
 
-## Current Session - Autonomous Development
+## ✅ Completed (Reanalyzed State)
+- **Merge Hell Resolved**: Re-aligned `lib/manifest.js` to correctly utilize `fast-json-stable-stringify` along with encryption payloads (XSalsa20).
+- **Submodule Stabilization**: Corrected `bobcoin` detached references.
+- **Tracker Integration**: Merged multiple UI and reference implementation branches flawlessly into core.
+- **Documentation Overhaul**: Created `UNIVERSAL_LLM_INSTRUCTIONS.md`, generated DASHBOARD, MEMORY, DEPLOY, VISION, ROADMAP.
+- **Storage Performance**: Concurrent erasure coding and parallel manifest validation are checked and integrated.
 
-### In Progress
+## 🚀 Active Feature Backlog (Pending Implementation)
 
-#### ✅ Completed
-- **Cipher Migration**: ChaCha20 → AES/GCM (MuxEngine.java, Manifest.java)
-- **WebSocket Handshake Fix**: Fixed timing issue in BlobNetwork.java
-- **Transport Schemes**: Added freenet: (HyphanetTransport) and ipfs: (IPFSTransport) support
-- **Documentation**: CHANGELOG.md, ROADMAP.md, VERSION created
-- **Test Fixes**: Fixed erasure coder parity test expectations
-- **Production Ready**: All integration tests passing (7/7), core P2P infrastructure operational
+### 1. Supernode CLI Configuration & Diagnostics (Next Target)
+*Create a highly robust Command Line Interface (CLI) component for the Supernode:*
+- [ ] Implement `io.supernode.cli.NodeCLI` taking command line arguments utilizing a robust parsing library or manual elegant parsing.
+- [ ] Add `status` command to output current peer counts, Kademlia DHT state, and memory metrics.
+- [ ] Add `manifest-inspect <cid>` command to parse, decrypt (if key provided), and print a verified JSON manifest.
+- [ ] Make sure it runs as an entry point script / shell wrapper.
 
-#### 🚀 Next Steps (Autonomous Development)
+### 2. Distributed Manifest Synchronization
+*Implement the swarm state sync capability:*
+- [ ] Extend Kademlia routing tables (`DHTDiscovery`) to broadcast new manifests (`Manifest.java`) to at least 4 nearest neighbors automatically.
+- [ ] Add deduplication checks to prevent broadcast storms.
 
-- [x] **Investigate BobcoinBridge health monitoring improvements**
-  - Implement health status tracking with interval checks
-  - Add circuit breaker for unresponsive Filecoin nodes
-  - Enhance connection pooling for better performance
-  - Add health event emission for monitoring changes
+### 3. WebTransport Tracker Support (Node.js)
+*Upgrade the `bobtorrent` Javascript tracker:*
+- [ ] Add a `lib/server/parse-webtransport.js` handler for incoming QUIC connections.
+- [ ] Bind robust fallback logic ensuring peers on WS can share swarms with peers on WebTransport.
 
-- [x] **Enhance transport connection pooling and multiplexing**
-  - Implement connection pool for BlobNetwork to reduce connection overhead
-  - Add connection reuse across multiple transports
-  - Implement multiplexing support for parallel blob transfers
-  - Add connection warmup for frequently accessed peers
-
-- [x] **Implement advanced erasure coding strategies**
-  - Add streaming erasure coding support for large files (>1GB)
-  - Add Reed-Solomon (6+2) configuration option
-  - Implement parity shard verification and repair
-  - Add adaptive shard selection based on network conditions
-
-- [x] **Optimize network operations**
-  - Implement NAT traversal improvements
-  - Add Kademlia DHT optimization for better routing
-  - Add peer exchange protocol for better discovery
-  - Implement efficient blob streaming for large files
-- [x] **Add predictive resource allocation based on demand**
-  - Implement `ResourceManager` to monitor JVM metrics
-  - Integrate with `SupernodeNetwork` stats
-  - Provide load level recommendations
-
-- [x] **Advanced routing and content delivery**
-  - [x] Add DHT integration with Filecoin for content routing
-  - [x] Implement content-addressed storage with automatic deduplication
-  - [x] Add BitSwarm integration for data availability
-  - [x] Implement progressive download with automatic chunk assembly
-
-- [x] **Storage performance optimizations**
-  - [x] Implement concurrent erasure encoding/decoding
-  - [x] Add parallel manifest validation
-  - [x] Implement smart cache eviction policies (e.g., LFU/LRU)
-  - [x] Build storage metrics and monitoring dashboard
-
-### Notes
-
-- All critical production issues are resolved ✅
-- Build issues are Gradle wrapper configuration (doesn't affect production code)
-- Integration tests are all passing (7/7)
-- Core P2P storage and network infrastructure is production-ready
-
-- Current build shows "BUILD SUCCESSFUL" for core tests
-- Test framework warnings are non-blocking (deprecation notifications only)
+### 4. Code & Quality Improvements
+- [ ] Convert `package.json` testing to use integrated modern runners instead of unmaintained endpoints.
+- [ ] Ensure the Java ER test assertions perfectly mimic production byte layouts.
+- [ ] Increase commenting density on all cryptographically sensitive components (`MuxEngine.java`, `Manifest.java`, `BobcoinBridge.java`).
