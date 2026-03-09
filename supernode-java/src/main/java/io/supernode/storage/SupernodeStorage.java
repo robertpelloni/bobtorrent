@@ -115,10 +115,20 @@ public class SupernodeStorage {
                 // Deduplication failed (e.g. key mismatch or corruption), proceed with full ingest
             }
         }
+        
+        // Quota Enforcement
+        if (options.maxStorageBytes > 0) {
+            long currentUsage = blobStore.stats().totalBytes();
+            if (currentUsage + fileBuffer.length > options.maxStorageBytes) {
+                throw new IllegalStateException("Storage quota exceeded. Current usage: " + currentUsage + 
+                    ", Max allowed: " + options.maxStorageBytes + ", Required: " + fileBuffer.length);
+            }
+        }
 
         String operationId = generateOperationId();
         OperationState state = new OperationState(operationId, OperationType.INGEST, Instant.now());
         operations.put(operationId, state);
+
         
         try {
             List<Segment> segments = new ArrayList<>();
@@ -510,6 +520,24 @@ public class SupernodeStorage {
         int[] indices = presentIndices.stream().mapToInt(Integer::intValue).toArray();
         byte[] muxedData = coder.decode(shards, indices, segment.muxedSize(), segment.shardSize());
         
+        // Streaming Reed-Solomon On-The-Fly Repair
+        if (presentIndices.size() < segment.shards().size()) {
+            io.supernode.storage.erasure.ErasureCoder.EncodeResult repairedResult = coder.encode(muxedData);
+            for (ShardInfo shardInfo : segment.shards()) {
+                if (!presentIndices.contains(shardInfo.index())) {
+                    byte[] repairedData = repairedResult.shards()[shardInfo.index()];
+                    // Verify the reconstructed hash matches the expected hash
+                    String actualHash = sha256Hex(repairedData);
+                    if (actualHash.equals(shardInfo.hash())) {
+                        blobStore.put(shardInfo.hash(), repairedData);
+                        System.out.println("On-The-Fly Repair logic successfully resolved and persisted missing shard for chunk: " + shardInfo.hash());
+                    } else {
+                        System.err.println("Fatal: Repaired shard hash mismatch. Expected: " + shardInfo.hash() + ", Actual: " + actualHash);
+                    }
+                }
+            }
+        }
+        
         if (onErasureDecoded != null) {
             onErasureDecoded.accept(new ErasureDecodedEvent(
                 presentIndices.size(),
@@ -694,6 +722,7 @@ public class SupernodeStorage {
         public final Duration operationTimeout;
         public final int maxRetries;
         public final boolean enableCache;
+        public final long maxStorageBytes; // 0 means unmetered
         
         private StorageOptions(Builder builder) {
             this.isoSize = builder.isoSize;
@@ -707,6 +736,7 @@ public class SupernodeStorage {
             this.operationTimeout = builder.operationTimeout;
             this.maxRetries = builder.maxRetries;
             this.enableCache = builder.enableCache;
+            this.maxStorageBytes = builder.maxStorageBytes;
         }
         
         public static StorageOptions defaults() {
@@ -743,6 +773,7 @@ public class SupernodeStorage {
             private Duration operationTimeout = Duration.ofMinutes(30);
             private int maxRetries = 3;
             private boolean enableCache = true;
+            private long maxStorageBytes = 0; // Default: unmetered
             
             public Builder isoSize(SizePreset size) { this.isoSize = size; return this; }
             public Builder enableErasure(boolean enable) { this.enableErasure = enable; return this; }
@@ -755,6 +786,7 @@ public class SupernodeStorage {
             public Builder operationTimeout(Duration timeout) { this.operationTimeout = timeout; return this; }
             public Builder maxRetries(int retries) { this.maxRetries = retries; return this; }
             public Builder enableCache(boolean enable) { this.enableCache = enable; return this; }
+            public Builder maxStorageBytes(long bytes) { this.maxStorageBytes = bytes; return this; }
             
             public StorageOptions build() {
                 return new StorageOptions(this);

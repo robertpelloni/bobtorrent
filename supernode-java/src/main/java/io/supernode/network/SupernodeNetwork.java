@@ -136,6 +136,10 @@ public class SupernodeNetwork {
             });
         }
         
+        manifestDistributor.setOnManifestReceived(e -> {
+            System.out.println("Received manifested broadcast syncing from peer for fileId: " + e.fileId());
+        });
+        
         storage.setOnFileIngested(e -> {
             if (onFileIngested != null) {
                 onFileIngested.accept(new FileIngestedEvent(e.fileId(), e.fileName(), e.size()));
@@ -172,6 +176,27 @@ public class SupernodeNetwork {
                 return unifiedNetwork.start().thenApply(v -> p);
             }
             return CompletableFuture.completedFuture(p);
+        }).thenApply(p -> {
+            // Start the background broadcast synchronization
+            manifestDistributor.startBroadcastLoop((peerId, broadcastMsg) -> {
+                blobNetwork.findPeersWithBlob(peerId).stream().findFirst().ifPresent(conn -> {
+                    // Send custom message type over the blob network if connection exists
+                    try {
+                        io.supernode.network.BlobNetwork.Message netMsg = new io.supernode.network.BlobNetwork.Message(
+                            broadcastMsg.type(),
+                            Map.of(
+                                "fileId", broadcastMsg.fileId(),
+                                "manifest", broadcastMsg.manifest(),
+                                "timestamp", broadcastMsg.timestamp()
+                            )
+                        );
+                        // Accessing internal send via reflective shortcut or relying on BlobNetwork broadcast
+                        // Since BlobNetwork doesn't expose raw sendMessage, we broadcast it to all or specific peer
+                        blobNetwork.broadcastMessage(netMsg);
+                    } catch (Exception e) {}
+                });
+            });
+            return p;
         });
     }
     
@@ -233,6 +258,10 @@ public class SupernodeNetwork {
         } catch (Exception e) {
             throw new RuntimeException("Retrieve failed", e);
         }
+    }
+    
+    public SupernodeStorage.StorageStats getStorageStats() {
+        return storage.stats();
     }
     
     public CompletableFuture<RetrieveResult> fetchFile(String fileId, Manifest manifest, byte[] masterKey) {

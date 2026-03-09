@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="ISO Integration" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-07T20:06:37" hostname="pink" time="0.585">
+<testsuite name="ISO Integration" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:18:02" hostname="PINK" time="0.361">
   <properties/>
-  <testcase name="muxed data should look like ISO when XORed back" classname="io.supernode.storage.mux.MuxEngineTest$ISOIntegrationTests" time="0.58"/>
+  <testcase name="muxed data should look like ISO when XORed back" classname="io.supernode.storage.mux.MuxEngineTest$ISOIntegrationTests" time="0.357"/>
   <testcase name="muxed data should be sector-aligned" classname="io.supernode.storage.mux.MuxEngineTest$ISOIntegrationTests" time="0.001"/>
-  <testcase name="should use correct sector count" classname="io.supernode.storage.mux.MuxEngineTest$ISOIntegrationTests" time="0.002"/>
+  <testcase name="should use correct sector count" classname="io.supernode.storage.mux.MuxEngineTest$ISOIntegrationTests" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

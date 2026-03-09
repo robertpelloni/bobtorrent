@@ -813,7 +813,7 @@ public class BlobNetwork {
         recordResponseReceived(peerId, Duration.ofMillis(50), true);
     }
     
-    private void broadcastMessage(Message message) {
+    public void broadcastMessage(Message message) {
         for (PeerConnection peer : peers.values()) {
             if (peer.channel().isActive()) {
                 sendMessage(peer.channel(), message);

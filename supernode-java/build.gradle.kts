@@ -40,5 +40,5 @@ java {
 }
 
 application {
-    mainClass.set("io.supernode.DemoDashboard")
+    mainClass.set(project.findProperty("mainClass") as String? ?: "io.supernode.DemoDashboard")
 }

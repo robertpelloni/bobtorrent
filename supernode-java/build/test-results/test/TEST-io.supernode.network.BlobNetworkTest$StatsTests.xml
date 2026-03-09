@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Stats" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-07T20:04:40" hostname="pink" time="0.232">
+<testsuite name="Stats" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:15" hostname="PINK" time="0.261">
   <properties/>
-  <testcase name="should return complete stats" classname="io.supernode.network.BlobNetworkTest$StatsTests" time="0.232"/>
+  <testcase name="should return complete stats" classname="io.supernode.network.BlobNetworkTest$StatsTests" time="0.261"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

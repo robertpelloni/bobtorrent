@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Concurrency and Thread Safety" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-07T20:05:42" hostname="pink" time="0.274">
+<testsuite name="Concurrency and Thread Safety" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:51" hostname="PINK" time="0.207">
   <properties/>
-  <testcase name="should be thread-safe for concurrent encoding" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$ConcurrencyTests" time="0.118"/>
-  <testcase name="should be thread-safe for concurrent repair" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$ConcurrencyTests" time="0.117"/>
-  <testcase name="should be thread-safe for concurrent decoding" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$ConcurrencyTests" time="0.037"/>
+  <testcase name="should be thread-safe for concurrent encoding" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$ConcurrencyTests" time="0.029"/>
+  <testcase name="should be thread-safe for concurrent repair" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$ConcurrencyTests" time="0.151"/>
+  <testcase name="should be thread-safe for concurrent decoding" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$ConcurrencyTests" time="0.025"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

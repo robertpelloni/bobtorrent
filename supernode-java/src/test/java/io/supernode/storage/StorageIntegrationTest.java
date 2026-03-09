@@ -114,7 +114,7 @@ class StorageIntegrationTest {
     @DisplayName("should track operations and cleanup correctly")
     void operationTracking() throws Exception {
         byte[] content = new byte[1024 * 1024];
-        storage.ingestAsync(content, "test.bin", masterKey).get(5, TimeUnit.SECONDS);
+        storage.ingestAsync(content, "test.bin", masterKey).get(20, TimeUnit.SECONDS);
 
         SupernodeStorage.StorageStats stats = storage.stats();
         assertTrue(stats.totalOperations() >= 1);

@@ -9,6 +9,7 @@ import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * Distributes encrypted manifests via DHT and peer-to-peer messaging.
@@ -29,6 +30,7 @@ public class ManifestDistributor {
     private Consumer<AnnounceErrorEvent> onAnnounceError;
     private Consumer<ManifestAnnouncedEvent> onManifestAnnounced;
     private Consumer<ManifestServedEvent> onManifestServed;
+    private Consumer<ManifestReceivedEvent> onManifestReceived;
     private Consumer<Void> onDestroyed;
     
     public ManifestDistributor(ManifestDistributorOptions options) {
@@ -39,6 +41,34 @@ public class ManifestDistributor {
     
     public void setPort(int port) {
         this.wsPort = port;
+    }
+    
+    /**
+     * Start the background broadcast loop to synchronize manifests across the cluster.
+     */
+    public void startBroadcastLoop(BiConsumer<String, ManifestBroadcast> broadcastFunction) {
+        scheduler.scheduleAtFixedRate(() -> {
+            if (destroyed) return;
+            try {
+                for (Map.Entry<String, ManifestCacheEntry> entry : manifestCache.entrySet()) {
+                    String fileId = entry.getKey();
+                    storage.getManifest(fileId).ifPresent(encryptedManifest -> {
+                        ManifestBroadcast broadcast = new ManifestBroadcast(
+                            "manifest-broadcast",
+                            fileId,
+                            Base64.getEncoder().encodeToString(encryptedManifest),
+                            System.currentTimeMillis()
+                        );
+                        // Fanout to 4 nearest/random DHT peers via the provided network broadcast function
+                        List<DHTDiscovery.PeerHealth> peers = dht.getHealthyPeers();
+                        Collections.shuffle(peers);
+                        peers.stream().limit(4).forEach(p -> broadcastFunction.accept(p.peerId(), broadcast));
+                    });
+                }
+            } catch (Exception e) {
+                // Ignore broadcast loop errors
+            }
+        }, 1, 5, TimeUnit.MINUTES);
     }
     
     /**
@@ -124,7 +154,25 @@ public class ManifestDistributor {
         if (message instanceof ManifestResponse response) {
             return handleManifestResponse(response);
         }
+        if (message instanceof ManifestBroadcast broadcast) {
+            return handleManifestBroadcast(broadcast);
+        }
         return false;
+    }
+    
+    private boolean handleManifestBroadcast(ManifestBroadcast broadcast) {
+        String fileId = broadcast.fileId();
+        byte[] manifestBuffer = Base64.getDecoder().decode(broadcast.manifest());
+        
+        if (!storage.getManifest(fileId).isPresent()) {
+            storage.storeManifest(fileId, manifestBuffer);
+            announceManifest(fileId);
+            
+            if (onManifestReceived != null) {
+                onManifestReceived.accept(new ManifestReceivedEvent(fileId, manifestBuffer.length));
+            }
+        }
+        return true;
     }
     
     private boolean handleManifestRequest(ManifestRequest request, Consumer<Object> sendResponse) {
@@ -226,6 +274,7 @@ public class ManifestDistributor {
     public void setOnAnnounceError(Consumer<AnnounceErrorEvent> listener) { this.onAnnounceError = listener; }
     public void setOnManifestAnnounced(Consumer<ManifestAnnouncedEvent> listener) { this.onManifestAnnounced = listener; }
     public void setOnManifestServed(Consumer<ManifestServedEvent> listener) { this.onManifestServed = listener; }
+    public void setOnManifestReceived(Consumer<ManifestReceivedEvent> listener) { this.onManifestReceived = listener; }
     public void setOnDestroyed(Consumer<Void> listener) { this.onDestroyed = listener; }
     
     // Utility
@@ -246,11 +295,13 @@ public class ManifestDistributor {
     
     public record ManifestRequest(String type, String fileId, String requestId, long timestamp) {}
     public record ManifestResponse(String type, String requestId, String fileId, String manifest, boolean found, long timestamp) {}
+    public record ManifestBroadcast(String type, String fileId, String manifest, long timestamp) {}
     public record ManifestResult(String fileId, byte[] manifest) {}
     
     public record AnnounceErrorEvent(String fileId, String error) {}
     public record ManifestAnnouncedEvent(String fileId, String infoHash) {}
     public record ManifestServedEvent(String fileId, boolean found, String requestId) {}
+    public record ManifestReceivedEvent(String fileId, int size) {}
     public record ManifestDistributorStats(int announcedManifests, int pendingRequests) {}
     public record AnnouncedManifest(String fileId, long announcedAt, String infoHash) {}
     

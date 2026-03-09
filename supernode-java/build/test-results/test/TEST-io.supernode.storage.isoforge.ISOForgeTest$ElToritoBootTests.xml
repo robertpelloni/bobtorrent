@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="El Torito Boot" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-07T20:05:47" hostname="pink" time="5.946">
+<testsuite name="El Torito Boot" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:52" hostname="PINK" time="0.488">
   <properties/>
-  <testcase name="bootable ISO should have boot record" classname="io.supernode.storage.isoforge.ISOForgeTest$ElToritoBootTests" time="5.946"/>
+  <testcase name="bootable ISO should have boot record" classname="io.supernode.storage.isoforge.ISOForgeTest$ElToritoBootTests" time="0.488"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
