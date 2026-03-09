@@ -15,21 +15,23 @@ Bobtorrent and Supernode Java constitute the P2P supernode implementation and de
 - Filecoin blockchain integration via BobcoinBridge.
 - Predictive JVM resource allocation.
 
-### 🚧 Current Short Term Focus (v0.3.0)
-- [ ] **Node CLI and Diagnostics Tools**: 
+### ✅ Current Short Term Focus (v0.3.0) — COMPLETED
+- [x] **Node CLI and Diagnostics Tools**: 
   - Implementation of a terminal UI/CLI for node configuration, manifest inspection, and real-time swarm diagnostic monitoring.
-- [ ] **Distributed Manifest Synchronization**:
+- [x] **Distributed Manifest Synchronization**:
   - Kademlia DHT broadcast mechanisms to sync manifests across global clusters autonomously.
-- [ ] **WebTransport Integration Investigation**:
-  - Research and draft integration plan for QUIC-based WebTransport in the Node.js tracker.
+- [x] **Storage Quotas Enforcement**:
+  - `maxStorageBytes` configurable limit with quota check in ingest pipeline.
+- [x] **Streaming Reed-Solomon Parity Repair**:
+  - On-the-fly re-encoding and persistence of missing shards during retrieval.
+- [x] **WebTransport Integration**:
+  - QUIC-based HTTP/3 transport for the Node.js tracker with graceful fallback.
 
 ### 🚀 Medium Term (v0.4.0)
 - [ ] **Enhanced Transport Protocol Implementations**
   - Tor v3: Improve circuit rotation and stream multiplexing.
   - IPFS: Add full CAR (Content Addressable Archive) payload extraction.
   - Hyphanet: Enhanced splitfile recovery.
-- [ ] **Advanced Erasure Coding & Verification**
-  - Streaming Reed-Solomon parity repair for damaged sector files on the fly.
 - [ ] **Consensus-Verified Tracker Ledger**
   - Hooking tracker peer states into a Solana/Stone.Ledger memo bridge to definitively ban bad actors.
 

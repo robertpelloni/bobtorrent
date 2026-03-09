@@ -14,6 +14,7 @@ import Swarm from './lib/server/swarm.js'
 import parseHttpRequest from './lib/server/parse-http.js'
 import parseUdpRequest from './lib/server/parse-udp.js'
 import parseWebSocketRequest from './lib/server/parse-websocket.js'
+import parseWebTransportRequest from './lib/server/parse-webtransport.js'
 import { validateManifest } from './lib/manifest.js'
 import LRU from 'lru'
 
@@ -65,6 +66,8 @@ class Server extends EventEmitter {
     this.udp4 = null
     this.udp6 = null
     this.ws = null
+    this.wt = null // WebTransport (HTTP/3 QUIC) server instance
+    this._wtSessions = new Set() // Active WebTransport sessions
 
     // start an http tracker unless the user explictly says no
     if (opts.http !== false) {
@@ -144,6 +147,16 @@ class Server extends EventEmitter {
         socket.upgradeReq = req
         this.onWebSocketConnection(socket)
       })
+    }
+
+    // start a WebTransport (HTTP/3 QUIC) tracker unless user explicitly says no
+    if (opts.webtransport !== false && opts.webtransport) {
+      // WebTransport requires a separate HTTP/3 server with TLS certificates.
+      // Node.js does not natively support HTTP/3 yet; this integration uses
+      // the experimental @aspect-build/http3 or similar polyfill when available.
+      // For now, we store the config and create the server in listen().
+      this._wtOpts = isObject(opts.webtransport) ? opts.webtransport : {}
+      debug('WebTransport enabled with opts: %o', this._wtOpts)
     }
 
     if (opts.stats !== false) {
@@ -288,6 +301,7 @@ class Server extends EventEmitter {
     }
 
     let num = !!this.http + !!this.udp4 + !!this.udp6
+    if (this._wtOpts) num += 1 // Count WebTransport as a listener
     const self = this
     function onListening () {
       num -= 1
@@ -327,6 +341,11 @@ class Server extends EventEmitter {
     if (this.http) this.http.listen(httpPort, httpHostname)
     if (this.udp4) this.udp4.bind(udpPort, udp4Hostname)
     if (this.udp6) this.udp6.bind(udpPort, udp6Hostname)
+
+    // WebTransport (HTTP/3) listener
+    if (this._wtOpts) {
+      this._startWebTransport(this._wtOpts, port, onListening)
+    }
   }
 
   close (cb = noop) {
@@ -351,6 +370,17 @@ class Server extends EventEmitter {
       try {
         this.ws.close()
       } catch (err) {}
+    }
+
+    // Tear down WebTransport sessions
+    if (this._wtSessions) {
+      for (const session of this._wtSessions) {
+        try { session.close() } catch (err) {}
+      }
+      this._wtSessions.clear()
+    }
+    if (this.wt) {
+      try { this.wt.close() } catch (err) {}
     }
 
     if (this.http) this.http.close(cb)
@@ -629,6 +659,241 @@ class Server extends EventEmitter {
     debug('websocket error %s', err.message || err)
     this.emit('warning', err)
     this._onWebSocketClose(socket)
+  }
+
+  /**
+   * Initialize the WebTransport (HTTP/3 QUIC) server.
+   * Requires TLS cert/key in opts: { cert, key, port }
+   * Falls back gracefully if the platform lacks HTTP/3 support.
+   */
+  _startWebTransport (opts, defaultPort, onListening) {
+    const wtPort = opts.port || (isObject(defaultPort) ? (defaultPort.wt || 0) : defaultPort)
+    const self = this
+
+    // Attempt to import the WebTransport server module.
+    // Node.js does not yet have native HTTP/3; this uses an opt-in polyfill.
+    import('http3').then(http3 => {
+      const server = http3.createServer({
+        cert: opts.cert,
+        key: opts.key,
+        port: wtPort
+      })
+
+      server.on('session', session => {
+        self.onWebTransportSession(session)
+      })
+
+      server.on('error', err => {
+        self._onError(err)
+      })
+
+      server.listen(wtPort, () => {
+        self.wt = server
+        debug('WebTransport (HTTP/3) listening on port %d', wtPort)
+        onListening()
+      })
+    }).catch(err => {
+      // HTTP/3 module not available — emit warning but don't crash
+      debug('WebTransport unavailable: %s (install `http3` package to enable)', err.message)
+      self.emit('warning', new Error(`WebTransport unavailable: ${err.message}. Install the 'http3' package to enable QUIC support.`))
+      // Still count as "listening" so the server doesn't hang
+      onListening()
+    })
+  }
+
+  /**
+   * Handle a new WebTransport session.
+   * Each session may open multiple bidirectional streams — each stream
+   * carries a single JSON-encoded tracker request/response cycle.
+   */
+  onWebTransportSession (session, opts = {}) {
+    opts.trustProxy = opts.trustProxy || this._trustProxy
+    const self = this
+
+    // Create a session wrapper that mimics the WebSocket socket interface
+    const sessionWrapper = {
+      peerId: null,
+      infoHashes: [],
+      ip: session.remoteAddress || '0.0.0.0',
+      port: session.remotePort || 0,
+      addr: null,
+      headers: {},
+      destroyed: false,
+      send (data, cb) {
+        try {
+          // Write response back to the session's writable stream
+          if (session.datagrams && session.datagrams.writable) {
+            const writer = session.datagrams.writable.getWriter()
+            writer.write(new TextEncoder().encode(data)).then(() => writer.releaseLock())
+          }
+        } catch (err) {
+          if (cb) cb(err)
+        }
+      },
+      onSend: noop,
+      close () {
+        try { session.close() } catch (e) {}
+      }
+    }
+
+    sessionWrapper.addr = `${sessionWrapper.ip}:${sessionWrapper.port}`
+    this._wtSessions.add(sessionWrapper)
+
+    // Read incoming bidirectional streams
+    if (session.incomingBidirectionalStreams) {
+      const reader = session.incomingBidirectionalStreams.getReader()
+      const readStreams = async () => {
+        try {
+          while (true) {
+            const { value: stream, done } = await reader.read()
+            if (done) break
+            self._readWebTransportStream(sessionWrapper, opts, stream)
+          }
+        } catch (err) {
+          debug('WebTransport stream read error: %s', err.message)
+        }
+      }
+      readStreams()
+    }
+
+    // Read incoming datagrams (unreliable, low-latency announce keepalives)
+    if (session.datagrams && session.datagrams.readable) {
+      const datagramReader = session.datagrams.readable.getReader()
+      const readDatagrams = async () => {
+        try {
+          while (true) {
+            const { value, done } = await datagramReader.read()
+            if (done) break
+            const rawData = new TextDecoder().decode(value)
+            self._onWebTransportMessage(sessionWrapper, opts, rawData)
+          }
+        } catch (err) {
+          debug('WebTransport datagram read error: %s', err.message)
+        }
+      }
+      readDatagrams()
+    }
+
+    // Handle session close
+    if (session.closed) {
+      session.closed.then(() => {
+        self._onWebTransportClose(sessionWrapper)
+      }).catch(() => {
+        self._onWebTransportClose(sessionWrapper)
+      })
+    }
+  }
+
+  /**
+   * Read a single bidirectional WebTransport stream to completion,
+   * then parse and process the request.
+   */
+  async _readWebTransportStream (sessionWrapper, opts, stream) {
+    try {
+      const reader = stream.readable.getReader()
+      const chunks = []
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        chunks.push(value)
+      }
+      const rawData = new TextDecoder().decode(Buffer.concat(chunks.map(c => Buffer.from(c))))
+      this._onWebTransportMessage(sessionWrapper, opts, rawData)
+    } catch (err) {
+      debug('WebTransport stream parse error: %s', err.message)
+      this.emit('warning', err)
+    }
+  }
+
+  _onWebTransportMessage (sessionWrapper, opts, rawData) {
+    let params
+    try {
+      params = parseWebTransportRequest(sessionWrapper, opts, rawData)
+    } catch (err) {
+      sessionWrapper.send(JSON.stringify({
+        'failure reason': err.message
+      }), sessionWrapper.onSend)
+      this.emit('warning', err)
+      return
+    }
+
+    if (!sessionWrapper.peerId) sessionWrapper.peerId = params.peer_id
+
+    this._onRequest(params, (err, response) => {
+      if (this.destroyed || sessionWrapper.destroyed) return
+      if (err) {
+        sessionWrapper.send(JSON.stringify({
+          action: params.action === common.ACTIONS.ANNOUNCE ? 'announce' : 'scrape',
+          'failure reason': err.message,
+          info_hash: params.info_hash || null
+        }), sessionWrapper.onSend)
+        this.emit('warning', err)
+        return
+      }
+
+      response.action = params.action === common.ACTIONS.ANNOUNCE ? 'announce' : 'scrape'
+
+      let peers
+      if (response.action === 'announce') {
+        peers = response.peers
+        delete response.peers
+
+        if (!sessionWrapper.infoHashes.includes(params.info_hash)) {
+          sessionWrapper.infoHashes.push(params.info_hash)
+        }
+
+        response.info_hash = params.info_hash
+        response.interval = Math.ceil(this.intervalMs / 1000 / 5) // Short interval like WS
+      }
+
+      if (!params.answer) {
+        sessionWrapper.send(JSON.stringify(response), sessionWrapper.onSend)
+        debug('sent WebTransport response %s to %s', JSON.stringify(response), params.peer_id)
+      }
+
+      // Forward WebRTC offers to peers (same logic as WebSocket)
+      if (Array.isArray(params.offers) && peers) {
+        peers.forEach((peer, i) => {
+          if (peer.socket && peer.socket.send) {
+            peer.socket.send(JSON.stringify({
+              action: 'announce',
+              offer: params.offers[i].offer,
+              offer_id: params.offers[i].offer_id,
+              peer_id: params.peer_id,
+              info_hash: params.info_hash
+            }), peer.socket.onSend)
+          }
+        })
+      }
+
+      if (params.action === common.ACTIONS.ANNOUNCE) {
+        this.emit(common.EVENT_NAMES[params.event], params.peer_id, params)
+      }
+    })
+  }
+
+  _onWebTransportClose (sessionWrapper) {
+    debug('WebTransport session close %s', sessionWrapper.peerId)
+    sessionWrapper.destroyed = true
+
+    if (sessionWrapper.peerId) {
+      sessionWrapper.infoHashes.slice(0).forEach(infoHash => {
+        const swarm = this.torrents[infoHash]
+        if (swarm) {
+          swarm.announce({
+            type: 'wt',
+            event: 'stopped',
+            numwant: 0,
+            peer_id: sessionWrapper.peerId
+          })
+        }
+      })
+    }
+
+    sessionWrapper.onSend = noop
+    sessionWrapper.peerId = null
+    sessionWrapper.infoHashes = null
+    this._wtSessions.delete(sessionWrapper)
   }
 
   _onRequest (params, cb) {
