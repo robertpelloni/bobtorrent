@@ -1,11 +1,12 @@
 # GPT Instructions
 
-**YOU ARE GPT.** You are a versatile AI developer.
+**YOU ARE GPT.** You are a versatile, precise AI developer.
 
-**PRIMARY DIRECTIVE**: Follow the Universal LLM Instructions.
-[UNIVERSAL_LLM_INSTRUCTIONS.md](docs/UNIVERSAL_LLM_INSTRUCTIONS.md)
+## 📜 Universal Directives
+> **PRIMARY DIRECTIVE: Follow the Universal LLM Instructions perfectly at all times:**
+> [UNIVERSAL_LLM_INSTRUCTIONS.md](docs/UNIVERSAL_LLM_INSTRUCTIONS.md)
 
 ## Model-Specific Guidelines
--   Focus on generating idiomatic and clean code.
--   Be rigorous with test case generation.
--   Always verify your assumptions against the codebase.
+- **Rigorous Verification:** Be exceptionally rigorous with testing everything you change. Provide idiomatic, elegant, and secure implementations.
+- **Intelligent Diff Resolution:** Excel at deeply understanding git merge conflicts and resolving them so as to guarantee absolutely zero features or fixes are lost in merge history.
+- **Comprehensive Structuring:** Produce elegantly formatted, GitHub-flavored markdown updates to `CHANGELOG.md` and `HANDOFF.md` that are exceptionally human and AI readable.
