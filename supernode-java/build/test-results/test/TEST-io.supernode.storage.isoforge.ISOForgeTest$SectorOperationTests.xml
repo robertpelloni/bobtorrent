@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Sector Operations" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:41" hostname="PINK" time="0.362">
+<testsuite name="Sector Operations" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-07T20:05:53" hostname="pink" time="1.137">
   <properties/>
-  <testcase name="should handle sector offset correctly" classname="io.supernode.storage.isoforge.ISOForgeTest$SectorOperationTests" time="0.0"/>
-  <testcase name="should generate individual sectors correctly" classname="io.supernode.storage.isoforge.ISOForgeTest$SectorOperationTests" time="0.359"/>
-  <testcase name="should generate consistent sectors" classname="io.supernode.storage.isoforge.ISOForgeTest$SectorOperationTests" time="0.001"/>
+  <testcase name="should handle sector offset correctly" classname="io.supernode.storage.isoforge.ISOForgeTest$SectorOperationTests" time="0.009"/>
+  <testcase name="should generate individual sectors correctly" classname="io.supernode.storage.isoforge.ISOForgeTest$SectorOperationTests" time="1.098"/>
+  <testcase name="should generate consistent sectors" classname="io.supernode.storage.isoforge.ISOForgeTest$SectorOperationTests" time="0.008"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

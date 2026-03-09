@@ -79,7 +79,7 @@ public class ErasureCoder {
                 System.arraycopy(paddedData, i * shardSize, shards[i], 0, shardSize);
             }
 
-            for (int i = dataShards; i < totalShards; i++) {
+            java.util.stream.IntStream.range(dataShards, totalShards).parallel().forEach(i -> {
                 for (int j = 0; j < shardSize; j++) {
                     int value = 0;
                     for (int k = 0; k < dataShards; k++) {
@@ -87,7 +87,7 @@ public class ErasureCoder {
                     }
                     shards[i][j] = (byte) value;
                 }
-            }
+            });
 
             computeChecksums(shards);
 
@@ -133,7 +133,7 @@ public class ErasureCoder {
             int[][] invMatrix = invertMatrix(subMatrix);
 
             byte[][] decoded = new byte[dataShards][shardSize];
-            for (int i = 0; i < dataShards; i++) {
+            java.util.stream.IntStream.range(0, dataShards).parallel().forEach(i -> {
                 for (int j = 0; j < shardSize; j++) {
                     int value = 0;
                     for (int k = 0; k < dataShards; k++) {
@@ -141,7 +141,7 @@ public class ErasureCoder {
                     }
                     decoded[i][j] = (byte) value;
                 }
-            }
+            });
 
             byte[] result = new byte[originalSize];
             int offset = 0;
@@ -224,7 +224,7 @@ public class ErasureCoder {
                     }
                 }
 
-                for (int i = dataShards; i < totalShards; i++) {
+                java.util.stream.IntStream.range(dataShards, totalShards).parallel().forEach(i -> {
                     for (int j = 0; j < shardSize; j++) {
                         int value = 0;
                         for (int k = 0; k < dataShards; k++) {
@@ -232,7 +232,7 @@ public class ErasureCoder {
                         }
                         shards[i][j] = (byte) value;
                     }
-                }
+                });
 
                 for (int i = 0; i < totalShards; i++) {
                     shardOutputs[i].write(shards[i], 0, shardSize);
@@ -326,16 +326,17 @@ public class ErasureCoder {
                     break;
                 }
 
-                byte[][] decoded = new byte[dataShards][maxBytesRead];
-                for (int i = 0; i < dataShards; i++) {
-                    for (int j = 0; j < maxBytesRead; j++) {
+                final int finalMaxBytesRead = maxBytesRead;
+                byte[][] decoded = new byte[dataShards][finalMaxBytesRead];
+                java.util.stream.IntStream.range(0, dataShards).parallel().forEach(i -> {
+                    for (int j = 0; j < finalMaxBytesRead; j++) {
                         int value = 0;
                         for (int k = 0; k < dataShards; k++) {
                             value ^= gfMul(invMatrix[i][k], shardChunks[k][j] & 0xFF);
                         }
                         decoded[i][j] = (byte) value;
                     }
-                }
+                });
 
                 long bytesToProcess = Math.min((long) maxBytesRead * dataShards, originalSize - bytesWritten);
 
@@ -395,9 +396,9 @@ public class ErasureCoder {
             }
 
             int shardSize = shards[0].length;
-            List<Integer> corruptedIndices = new ArrayList<>();
+            List<Integer> corruptedIndices = Collections.synchronizedList(new ArrayList<>());
 
-            for (int p = dataShards; p < totalShards; p++) {
+            java.util.stream.IntStream.range(dataShards, totalShards).parallel().forEach(p -> {
                 byte[] recomputedParity = new byte[shardSize];
                 for (int j = 0; j < shardSize; j++) {
                     int value = 0;
@@ -410,7 +411,8 @@ public class ErasureCoder {
                 if (!Arrays.equals(shards[p], recomputedParity)) {
                     corruptedIndices.add(p);
                 }
-            }
+            });
+            Collections.sort((List<Integer>) corruptedIndices);
 
             return new VerificationResult(
                 corruptedIndices.isEmpty(),
@@ -453,7 +455,8 @@ public class ErasureCoder {
                 );
             }
 
-            for (int i = 0; i < neededCount; i++) {
+            final int finalNeededCount = neededCount;
+            java.util.stream.IntStream.range(0, finalNeededCount).parallel().forEach(i -> {
                 int missingIdx = neededIndices[i];
                 shards[missingIdx] = new byte[shardSize];
 
@@ -464,7 +467,7 @@ public class ErasureCoder {
                     }
                     shards[missingIdx][j] = (byte) value;
                 }
-            }
+            });
 
             if (onRepair != null) {
                 RepairEvent event = new RepairEvent(

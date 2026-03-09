@@ -17,6 +17,7 @@ public class UnifiedNetwork {
     private final BlobStore primaryBlobStore;
     private final IPFSBlobStore ipfsBlobStore;
     private final SupernodeStorage storage;
+    private final MetricsServer metricsServer;
     private final Map<String, PeerInfo> peers = new ConcurrentHashMap<>();
     
     private Consumer<ListeningEvent> onListening;
@@ -62,11 +63,23 @@ public class UnifiedNetwork {
             : SupernodeStorage.StorageOptions.defaults();
         this.storage = new SupernodeStorage(primaryBlobStore, storageOptions);
         
+        if (options.enableDashboard) {
+            this.metricsServer = new MetricsServer(this, options.dashboardPort);
+        } else {
+            this.metricsServer = null;
+        }
+        
         setupEventHandlers();
     }
 
     public CompletableFuture<Map<TransportType, TransportAddress>> start() {
         return transportManager.startAll()
+            .thenCompose(addresses -> {
+                if (metricsServer != null) {
+                    return metricsServer.start().thenApply(v -> addresses);
+                }
+                return CompletableFuture.completedFuture(addresses);
+            })
             .thenApply(addresses -> {
                 Map<TransportType, TransportAddress> result = new EnumMap<>(TransportType.class);
                 for (TransportAddress addr : addresses) {
@@ -81,7 +94,11 @@ public class UnifiedNetwork {
 
     public CompletableFuture<Void> stop() {
         destroyed = true;
-        return transportManager.stopAll();
+        CompletableFuture<Void> future = transportManager.stopAll();
+        if (metricsServer != null) {
+            return future.thenCompose(v -> metricsServer.stop());
+        }
+        return future;
     }
 
     public CompletableFuture<TransportConnection> connect(String address) {
@@ -314,6 +331,9 @@ public class UnifiedNetwork {
         public boolean enableErasure = false;
         public int dataShards = 4;
         public int parityShards = 2;
+        
+        public boolean enableDashboard = false;
+        public int dashboardPort = 8080;
         
         public boolean enableClearnet = true;
         public int clearnetPort = 0;

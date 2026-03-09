@@ -1,5 +1,6 @@
 plugins {
     id("java")
+    application
 }
 
 group = "io.supernode"
@@ -13,6 +14,7 @@ dependencies {
     // Core
     implementation("io.netty:netty-all:4.1.106.Final")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.1")
     implementation("org.slf4j:slf4j-api:2.0.11")
     implementation("ch.qos.logback:logback-classic:1.4.14")
 
@@ -35,4 +37,8 @@ java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(21))
     }
+}
+
+application {
+    mainClass.set("io.supernode.DemoDashboard")
 }

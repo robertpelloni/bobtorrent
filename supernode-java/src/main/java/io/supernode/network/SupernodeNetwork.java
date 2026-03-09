@@ -8,6 +8,9 @@ import io.supernode.storage.SupernodeStorage.IngestResult;
 import io.supernode.storage.SupernodeStorage.RetrieveResult;
 import io.supernode.storage.SupernodeStorage.StorageOptions;
 import io.supernode.storage.mux.Manifest;
+import io.supernode.network.routing.FilecoinContentRouting;
+import io.supernode.network.routing.BitSwarmCoordinator;
+import io.supernode.blockchain.BobcoinBridge;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -26,6 +29,8 @@ public class SupernodeNetwork {
     private final BlobNetwork blobNetwork;
     private final DHTDiscovery dht;
     private final ManifestDistributor manifestDistributor;
+    private final FilecoinContentRouting filecoinRouting;
+    private final BitSwarmCoordinator bitSwarmCoordinator;
     
     private final UnifiedNetwork unifiedNetwork;
     private final boolean multiTransportEnabled;
@@ -74,6 +79,15 @@ public class SupernodeNetwork {
         this.manifestDistributor = new ManifestDistributor(
             new ManifestDistributor.ManifestDistributorOptions(dht, storage)
         );
+        
+        // Initialize Filecoin Routing using the bridge if provided in options
+        if (options.bridge() != null) {
+            this.filecoinRouting = new FilecoinContentRouting(options.bridge());
+        } else {
+            this.filecoinRouting = null;
+        }
+        
+        this.bitSwarmCoordinator = new BitSwarmCoordinator(this.blobNetwork);
         
         if (multiTransportEnabled) {
             UnifiedNetwork.UnifiedNetworkOptions unifiedOpts = options.multiTransport();
@@ -256,10 +270,20 @@ public class SupernodeNetwork {
             return CompletableFuture.completedFuture(blobStore.get(blobId).orElse(null));
         }
         
-        return dht.findPeers(blobId, timeoutMs / 2).thenCompose(dhtPeers -> {
+        CompletableFuture<List<DHTDiscovery.PeerInfo>> peersFuture = dht.findPeers(blobId, timeoutMs / 2);
+        
+        if (filecoinRouting != null) {
+            peersFuture = peersFuture.thenCombine(filecoinRouting.findProviders(blobId), (dhtPeers, filPeers) -> {
+                Set<DHTDiscovery.PeerInfo> combined = new LinkedHashSet<>(dhtPeers);
+                combined.addAll(filPeers);
+                return new ArrayList<>(combined);
+            });
+        }
+        
+        return peersFuture.thenCompose(dhtPeers -> {
             List<BlobNetwork.PeerConnection> networkPeers = blobNetwork.findPeersWithBlob(blobId);
             if (!networkPeers.isEmpty()) {
-                return blobNetwork.requestBlob(blobId, networkPeers);
+                return bitSwarmCoordinator.requestFromSwarm(blobId);
             }
             
             if (unifiedNetwork != null && unifiedNetwork.getPeerCount() > 0) {
@@ -423,7 +447,8 @@ public class SupernodeNetwork {
         int parityShards,
         StorageOptions storageOptions,
         Duration blobTimeout,
-        UnifiedNetwork.UnifiedNetworkOptions multiTransport
+        UnifiedNetwork.UnifiedNetworkOptions multiTransport,
+        BobcoinBridge bridge
     ) {
         public static SupernodeNetworkOptions defaults() {
             return builder().build();
@@ -445,6 +470,7 @@ public class SupernodeNetwork {
             private StorageOptions storageOptions;
             private Duration blobTimeout = Duration.ofSeconds(30);
             private UnifiedNetwork.UnifiedNetworkOptions multiTransport;
+            private BobcoinBridge bridge;
             
             public Builder blobStore(BlobStore store) { this.blobStore = store; return this; }
             public Builder peerId(String id) { this.peerId = id; return this; }
@@ -457,12 +483,13 @@ public class SupernodeNetwork {
             public Builder storageOptions(StorageOptions opts) { this.storageOptions = opts; return this; }
             public Builder blobTimeout(Duration timeout) { this.blobTimeout = timeout; return this; }
             public Builder multiTransport(UnifiedNetwork.UnifiedNetworkOptions multi) { this.multiTransport = multi; return this; }
+            public Builder bridge(BobcoinBridge b) { this.bridge = b; return this; }
             
             public SupernodeNetworkOptions build() {
                 return new SupernodeNetworkOptions(
                     blobStore, peerId, bootstrap, port, maxConnections, 
                     enableErasure, dataShards, parityShards, storageOptions,
-                    blobTimeout, multiTransport
+                    blobTimeout, multiTransport, bridge
                 );
             }
         }

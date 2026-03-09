@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Failover" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:28" hostname="PINK" time="0.009">
+<testsuite name="Failover" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-07T20:05:14" hostname="pink" time="0.098">
   <properties/>
-  <testcase name="should notify on failover event" classname="io.supernode.network.transport.TransportManagerTest$FailoverTests" time="0.009"/>
+  <testcase name="should notify on failover event" classname="io.supernode.network.transport.TransportManagerTest$FailoverTests" time="0.098"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

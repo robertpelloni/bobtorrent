@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Factory Methods" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:28" hostname="PINK" time="0.005">
+<testsuite name="Factory Methods" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-07T20:05:14" hostname="pink" time="0.016">
   <properties/>
-  <testcase name="should create zeronet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.0"/>
-  <testcase name="should create ipfs address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.0"/>
-  <testcase name="should create onion address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
-  <testcase name="should create hyphanet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.0"/>
-  <testcase name="should create clearnet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
-  <testcase name="should create i2p address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
+  <testcase name="should create zeronet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
+  <testcase name="should create ipfs address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
+  <testcase name="should create onion address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.002"/>
+  <testcase name="should create hyphanet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
+  <testcase name="should create clearnet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.003"/>
+  <testcase name="should create i2p address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.002"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

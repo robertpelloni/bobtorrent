@@ -12,6 +12,7 @@ import io.supernode.storage.mux.MuxEngine;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -64,6 +65,10 @@ public class SupernodeStorage {
         this.muxEngine = new MuxEngine(isoSize);
         this.isoForge = new ISOForge();
         this.manifestStore = new ConcurrentHashMap<>();
+        
+        if (options.enableCache) {
+            blobStore.setCache(new LRUBlobCache());
+        }
         
         this.enableErasure = options.enableErasure;
         if (enableErasure) {
@@ -142,7 +147,12 @@ public class SupernodeStorage {
                     segment = ingestWithErasure(muxResult.muxedData(), chunkKey, isoSeed, muxResult, chunk.length, chunkHashes);
                 } else {
                     String chunkHash = sha256Hex(muxResult.muxedData());
-                    blobStore.put(chunkHash, muxResult.muxedData());
+                    
+                    // CAS Deduplication at chunk level
+                    if (!blobStore.has(chunkHash)) {
+                        blobStore.put(chunkHash, muxResult.muxedData());
+                    }
+                    
                     chunkHashes.add(chunkHash);
                     
                     segment = new Segment(
@@ -254,7 +264,12 @@ public class SupernodeStorage {
         for (int i = 0; i < encoded.shards().length; i++) {
             byte[] shard = encoded.shards()[i];
             String shardHash = sha256Hex(shard);
-            blobStore.put(shardHash, shard);
+            
+            // CAS Deduplication at shard level
+            if (!blobStore.has(shardHash)) {
+                blobStore.put(shardHash, shard);
+            }
+            
             shards.add(new ShardInfo(i, shardHash, shard.length));
             allChunkHashes.add(shardHash);
         }
@@ -298,6 +313,10 @@ public class SupernodeStorage {
             
             byte[] manifestKey = Manifest.deriveManifestKey(masterKey, fileId);
             Manifest manifest = Manifest.decrypt(encryptedManifest, manifestKey);
+            
+            if (options.verifyOnRetrieve) {
+                manifest.verifyIntegrity(blobStore::get);
+            }
             
             List<byte[]> parts = new ArrayList<>();
             List<Segment> segments = manifest.getSegments();
@@ -365,6 +384,94 @@ public class SupernodeStorage {
             }
             
             return new RetrieveResult(manifest.getFileName(), manifest.getFileSize(), fileBuffer, operationId);
+        } finally {
+            if (!state.completed) {
+                state.failed = true;
+                state.completedAt = Instant.now();
+            }
+        }
+    }
+    
+    public void retrieveStreaming(String fileId, byte[] masterKey, OutputStream out) throws IOException {
+        retrieveStreaming(fileId, masterKey, out, null);
+    }
+    
+    public void retrieveStreaming(String fileId, byte[] masterKey, OutputStream out, Consumer<Progress> progress) throws IOException {
+        String operationId = generateOperationId();
+        OperationState state = new OperationState(operationId, OperationType.RETRIEVE, Instant.now());
+        operations.put(operationId, state);
+        
+        try {
+            byte[] encryptedManifest = manifestStore.get(fileId);
+            if (encryptedManifest == null) {
+                throw new IllegalArgumentException("Manifest not found for file: " + fileId);
+            }
+            
+            byte[] manifestKey = Manifest.deriveManifestKey(masterKey, fileId);
+            Manifest manifest = Manifest.decrypt(encryptedManifest, manifestKey);
+            
+            if (options.verifyOnRetrieve) {
+                manifest.verifyIntegrity(blobStore::get);
+            }
+            
+            List<Segment> segments = manifest.getSegments();
+            long totalSize = manifest.getFileSize();
+            long bytesRetrieved = 0;
+            
+            for (int i = 0; i < segments.size(); i++) {
+                if (state.cancelled) {
+                    throw new CancellationException("Operation cancelled: " + operationId);
+                }
+                
+                Segment segment = segments.get(i);
+                
+                byte[] muxedData;
+                if (segment.shards() != null && !segment.shards().isEmpty()) {
+                    muxedData = retrieveWithErasure(segment, manifest.getErasure());
+                } else {
+                    muxedData = blobStore.get(segment.chunkHash())
+                        .orElseThrow(() -> new IllegalStateException("Chunk not found: " + segment.chunkHash()));
+                }
+                
+                byte[] chunkKey = HexFormat.of().parseHex(segment.chunkKey());
+                byte[] isoSeed = HexFormat.of().parseHex(segment.isoSeed());
+                
+                byte[] chunk = muxEngine.demux(muxedData, chunkKey, isoSeed, segment.sectorStart(), segment.encryptedSize());
+                
+                out.write(chunk);
+                out.flush();
+                bytesRetrieved += chunk.length;
+                
+                state.bytesProcessed = bytesRetrieved;
+                state.progress = (double) bytesRetrieved / totalSize;
+                
+                if (progress != null) {
+                    progress.accept(new Progress(
+                        operationId,
+                        OperationType.RETRIEVE,
+                        bytesRetrieved,
+                        totalSize,
+                        state.progress * 100,
+                        i + 1,
+                        segments.size(),
+                        fileId
+                    ));
+                }
+                
+                if (onChunkRetrieved != null) {
+                    String hash = segment.chunkHash() != null ? segment.chunkHash() : segment.shards().get(0).hash();
+                    onChunkRetrieved.accept(new ChunkRetrievedEvent(fileId, hash, state.progress));
+                }
+            }
+            
+            state.completed = true;
+            state.completedAt = Instant.now();
+            totalBytesRetrieved.addAndGet(bytesRetrieved);
+            totalFilesRetrieved.incrementAndGet();
+            
+            if (onFileRetrieved != null) {
+                onFileRetrieved.accept(new FileRetrievedEvent(fileId, manifest.getFileName(), bytesRetrieved));
+            }
         } finally {
             if (!state.completed) {
                 state.failed = true;
@@ -586,6 +693,7 @@ public class SupernodeStorage {
         public final boolean verifyOnRetrieve;
         public final Duration operationTimeout;
         public final int maxRetries;
+        public final boolean enableCache;
         
         private StorageOptions(Builder builder) {
             this.isoSize = builder.isoSize;
@@ -598,6 +706,7 @@ public class SupernodeStorage {
             this.verifyOnRetrieve = builder.verifyOnRetrieve;
             this.operationTimeout = builder.operationTimeout;
             this.maxRetries = builder.maxRetries;
+            this.enableCache = builder.enableCache;
         }
         
         public static StorageOptions defaults() {
@@ -620,6 +729,7 @@ public class SupernodeStorage {
         public boolean enableErasure() { return enableErasure; }
         public int dataShards() { return dataShards; }
         public int parityShards() { return parityShards; }
+        public boolean enableCache() { return enableCache; }
         
         public static class Builder {
             private SizePreset isoSize = SizePreset.NANO;
@@ -632,6 +742,7 @@ public class SupernodeStorage {
             private boolean verifyOnRetrieve = false;
             private Duration operationTimeout = Duration.ofMinutes(30);
             private int maxRetries = 3;
+            private boolean enableCache = true;
             
             public Builder isoSize(SizePreset size) { this.isoSize = size; return this; }
             public Builder enableErasure(boolean enable) { this.enableErasure = enable; return this; }
@@ -643,6 +754,7 @@ public class SupernodeStorage {
             public Builder verifyOnRetrieve(boolean verify) { this.verifyOnRetrieve = verify; return this; }
             public Builder operationTimeout(Duration timeout) { this.operationTimeout = timeout; return this; }
             public Builder maxRetries(int retries) { this.maxRetries = retries; return this; }
+            public Builder enableCache(boolean enable) { this.enableCache = enable; return this; }
             
             public StorageOptions build() {
                 return new StorageOptions(this);

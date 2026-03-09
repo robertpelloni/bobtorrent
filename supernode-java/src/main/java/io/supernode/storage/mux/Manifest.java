@@ -10,9 +10,12 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 
 public class Manifest {
     public static final int VERSION = 1;
@@ -135,6 +138,50 @@ public class Manifest {
     public long getCreatedAt() { return createdAt; }
 
     public void setIsoHash(String isoHash) { this.isoHash = isoHash; }
+
+    public void verifyIntegrity(BlobStore blobStore) {
+        if (segments == null || segments.isEmpty()) {
+            return;
+        }
+        
+        Optional<String> failedSegmentIndex = segments.parallelStream()
+            .map(segment -> {
+                if (segment.shards() != null && !segment.shards().isEmpty()) {
+                    for (ShardInfo shard : segment.shards()) {
+                        byte[] data = blobStore.get(shard.hash()).orElse(null);
+                        if (data == null || !hashMatches(data, shard.hash())) {
+                            return "Shard " + shard.hash();
+                        }
+                    }
+                } else if (segment.chunkHash() != null) {
+                    byte[] data = blobStore.get(segment.chunkHash()).orElse(null);
+                    if (data == null || !hashMatches(data, segment.chunkHash())) {
+                        return "Chunk " + segment.chunkHash();
+                    }
+                }
+                return null;
+            })
+            .filter(result -> result != null)
+            .findFirst();
+            
+        if (failedSegmentIndex.isPresent()) {
+            throw new IllegalStateException("Integrity verification failed for: " + failedSegmentIndex.get());
+        }
+    }
+    
+    private boolean hashMatches(byte[] data, String expectedHash) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] actualHash = digest.digest(data);
+            return HexFormat.of().formatHex(actualHash).equals(expectedHash);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public interface BlobStore {
+        java.util.Optional<byte[]> get(String hash);
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Segment(

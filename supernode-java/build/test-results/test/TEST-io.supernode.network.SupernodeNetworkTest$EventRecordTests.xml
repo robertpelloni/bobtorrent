@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Event Records" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:20" hostname="PINK" time="1.097">
+<testsuite name="Event Records" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-07T20:05:08" hostname="pink" time="0.808">
   <properties/>
-  <testcase name="should create FileIngestedEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.151"/>
-  <testcase name="should create FileRetrievedEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.153"/>
-  <testcase name="should create ListeningEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.181"/>
-  <testcase name="should create PeerEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.172"/>
-  <testcase name="should create NetworkStats correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.254"/>
-  <testcase name="should create DisconnectEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.182"/>
+  <testcase name="should create FileIngestedEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.052"/>
+  <testcase name="should create FileRetrievedEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.044"/>
+  <testcase name="should create ListeningEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.046"/>
+  <testcase name="should create PeerEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.053"/>
+  <testcase name="should create NetworkStats correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.515"/>
+  <testcase name="should create DisconnectEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.089"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

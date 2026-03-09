@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Encryption" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:50" hostname="PINK" time="0.004">
+<testsuite name="Encryption" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-07T20:06:38" hostname="pink" time="0.006">
   <properties/>
   <testcase name="muxed data should differ from original" classname="io.supernode.storage.mux.MuxEngineTest$EncryptionTests" time="0.001"/>
   <testcase name="should fail demux with wrong key" classname="io.supernode.storage.mux.MuxEngineTest$EncryptionTests" time="0.002"/>

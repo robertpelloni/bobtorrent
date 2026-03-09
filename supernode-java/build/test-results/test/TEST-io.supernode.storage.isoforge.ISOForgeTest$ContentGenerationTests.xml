@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Content Generation" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-02-07T22:01:41" hostname="PINK" time="2.99">
+<testsuite name="Content Generation" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-07T20:05:55" hostname="pink" time="35.243">
   <properties/>
-  <testcase name="should contain recognizable file structure" classname="io.supernode.storage.isoforge.ISOForgeTest$ContentGenerationTests" time="2.43"/>
-  <testcase name="should fill entire preset size" classname="io.supernode.storage.isoforge.ISOForgeTest$ContentGenerationTests" time="0.559"/>
+  <testcase name="should contain recognizable file structure" classname="io.supernode.storage.isoforge.ISOForgeTest$ContentGenerationTests" time="34.639"/>
+  <testcase name="should fill entire preset size" classname="io.supernode.storage.isoforge.ISOForgeTest$ContentGenerationTests" time="0.603"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
