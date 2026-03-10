@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="ToString" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:47:48" hostname="PINK" time="0.002">
+<testsuite name="ToString" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:30:20" hostname="PINK" time="0.002">
   <properties/>
   <testcase name="should return key for hyphanet toString" classname="io.supernode.network.transport.TransportAddressTest$ToStringTests" time="0.001"/>
   <testcase name="should return raw address from toString" classname="io.supernode.network.transport.TransportAddressTest$ToStringTests" time="0.001"/>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Connection Management" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:47:50" hostname="PINK" time="0.005">
+<testsuite name="Connection Management" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:30:23" hostname="PINK" time="0.006">
   <properties/>
   <testcase name="should start with zero connections" classname="io.supernode.network.transport.TransportManagerTest$ConnectionTests" time="0.001"/>
   <testcase name="should fail connect to unavailable transport" classname="io.supernode.network.transport.TransportManagerTest$ConnectionTests" time="0.002"/>

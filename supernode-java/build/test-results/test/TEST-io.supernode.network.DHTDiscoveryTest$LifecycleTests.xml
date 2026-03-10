@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Lifecycle" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:47:28" hostname="PINK" time="0.216">
+<testsuite name="Lifecycle" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:29:56" hostname="PINK" time="0.233">
   <properties/>
-  <testcase name="should destroy cleanly" classname="io.supernode.network.DHTDiscoveryTest$LifecycleTests" time="0.106"/>
+  <testcase name="should destroy cleanly" classname="io.supernode.network.DHTDiscoveryTest$LifecycleTests" time="0.117"/>
   <testcase name="should start successfully" classname="io.supernode.network.DHTDiscoveryTest$LifecycleTests" time="0.105"/>
-  <testcase name="should fail start after destroy" classname="io.supernode.network.DHTDiscoveryTest$LifecycleTests" time="0.003"/>
+  <testcase name="should fail start after destroy" classname="io.supernode.network.DHTDiscoveryTest$LifecycleTests" time="0.008"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Records Verification" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:47:17" hostname="PINK" time="0.094">
+<testsuite name="Records Verification" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:29:39" hostname="PINK" time="0.082">
   <properties/>
-  <testcase name="StorageDealParams should map correctly" classname="io.supernode.blockchain.BobcoinBridgeTest$RecordTests" time="0.084"/>
+  <testcase name="StorageDealParams should map correctly" classname="io.supernode.blockchain.BobcoinBridgeTest$RecordTests" time="0.071"/>
   <testcase name="BobcoinOptions should have defaults" classname="io.supernode.blockchain.BobcoinBridgeTest$RecordTests" time="0.007"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

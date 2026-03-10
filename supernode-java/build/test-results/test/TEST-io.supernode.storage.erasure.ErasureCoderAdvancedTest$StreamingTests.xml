@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Streaming Encode/Decode" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:48:00" hostname="PINK" time="0.089">
+<testsuite name="Streaming Encode/Decode" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:30:37" hostname="PINK" time="0.097">
   <properties/>
-  <testcase name="should encode small file via streaming" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests" time="0.004"/>
+  <testcase name="should encode small file via streaming" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests" time="0.007"/>
   <testcase name="should decode via streaming" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests" time="0.004"/>
-  <testcase name="should throw exception on insufficient shard inputs" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests" time="0.001"/>
-  <testcase name="should encode large file (&gt;1GB) via streaming" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests" time="0.074"/>
+  <testcase name="should throw exception on insufficient shard inputs" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests" time="0.002"/>
+  <testcase name="should encode large file (&gt;1GB) via streaming" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests" time="0.078"/>
   <testcase name="should throw exception on wrong number of shard outputs" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests" time="0.002"/>
   <testcase name="should handle chunk overlap correctly" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$StreamingTests" time="0.002"/>
   <system-out><![CDATA[]]></system-out>

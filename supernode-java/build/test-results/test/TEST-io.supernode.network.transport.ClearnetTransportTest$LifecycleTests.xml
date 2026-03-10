@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Lifecycle" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:47:46" hostname="PINK" time="0.608">
+<testsuite name="Lifecycle" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:30:16" hostname="PINK" time="0.9">
   <properties/>
-  <testcase name="should get local address after start" classname="io.supernode.network.transport.ClearnetTransportTest$LifecycleTests" time="0.152"/>
-  <testcase name="should start successfully" classname="io.supernode.network.transport.ClearnetTransportTest$LifecycleTests" time="0.146"/>
-  <testcase name="should return null local address before start" classname="io.supernode.network.transport.ClearnetTransportTest$LifecycleTests" time="0.132"/>
-  <testcase name="should stop successfully" classname="io.supernode.network.transport.ClearnetTransportTest$LifecycleTests" time="0.175"/>
+  <testcase name="should get local address after start" classname="io.supernode.network.transport.ClearnetTransportTest$LifecycleTests" time="0.227"/>
+  <testcase name="should start successfully" classname="io.supernode.network.transport.ClearnetTransportTest$LifecycleTests" time="0.222"/>
+  <testcase name="should return null local address before start" classname="io.supernode.network.transport.ClearnetTransportTest$LifecycleTests" time="0.217"/>
+  <testcase name="should stop successfully" classname="io.supernode.network.transport.ClearnetTransportTest$LifecycleTests" time="0.233"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
