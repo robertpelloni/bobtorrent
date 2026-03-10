@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Load Balancing" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:43" hostname="PINK" time="0.328">
+<testsuite name="Load Balancing" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:03" hostname="PINK" time="0.704">
   <properties/>
-  <testcase name="should get transports by score" classname="io.supernode.network.transport.TransportManagerTest$LoadBalancingTests" time="0.161"/>
-  <testcase name="should fail load balanced connect with empty list" classname="io.supernode.network.transport.TransportManagerTest$LoadBalancingTests" time="0.004"/>
-  <testcase name="should select best transport" classname="io.supernode.network.transport.TransportManagerTest$LoadBalancingTests" time="0.159"/>
+  <testcase name="should get transports by score" classname="io.supernode.network.transport.TransportManagerTest$LoadBalancingTests" time="0.352"/>
+  <testcase name="should fail load balanced connect with empty list" classname="io.supernode.network.transport.TransportManagerTest$LoadBalancingTests" time="0.005"/>
+  <testcase name="should select best transport" classname="io.supernode.network.transport.TransportManagerTest$LoadBalancingTests" time="0.344"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

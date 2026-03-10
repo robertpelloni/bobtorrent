@@ -1500,4 +1500,158 @@ public class IPFSTransport implements Transport {
             }
         }
     }
+
+    /**
+     * CARExtractor: Parse and extract blocks from Content Addressable Archive (CAR v1) files.
+     *
+     * CAR v1 format:
+     *   [header_length (varint)] [header (DAG-CBOR)] 
+     *   [block1_length (varint)] [block1_cid] [block1_data]
+     *   [block2_length (varint)] [block2_cid] [block2_data]
+     *   ...
+     *
+     * This allows local extraction of IPFS blocks from a CAR archive without requiring
+     * a running IPFS daemon, enabling offline validation and cross-transport data migration.
+     */
+    public static class CARExtractor {
+
+        /** Extracted block from a CAR archive. */
+        public record CARBlock(byte[] cid, byte[] data, int cidVersion, String codec) {}
+
+        /** Result of parsing a CAR archive. */
+        public record CARResult(List<String> roots, List<CARBlock> blocks, long totalBytes) {}
+
+        /**
+         * Parse a CAR v1 archive and extract all blocks.
+         * @param carData raw CAR bytes (from dagExport or file)
+         * @return CARResult containing roots and extracted blocks
+         */
+        public static CARResult extract(byte[] carData) throws IOException {
+            ByteArrayInputStream in = new ByteArrayInputStream(carData);
+
+            // 1. Read header length (unsigned varint)
+            long headerLen = readUnsignedVarint(in);
+            if (headerLen <= 0 || headerLen > carData.length) {
+                throw new IOException("Invalid CAR header length: " + headerLen);
+            }
+
+            // 2. Read header bytes (DAG-CBOR encoded)
+            byte[] headerBytes = new byte[(int) headerLen];
+            if (in.read(headerBytes) != headerLen) {
+                throw new IOException("Truncated CAR header");
+            }
+
+            // Extract roots from header (simplified CBOR parsing for version + roots)
+            List<String> roots = parseHeaderRoots(headerBytes);
+
+            // 3. Read blocks
+            List<CARBlock> blocks = new ArrayList<>();
+            long totalBytes = 0;
+
+            while (in.available() > 0) {
+                long blockLen = readUnsignedVarint(in);
+                if (blockLen <= 0) break;
+
+                byte[] blockData = new byte[(int) blockLen];
+                int bytesRead = in.read(blockData);
+                if (bytesRead != blockLen) {
+                    throw new IOException("Truncated CAR block. Expected " + blockLen + " bytes, got " + bytesRead);
+                }
+
+                // Parse CID from block start
+                int cidOffset = 0;
+                int cidVersion = 0;
+                String codec = "dag-pb";
+
+                if (blockData.length > 2) {
+                    // CIDv1: [version varint] [codec varint] [multihash...]
+                    // CIDv0: starts with 0x12 0x20 (sha2-256, 32 bytes)
+                    if (blockData[0] == 0x12 && blockData[1] == 0x20) {
+                        // CIDv0 — raw multihash
+                        cidVersion = 0;
+                        cidOffset = 0;
+                        int cidLen = 2 + 32; // 0x12 0x20 + 32 byte hash
+                        byte[] cid = Arrays.copyOfRange(blockData, 0, Math.min(cidLen, blockData.length));
+                        byte[] data = Arrays.copyOfRange(blockData, cidLen, blockData.length);
+                        blocks.add(new CARBlock(cid, data, 0, "dag-pb"));
+                        totalBytes += data.length;
+                    } else {
+                        // CIDv1
+                        ByteArrayInputStream cidStream = new ByteArrayInputStream(blockData);
+                        cidVersion = (int) readUnsignedVarint(cidStream);
+                        long codecId = readUnsignedVarint(cidStream);
+                        codec = codecIdToName(codecId);
+                        
+                        // Read multihash
+                        int hashFn = (int) readUnsignedVarint(cidStream);
+                        int hashLen = (int) readUnsignedVarint(cidStream);
+                        
+                        int cidLen = blockData.length - cidStream.available();
+                        cidLen += hashLen; // include the actual hash bytes
+                        
+                        if (cidLen <= blockData.length) {
+                            byte[] cid = Arrays.copyOfRange(blockData, 0, cidLen);
+                            byte[] data = Arrays.copyOfRange(blockData, cidLen, blockData.length);
+                            blocks.add(new CARBlock(cid, data, cidVersion, codec));
+                            totalBytes += data.length;
+                        }
+                    }
+                }
+            }
+
+            return new CARResult(roots, blocks, totalBytes);
+        }
+
+        /** Convert the CAR export into a CID→data map for easy lookup. */
+        public static Map<String, byte[]> extractToMap(byte[] carData) throws IOException {
+            CARResult result = extract(carData);
+            Map<String, byte[]> map = new LinkedHashMap<>();
+            for (CARBlock block : result.blocks()) {
+                String cidHex = bytesToHex(block.cid());
+                map.put(cidHex, block.data());
+            }
+            return map;
+        }
+
+        private static long readUnsignedVarint(InputStream in) throws IOException {
+            long result = 0;
+            int shift = 0;
+            int b;
+            do {
+                b = in.read();
+                if (b == -1) return -1;
+                result |= (long) (b & 0x7F) << shift;
+                shift += 7;
+                if (shift > 63) throw new IOException("Varint too long");
+            } while ((b & 0x80) != 0);
+            return result;
+        }
+
+        private static List<String> parseHeaderRoots(byte[] headerBytes) {
+            // Simplified: extract CID-like byte sequences from the CBOR header
+            // In production, a full CBOR parser would be used
+            List<String> roots = new ArrayList<>();
+            roots.add(bytesToHex(headerBytes));
+            return roots;
+        }
+
+        private static String codecIdToName(long codecId) {
+            return switch ((int) codecId) {
+                case 0x55 -> "raw";
+                case 0x70 -> "dag-pb";
+                case 0x71 -> "dag-cbor";
+                case 0x72 -> "dag-json";
+                case 0x0129 -> "dag-jose";
+                default -> "unknown-0x" + Long.toHexString(codecId);
+            };
+        }
+
+        private static String bytesToHex(byte[] bytes) {
+            StringBuilder sb = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                sb.append(String.format("%02x", b & 0xFF));
+            }
+            return sb.toString();
+        }
+    }
 }

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Storage Layer Integration" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:16:55" hostname="PINK" time="10.12">
+<testsuite name="Storage Layer Integration" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:12" hostname="PINK" time="9.865">
   <properties/>
-  <testcase name="should track operations and cleanup correctly" classname="io.supernode.storage.StorageIntegrationTest" time="3.95"/>
-  <testcase name="should fail recovery when too many shards are lost" classname="io.supernode.storage.StorageIntegrationTest" time="0.225"/>
-  <testcase name="should perform full async ingest and retrieve cycle with progress" classname="io.supernode.storage.StorageIntegrationTest" time="5.921"/>
-  <testcase name="should recover from partial shard loss using erasure coding" classname="io.supernode.storage.StorageIntegrationTest" time="0.014"/>
-  <system-out><![CDATA[On-The-Fly Repair logic successfully resolved and persisted missing shard for chunk: 91aef06dbab4a88b2c81b257a90973b62961b4aeb94b801f7544b060d40059f4
-On-The-Fly Repair logic successfully resolved and persisted missing shard for chunk: bb9f62228bf6599c7792db934f88ed384bf166c0846e71c2374952f7bac88962
+  <testcase name="should track operations and cleanup correctly" classname="io.supernode.storage.StorageIntegrationTest" time="3.657"/>
+  <testcase name="should fail recovery when too many shards are lost" classname="io.supernode.storage.StorageIntegrationTest" time="0.083"/>
+  <testcase name="should perform full async ingest and retrieve cycle with progress" classname="io.supernode.storage.StorageIntegrationTest" time="6.114"/>
+  <testcase name="should recover from partial shard loss using erasure coding" classname="io.supernode.storage.StorageIntegrationTest" time="0.008"/>
+  <system-out><![CDATA[On-The-Fly Repair logic successfully resolved and persisted missing shard for chunk: 77c04748f497fec13d00fc32a26be60f78848d208e09496340ada3098d33f1e3
+On-The-Fly Repair logic successfully resolved and persisted missing shard for chunk: 7281ef098f9867972d782f610e56305e27e9f3b7bec7d874de405973e85b475c
 ]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

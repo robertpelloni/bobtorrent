@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.supernode.storage.FileBlobStoreTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:47" hostname="PINK" time="0.213">
+<testsuite name="io.supernode.storage.FileBlobStoreTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:12" hostname="PINK" time="0.334">
   <properties/>
-  <testcase name="testDeduplication()" classname="io.supernode.storage.FileBlobStoreTest" time="0.145"/>
-  <testcase name="testPersistence()" classname="io.supernode.storage.FileBlobStoreTest" time="0.029"/>
-  <testcase name="testPutAndGet()" classname="io.supernode.storage.FileBlobStoreTest" time="0.019"/>
-  <testcase name="testDelete()" classname="io.supernode.storage.FileBlobStoreTest" time="0.018"/>
+  <testcase name="testDeduplication()" classname="io.supernode.storage.FileBlobStoreTest" time="0.188"/>
+  <testcase name="testPersistence()" classname="io.supernode.storage.FileBlobStoreTest" time="0.049"/>
+  <testcase name="testPutAndGet()" classname="io.supernode.storage.FileBlobStoreTest" time="0.056"/>
+  <testcase name="testDelete()" classname="io.supernode.storage.FileBlobStoreTest" time="0.035"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Event Listeners" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:36" hostname="PINK" time="0.24">
+<testsuite name="Event Listeners" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:10:50" hostname="PINK" time="0.349">
   <properties/>
-  <testcase name="should accept all event listeners" classname="io.supernode.network.SupernodeNetworkTest$EventListenerTests" time="0.24"/>
+  <testcase name="should accept all event listeners" classname="io.supernode.network.SupernodeNetworkTest$EventListenerTests" time="0.349"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

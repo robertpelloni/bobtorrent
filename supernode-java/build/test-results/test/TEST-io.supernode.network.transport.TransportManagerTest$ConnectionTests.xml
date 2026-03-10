@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Connection Management" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:45" hostname="PINK" time="0.007">
+<testsuite name="Connection Management" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:08" hostname="PINK" time="0.018">
   <properties/>
-  <testcase name="should start with zero connections" classname="io.supernode.network.transport.TransportManagerTest$ConnectionTests" time="0.001"/>
-  <testcase name="should fail connect to unavailable transport" classname="io.supernode.network.transport.TransportManagerTest$ConnectionTests" time="0.004"/>
-  <testcase name="should fail connect with string to unavailable transport" classname="io.supernode.network.transport.TransportManagerTest$ConnectionTests" time="0.002"/>
+  <testcase name="should start with zero connections" classname="io.supernode.network.transport.TransportManagerTest$ConnectionTests" time="0.002"/>
+  <testcase name="should fail connect to unavailable transport" classname="io.supernode.network.transport.TransportManagerTest$ConnectionTests" time="0.005"/>
+  <testcase name="should fail connect with string to unavailable transport" classname="io.supernode.network.transport.TransportManagerTest$ConnectionTests" time="0.004"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

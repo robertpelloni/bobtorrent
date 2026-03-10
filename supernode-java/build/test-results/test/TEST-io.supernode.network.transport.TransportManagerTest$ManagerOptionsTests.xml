@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Manager Options" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:43" hostname="PINK" time="0.007">
+<testsuite name="Manager Options" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:03" hostname="PINK" time="0.008">
   <properties/>
   <testcase name="should create manager with custom options" classname="io.supernode.network.transport.TransportManagerTest$ManagerOptionsTests" time="0.005"/>
   <testcase name="should use default options" classname="io.supernode.network.transport.TransportManagerTest$ManagerOptionsTests" time="0.001"/>

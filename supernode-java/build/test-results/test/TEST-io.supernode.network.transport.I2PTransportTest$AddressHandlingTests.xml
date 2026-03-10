@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Address Handling" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:42" hostname="PINK" time="0.051">
+<testsuite name="Address Handling" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:00" hostname="PINK" time="0.025">
   <properties/>
-  <testcase name="should handle i2p addresses" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.013"/>
-  <testcase name="should handle b32 addresses" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.002"/>
-  <testcase name="should not handle clearnet addresses" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.028"/>
-  <testcase name="should parse i2p address" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.003"/>
-  <testcase name="should handle addresses ending with .i2p" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.002"/>
+  <testcase name="should handle i2p addresses" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.003"/>
+  <testcase name="should handle b32 addresses" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.004"/>
+  <testcase name="should not handle clearnet addresses" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.006"/>
+  <testcase name="should parse i2p address" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.004"/>
+  <testcase name="should handle addresses ending with .i2p" classname="io.supernode.network.transport.I2PTransportTest$AddressHandlingTests" time="0.003"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

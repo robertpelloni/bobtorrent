@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Factory Methods" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:43" hostname="PINK" time="0.004">
+<testsuite name="Factory Methods" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:03" hostname="PINK" time="0.035">
   <properties/>
-  <testcase name="should create zeronet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
-  <testcase name="should create ipfs address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
-  <testcase name="should create onion address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.0"/>
-  <testcase name="should create hyphanet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.0"/>
+  <testcase name="should create zeronet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.002"/>
+  <testcase name="should create ipfs address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.002"/>
+  <testcase name="should create onion address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.002"/>
+  <testcase name="should create hyphanet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
   <testcase name="should create clearnet address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
-  <testcase name="should create i2p address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.0"/>
+  <testcase name="should create i2p address" classname="io.supernode.network.transport.TransportAddressTest$FactoryMethodTests" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

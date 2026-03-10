@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Basic Ingest/Retrieve" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:49" hostname="PINK" time="2.211">
+<testsuite name="Basic Ingest/Retrieve" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:23" hostname="PINK" time="4.34">
   <properties/>
-  <testcase name="should handle empty file" classname="io.supernode.storage.SupernodeStorageTest$BasicOperationsTests" time="0.003"/>
-  <testcase name="should ingest and retrieve large file (multi-chunk)" classname="io.supernode.storage.SupernodeStorageTest$BasicOperationsTests" time="1.601"/>
-  <testcase name="should ingest and retrieve small file" classname="io.supernode.storage.SupernodeStorageTest$BasicOperationsTests" time="0.003"/>
-  <testcase name="should handle file exactly chunk-sized" classname="io.supernode.storage.SupernodeStorageTest$BasicOperationsTests" time="0.601"/>
+  <testcase name="should handle empty file" classname="io.supernode.storage.SupernodeStorageTest$BasicOperationsTests" time="0.008"/>
+  <testcase name="should ingest and retrieve large file (multi-chunk)" classname="io.supernode.storage.SupernodeStorageTest$BasicOperationsTests" time="3.186"/>
+  <testcase name="should ingest and retrieve small file" classname="io.supernode.storage.SupernodeStorageTest$BasicOperationsTests" time="0.008"/>
+  <testcase name="should handle file exactly chunk-sized" classname="io.supernode.storage.SupernodeStorageTest$BasicOperationsTests" time="1.132"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Event Emission" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:51" hostname="PINK" time="0.004">
+<testsuite name="Event Emission" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:28" hostname="PINK" time="0.008">
   <properties/>
-  <testcase name="should emit decoding event" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$EventEmissionTests" time="0.001"/>
-  <testcase name="should emit encoding event" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$EventEmissionTests" time="0.001"/>
-  <testcase name="should emit repair event" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$EventEmissionTests" time="0.001"/>
+  <testcase name="should emit decoding event" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$EventEmissionTests" time="0.002"/>
+  <testcase name="should emit encoding event" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$EventEmissionTests" time="0.002"/>
+  <testcase name="should emit repair event" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$EventEmissionTests" time="0.002"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

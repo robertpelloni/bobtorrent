@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Record Equality" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:43" hostname="PINK" time="0.027">
+<testsuite name="Record Equality" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:03" hostname="PINK" time="0.107">
   <properties/>
-  <testcase name="should not be equal for different types" classname="io.supernode.network.transport.TransportAddressTest$EqualityTests" time="0.021"/>
-  <testcase name="should not be equal for different values" classname="io.supernode.network.transport.TransportAddressTest$EqualityTests" time="0.001"/>
-  <testcase name="should be equal for same values" classname="io.supernode.network.transport.TransportAddressTest$EqualityTests" time="0.004"/>
+  <testcase name="should not be equal for different types" classname="io.supernode.network.transport.TransportAddressTest$EqualityTests" time="0.08"/>
+  <testcase name="should not be equal for different values" classname="io.supernode.network.transport.TransportAddressTest$EqualityTests" time="0.002"/>
+  <testcase name="should be equal for same values" classname="io.supernode.network.transport.TransportAddressTest$EqualityTests" time="0.023"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

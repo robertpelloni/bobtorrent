@@ -9,24 +9,15 @@
 
 ## 🚀 Active Feature Backlog (Pending Implementation)
 
-### 1. Supernode CLI Configuration & Diagnostics (Next Target)
-*Create a highly robust Command Line Interface (CLI) component for the Supernode:*
-- [ ] Implement `io.supernode.cli.NodeCLI` taking command line arguments utilizing a robust parsing library or manual elegant parsing.
-- [ ] Add `status` command to output current peer counts, Kademlia DHT state, and memory metrics.
-- [ ] Add `manifest-inspect <cid>` command to parse, decrypt (if key provided), and print a verified JSON manifest.
-- [ ] Make sure it runs as an entry point script / shell wrapper.
+### 1. Enhanced Transport Protocol Implementations (v0.4.0)
+- [ ] Tor v3: Improve circuit rotation and stream multiplexing.
+- [ ] IPFS: Add full CAR (Content Addressable Archive) payload extraction.
+- [ ] Hyphanet: Enhanced splitfile recovery.
 
-### 2. Distributed Manifest Synchronization
-*Implement the swarm state sync capability:*
-- [ ] Extend Kademlia routing tables (`DHTDiscovery`) to broadcast new manifests (`Manifest.java`) to at least 4 nearest neighbors automatically.
-- [ ] Add deduplication checks to prevent broadcast storms.
+### 2. Consensus-Verified Tracker Ledger (v0.4.0)
+- [ ] Hook tracker peer states into a Solana/Stone.Ledger memo bridge to ban bad actors.
 
-### 3. WebTransport Tracker Support (Node.js)
-*Upgrade the `bobtorrent` Javascript tracker:*
-- [ ] Add a `lib/server/parse-webtransport.js` handler for incoming QUIC connections.
-- [ ] Bind robust fallback logic ensuring peers on WS can share swarms with peers on WebTransport.
-
-### 4. Code & Quality Improvements
+### 3. Code & Quality Improvements
 - [ ] Convert `package.json` testing to use integrated modern runners instead of unmaintained endpoints.
 - [ ] Ensure the Java ER test assertions perfectly mimic production byte layouts.
 - [ ] Increase commenting density on all cryptographically sensitive components (`MuxEngine.java`, `Manifest.java`, `BobcoinBridge.java`).

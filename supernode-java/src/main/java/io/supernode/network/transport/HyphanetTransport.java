@@ -465,6 +465,146 @@ public class HyphanetTransport implements Transport {
         return future;
     }
     
+    // ==================== Enhanced Splitfile Recovery ====================
+    
+    /**
+     * Options for splitfile recovery with retry escalation.
+     */
+    public record SplitfileRecoveryOptions(
+        int maxRetries,
+        Duration initialBackoff,
+        double backoffMultiplier,
+        Duration maxBackoff,
+        boolean escalatePriority,
+        int startPriority,
+        int minPriority
+    ) {
+        public static SplitfileRecoveryOptions defaults() {
+            return new SplitfileRecoveryOptions(
+                5,                          // maxRetries
+                Duration.ofSeconds(2),      // initialBackoff
+                2.0,                        // backoffMultiplier
+                Duration.ofMinutes(2),      // maxBackoff
+                true,                       // escalatePriority
+                PRIORITY_BULK,              // startPriority (4)
+                PRIORITY_INTERACTIVE        // minPriority (1) — highest escalation
+            );
+        }
+        
+        public static Builder builder() { return new Builder(); }
+        
+        public static class Builder {
+            private int maxRetries = 5;
+            private Duration initialBackoff = Duration.ofSeconds(2);
+            private double backoffMultiplier = 2.0;
+            private Duration maxBackoff = Duration.ofMinutes(2);
+            private boolean escalatePriority = true;
+            private int startPriority = PRIORITY_BULK;
+            private int minPriority = PRIORITY_INTERACTIVE;
+            
+            public Builder maxRetries(int r) { this.maxRetries = r; return this; }
+            public Builder initialBackoff(Duration d) { this.initialBackoff = d; return this; }
+            public Builder backoffMultiplier(double m) { this.backoffMultiplier = m; return this; }
+            public Builder maxBackoff(Duration d) { this.maxBackoff = d; return this; }
+            public Builder escalatePriority(boolean e) { this.escalatePriority = e; return this; }
+            public Builder startPriority(int p) { this.startPriority = p; return this; }
+            public Builder minPriority(int p) { this.minPriority = p; return this; }
+            
+            public SplitfileRecoveryOptions build() {
+                return new SplitfileRecoveryOptions(
+                    maxRetries, initialBackoff, backoffMultiplier, maxBackoff,
+                    escalatePriority, startPriority, minPriority
+                );
+            }
+        }
+    }
+    
+    /**
+     * Retrieve data from a Hyphanet URI with enhanced splitfile recovery.
+     *
+     * When a large file (splitfile) fails to fetch, this method automatically retries
+     * with exponentially increasing backoff and optionally escalating the Freenet
+     * priority class from BULK → SEMI_INTERACTIVE → INTERACTIVE to improve fetch
+     * success rates on congested or slow networks.
+     *
+     * @param uri      The CHK@, SSK@, or USK@ URI to fetch
+     * @param options  Recovery options (retries, backoff, priority escalation)
+     * @param progress Optional progress callback
+     * @return CompletableFuture containing the fetched data
+     */
+    public CompletableFuture<byte[]> getDataWithSplitfileRecovery(
+            String uri, SplitfileRecoveryOptions options,
+            Consumer<ProgressUpdate> progress) {
+        
+        return getDataWithSplitfileRecoveryInternal(uri, options, progress, 0);
+    }
+    
+    public CompletableFuture<byte[]> getDataWithSplitfileRecovery(String uri) {
+        return getDataWithSplitfileRecovery(uri, SplitfileRecoveryOptions.defaults(), null);
+    }
+    
+    private CompletableFuture<byte[]> getDataWithSplitfileRecoveryInternal(
+            String uri, SplitfileRecoveryOptions recoveryOpts,
+            Consumer<ProgressUpdate> progress, int attempt) {
+        
+        // Calculate escalated priority for this attempt
+        int currentPriority = recoveryOpts.startPriority;
+        if (recoveryOpts.escalatePriority && attempt > 0) {
+            currentPriority = Math.max(
+                recoveryOpts.minPriority,
+                recoveryOpts.startPriority - attempt
+            );
+        }
+        
+        RequestOptions reqOpts = RequestOptions.builder()
+            .priorityClass(currentPriority)
+            .maxRetries(3) // FCP-level retries per attempt
+            .allowSplitfile(true)
+            .realTimeFlag(currentPriority <= PRIORITY_INTERACTIVE)
+            .build();
+        
+        return getData(uri, reqOpts, progress).handle((data, ex) -> {
+            if (ex == null) {
+                // Success — track splitfile download
+                splitfileDownloads.incrementAndGet();
+                return CompletableFuture.completedFuture(data);
+            }
+            
+            // Check if we've exhausted retries
+            if (attempt >= recoveryOpts.maxRetries) {
+                CompletableFuture<byte[]> failedFuture = new CompletableFuture<>();
+                failedFuture.completeExceptionally(new IOException(
+                    "Splitfile recovery exhausted after " + (attempt + 1) + 
+                    " attempts for URI: " + uri, ex
+                ));
+                return failedFuture;
+            }
+            
+            // Calculate backoff delay
+            long delayMs = recoveryOpts.initialBackoff.toMillis();
+            for (int i = 0; i < attempt; i++) {
+                delayMs = (long) (delayMs * recoveryOpts.backoffMultiplier);
+            }
+            delayMs = Math.min(delayMs, recoveryOpts.maxBackoff.toMillis());
+            
+            // Schedule retry with backoff
+            CompletableFuture<byte[]> retryFuture = new CompletableFuture<>();
+            ScheduledExecutorService retryScheduler = healthCheckExecutor != null 
+                ? healthCheckExecutor : Executors.newSingleThreadScheduledExecutor();
+            
+            final int nextAttempt = attempt + 1;
+            retryScheduler.schedule(() -> {
+                getDataWithSplitfileRecoveryInternal(uri, recoveryOpts, progress, nextAttempt)
+                    .whenComplete((result, retryEx) -> {
+                        if (retryEx != null) retryFuture.completeExceptionally(retryEx);
+                        else retryFuture.complete(result);
+                    });
+            }, delayMs, TimeUnit.MILLISECONDS);
+            
+            return retryFuture;
+        }).thenCompose(f -> f);
+    }
+    
     /**
      * Generate a new SSK keypair.
      */

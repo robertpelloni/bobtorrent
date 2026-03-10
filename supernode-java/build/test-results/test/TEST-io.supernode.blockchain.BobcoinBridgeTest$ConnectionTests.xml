@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Connection Lifecycle" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:06" hostname="PINK" time="0.464">
+<testsuite name="Connection Lifecycle" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:10:15" hostname="PINK" time="0.474">
   <properties/>
-  <testcase name="should connect successfully" classname="io.supernode.blockchain.BobcoinBridgeTest$ConnectionTests" time="0.112"/>
-  <testcase name="should use provided wallet key for derivation" classname="io.supernode.blockchain.BobcoinBridgeTest$ConnectionTests" time="0.109"/>
-  <testcase name="should disconnect successfully" classname="io.supernode.blockchain.BobcoinBridgeTest$ConnectionTests" time="0.119"/>
+  <testcase name="should connect successfully" classname="io.supernode.blockchain.BobcoinBridgeTest$ConnectionTests" time="0.119"/>
+  <testcase name="should use provided wallet key for derivation" classname="io.supernode.blockchain.BobcoinBridgeTest$ConnectionTests" time="0.106"/>
+  <testcase name="should disconnect successfully" classname="io.supernode.blockchain.BobcoinBridgeTest$ConnectionTests" time="0.122"/>
   <testcase name="should emit connected event" classname="io.supernode.blockchain.BobcoinBridgeTest$ConnectionTests" time="0.119"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

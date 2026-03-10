@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Peer Management" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-09T22:17:16" hostname="PINK" time="0.711">
+<testsuite name="Peer Management" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:10:27" hostname="PINK" time="0.595">
   <properties/>
-  <testcase name="should start with no peers" classname="io.supernode.network.BlobNetworkTest$PeerManagementTests" time="0.398"/>
+  <testcase name="should start with no peers" classname="io.supernode.network.BlobNetworkTest$PeerManagementTests" time="0.28"/>
   <testcase name="should track peer count in stats" classname="io.supernode.network.BlobNetworkTest$PeerManagementTests" time="0.312"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

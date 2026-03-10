@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -972,5 +973,130 @@ public class TorTransport implements Transport {
         public static StreamIsolation unique() {
             return new StreamIsolation(Type.UNIQUE, UUID.randomUUID().toString(), UUID.randomUUID().toString());
         }
+    }
+
+    /**
+     * MultiplexedCircuitPool: Maintains a pool of pre-warmed Tor circuits
+     * with independent SOCKS5 stream isolation credentials.
+     * 
+     * Enables concurrent multiplexed connections across different circuits
+     * for improved throughput and anonymity. Each circuit in the pool has
+     * a unique StreamIsolation identity, ensuring Tor routes traffic through
+     * different exit nodes.
+     *
+     * Usage:
+     *   MultiplexedCircuitPool pool = transport.createCircuitPool(4);
+     *   pool.connect(address).thenAccept(conn -> { ... });
+     */
+    public static class MultiplexedCircuitPool {
+        private final TorTransport transport;
+        private final int poolSize;
+        private final List<StreamIsolation> isolations;
+        private final AtomicInteger roundRobinIndex = new AtomicInteger(0);
+        private final ConcurrentHashMap<Integer, List<TransportConnection>> activeConnections = new ConcurrentHashMap<>();
+
+        MultiplexedCircuitPool(TorTransport transport, int poolSize) {
+            this.transport = transport;
+            this.poolSize = poolSize;
+            this.isolations = new ArrayList<>(poolSize);
+            for (int i = 0; i < poolSize; i++) {
+                isolations.add(StreamIsolation.perConnection(1000 + i));
+                activeConnections.put(i, new CopyOnWriteArrayList<>());
+            }
+        }
+
+        /**
+         * Connect to the given address using the next circuit in the round-robin pool.
+         * This distributes connections across multiple Tor circuits for improved
+         * throughput and reduced correlation.
+         */
+        public CompletableFuture<TransportConnection> connect(TransportAddress address) {
+            return connect(address, ConnectionOptions.defaults());
+        }
+
+        public CompletableFuture<TransportConnection> connect(TransportAddress address, ConnectionOptions opts) {
+            int index = roundRobinIndex.getAndUpdate(i -> (i + 1) % poolSize);
+            StreamIsolation isolation = isolations.get(index);
+            return transport.connectOnce(address, opts, isolation).thenApply(conn -> {
+                activeConnections.get(index).add(conn);
+                return conn;
+            });
+        }
+
+        /**
+         * Connect to the address with automatic failover: if the primary circuit fails,
+         * try the next circuit in the pool until one succeeds or all circuits are exhausted.
+         */
+        public CompletableFuture<TransportConnection> connectWithFailover(TransportAddress address) {
+            return connectWithFailover(address, ConnectionOptions.defaults(), 0);
+        }
+
+        private CompletableFuture<TransportConnection> connectWithFailover(
+                TransportAddress address, ConnectionOptions opts, int attempt) {
+            if (attempt >= poolSize) {
+                return CompletableFuture.failedFuture(
+                    new RuntimeException("All " + poolSize + " circuits failed for " + address));
+            }
+            int index = (roundRobinIndex.get() + attempt) % poolSize;
+            StreamIsolation isolation = isolations.get(index);
+            return transport.connectOnce(address, opts, isolation).handle((conn, ex) -> {
+                if (ex == null) {
+                    activeConnections.get(index).add(conn);
+                    return CompletableFuture.completedFuture(conn);
+                }
+                return connectWithFailover(address, opts, attempt + 1);
+            }).thenCompose(f -> f);
+        }
+
+        /**
+         * Rotate a specific circuit in the pool by assigning it a new unique
+         * StreamIsolation credential, causing Tor to route the next connection
+         * through a different exit node.
+         */
+        public void rotateCircuit(int index) {
+            if (index >= 0 && index < poolSize) {
+                isolations.set(index, StreamIsolation.unique());
+            }
+        }
+
+        /** Rotate all circuits simultaneously. */
+        public void rotateAll() {
+            for (int i = 0; i < poolSize; i++) {
+                rotateCircuit(i);
+            }
+            transport.requestNewCircuit();
+        }
+
+        /** Get the number of active connections across all circuits. */
+        public int getActiveConnectionCount() {
+            return activeConnections.values().stream()
+                .mapToInt(list -> (int) list.stream().filter(TransportConnection::isOpen).count())
+                .sum();
+        }
+
+        /** Close all connections in the pool. */
+        public CompletableFuture<Void> closeAll() {
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+            for (List<TransportConnection> conns : activeConnections.values()) {
+                for (TransportConnection conn : conns) {
+                    if (conn.isOpen()) {
+                        futures.add(conn.close());
+                    }
+                }
+                conns.clear();
+            }
+            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        }
+
+        public int getPoolSize() {
+            return poolSize;
+        }
+    }
+
+    /**
+     * Create a multiplexed circuit pool with the given number of pre-warmed circuits.
+     */
+    public MultiplexedCircuitPool createCircuitPool(int poolSize) {
+        return new MultiplexedCircuitPool(this, poolSize);
     }
 }
