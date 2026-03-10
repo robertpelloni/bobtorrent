@@ -33,6 +33,10 @@ public class NodeCLI {
                     String masterKeyHex = args.length > 2 ? args[2] : null;
                     handleManifestInspect(cid, masterKeyHex);
                     break;
+                case "omni-node":
+                    String watchDir = args.length > 1 ? args[1] : "/mnt/linux-isos";
+                    handleOmniNode(watchDir);
+                    break;
                 default:
                     System.err.println("Unknown command: " + command);
                     printUsage();
@@ -50,6 +54,7 @@ public class NodeCLI {
         System.out.println("Usage:");
         System.out.println("  status                          - Output network peer counts, DHT state, and JVM memory metrics");
         System.out.println("  manifest-inspect <cid> [hexKey] - Parse, decrypt, and print a verified JSON manifest from storage");
+        System.out.println("  omni-node [watchDir]            - Start the Omni-Node ISO Daemon to auto-ingest supertorrents");
     }
 
     private static void handleStatus() throws Exception {
@@ -138,5 +143,36 @@ public class NodeCLI {
             e.printStackTrace();
             System.exit(1);
         }
+    }
+
+    private static void handleOmniNode(String watchDir) throws Exception {
+        System.out.println("Starting Bobtorrent Omni-Node...");
+        
+        SupernodeNetwork network = new SupernodeNetwork();
+        network.start().get();
+        System.out.println("SupernodeNetwork initialized.");
+
+        ISODaemon daemon = new ISODaemon(
+            network, 
+            network.getStorage(), 
+            // Mock bridge for CLI instantiation
+            new io.supernode.blockchain.BobcoinBridge(
+                io.supernode.blockchain.BobcoinBridge.BobcoinOptions.builder()
+                    .rpcEndpoint("http://localhost:8899")
+                    .build()
+            ),
+            watchDir
+        );
+
+        daemon.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Shutting down Omni-Node...");
+            daemon.stop();
+            network.destroyAsync().join();
+        }));
+
+        System.out.println("Omni-Node is running. Press Ctrl+C to stop.");
+        Thread.currentThread().join();
     }
 }

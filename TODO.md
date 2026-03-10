@@ -17,9 +17,9 @@
 ### 2. Consensus-Verified Tracker Ledger
 - [x] TrackerLedger — records peer violations as Solana memo txns, consensus-based banning.
 
-## 🚀 Active Feature Backlog (v0.5.0+)
-
-### 3. Code & Quality Improvements
-- [ ] Convert `package.json` testing to use integrated modern runners instead of unmaintained endpoints.
-- [ ] Ensure the Java ER test assertions perfectly mimic production byte layouts.
+### Active Feature Backlog (v1.0.0+)
+- [x] **Omni-Node CLI / ISO Daemon**: Build a CLI wrapper and Docker-Compose stack to run Bobtorrent alongside Tor, I2P, IPFS, Filecoin, Monero, and Bobcoin. Add a daemon to auto-ingest a directory of `.iso` files for seeding.
+- [ ] **1000+ Concurrent Multi-Swarm Peer Handling**: Scale `SwarmCoordinator`
+- [ ] **Full Game Engine Integration**: Extend `GameAssetStreamer` into a native Unreal/Unity plugin
+- [ ] **Global Decentralized Storage Network Launch**: Production launch sequence
 - [ ] Increase commenting density on all cryptographically sensitive components (`MuxEngine.java`, `Manifest.java`, `BobcoinBridge.java`).

@@ -1,0 +1,162 @@
+version: '3.8'
+
+# Bobtorrent Supernetwork Omni-Node
+# This compose file deploys the ultimate supernode:
+#   - Bobtorrent Java Supernode (Port 9090)
+#   - Bobtorrent JS Tracker (Port 8000)
+#   - Tor Daemon (SOCKS5 9050)
+#   - I2P Router (HTTP Proxy 4444)
+#   - IPFS Kubo Node (API 5001)
+#   - Filecoin Lotus Node (Sync/Storage)
+#   - Monero Daemon (RPC 18081)
+#   - Bobcoin ZK Validator (Port 9944)
+
+services:
+  # ==========================================
+  # Core Bobtorrent Services
+  # ==========================================
+  
+  supernode:
+    build:
+      context: ./supernode-java
+      dockerfile: Dockerfile
+    container_name: bobtorrent-supernode
+    restart: unless-stopped
+    ports:
+      - "9090:9090" # Supernode API/P2P
+    environment:
+      - BOBC_TRACKER_URL=http://tracker:8000
+      - BOBC_TOR_PROXY=tor:9050
+      - BOBC_I2P_PROXY=i2p:4444
+      - BOBC_IPFS_API=http://ipfs:5001
+      - BOBC_MONERO_RPC=http://monero:18081
+      - BOBC_LOCAL_NODE_ID=omninode-01
+      - BOBC_MAX_BANDWIDTH_MB=500
+    volumes:
+      - supernode_data:/app/data
+      - /mnt/linux-isos:/mnt/linux-isos # Auto-ingest directory
+    depends_on:
+      - tracker
+      - tor
+      - i2p
+      - ipfs
+
+  tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bobtorrent-tracker
+    restart: unless-stopped
+    ports:
+      - "8000:8000" # HTTP/WS Tracker
+      - "8000:8000/udp" # UDP Tracker
+    volumes:
+      - tracker_data:/app/data
+
+  # ==========================================
+  # Privacy Routing Transports
+  # ==========================================
+
+  tor:
+    image: dperson/torproxy
+    container_name: omninode-tor
+    restart: unless-stopped
+    ports:
+      - "9050:9050" # SOCKS5
+      - "9051:9051" # Control Port
+
+  i2p:
+    image: geti2p/i2p
+    container_name: omninode-i2p
+    restart: unless-stopped
+    ports:
+      - "4444:4444" # HTTP Proxy
+      - "7657:7657" # Router Console
+    volumes:
+      - i2p_data:/i2p
+
+  zeronet:
+    image: nofish/zeronet
+    container_name: omninode-zeronet
+    restart: unless-stopped
+    ports:
+      - "43110:43110" # Web UI
+      - "15441:15441" # P2P
+    volumes:
+      - zeronet_data:/root/data
+
+  hyphanet:
+    image: freenet/freenet
+    container_name: omninode-hyphanet
+    restart: unless-stopped
+    ports:
+      - "8888:8888" # FCP / Web UI
+    volumes:
+      - hyphanet_data:/freenet
+
+  # ==========================================
+  # Decentralized Storage
+  # ==========================================
+
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: omninode-ipfs
+    restart: unless-stopped
+    ports:
+      - "4001:4001" # P2P TCP
+      - "4001:4001/udp" # P2P QUIC
+      - "5001:5001" # API
+      - "8080:8080" # Gateway
+    volumes:
+      - ipfs_data:/data/ipfs
+    command: ["daemon", "--migrate=true", "--agent-version-suffix=bobtorrent"]
+
+  filecoin:
+    image: filecoin/lotus:latest
+    container_name: omninode-filecoin
+    restart: unless-stopped
+    ports:
+      - "1234:1234" # API
+      - "1347:1347" # P2P
+    volumes:
+      - filecoin_data:/var/lib/lotus
+    environment:
+      - LOTUS_PATH=/var/lib/lotus
+
+  # ==========================================
+  # Cryptoeconomics & Ledgers
+  # ==========================================
+
+  monero:
+    image: xmrto/monero:latest
+    container_name: omninode-monero
+    restart: unless-stopped
+    ports:
+      - "18080:18080" # P2P
+      - "18081:18081" # RPC
+    volumes:
+      - monero_data:/home/monero
+    command: ["--rpc-bind-ip=0.0.0.0", "--confirm-external-bind", "--pruned-bc"]
+
+  bobcoin:
+    # A placeholder for the Bobcoin proof-of-useful-stake validator
+    image: bobcoin/validator:latest
+    container_name: omninode-bobcoin
+    restart: unless-stopped
+    ports:
+      - "9944:9944" # RPC
+      - "30333:30333" # P2P
+    volumes:
+      - bobcoin_data:/var/lib/bobcoin
+
+volumes:
+  supernode_data:
+  tracker_data:
+  tor_data:
+  i2p_data:
+  zeronet_data:
+  hyphanet_data:
+  ipfs_data:
+  filecoin_data:
+  monero_data:
+  bobcoin_data:
