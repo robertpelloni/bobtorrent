@@ -41,14 +41,13 @@ Bobtorrent and Supernode Java constitute the P2P supernode implementation and de
 - [x] **Multi-Swarm Peer Coordinator**
   - O(1) swarm lookup, cross-swarm peer sharing, priority bandwidth allocation for 1000+ concurrent swarms.
 
-### 🚀 Next (v0.6.0)
-- [ ] **Embedded Game Asset Streaming**
+### 🚀 Next (v0.6.0) — COMPLETED
+- [x] **Embedded Game Asset Streaming**
   - Real-time game asset delivery via P2P with prioritized chunk fetching and LOD support.
-- [ ] **Bobzilla Client Protocol**
-  - Native Bobzilla wire protocol for cross-client interoperability.
+- [x] **Bobzilla Client Protocol**
+  - Native Bobzilla wire protocol for cross-client interoperability, capability negotiation, and CRC-32 integrity.
 
 ### 🌍 Long Term (v1.0.0 "Universal Mesh")
 - [ ] **1000+ Concurrent Multi-Swarm Peer Handling**
-- [ ] **Integrated Bobzilla Client Protocol**
-- [ ] **"Proof-of-Seeding" Native Bobcoin Smart Contracts**
-- [ ] **Embedded Game Asset Streaming**
+- [ ] **Full Game Engine Integration**
+- [ ] **Global Decentralized Storage Network Launch**
