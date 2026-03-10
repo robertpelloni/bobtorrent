@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Component Access" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:10:51" hostname="PINK" time="0.333">
+<testsuite name="Component Access" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:46:25" hostname="PINK" time="0.133">
   <properties/>
-  <testcase name="should provide access to all components" classname="io.supernode.network.SupernodeNetworkTest$ComponentAccessTests" time="0.333"/>
+  <testcase name="should provide access to all components" classname="io.supernode.network.SupernodeNetworkTest$ComponentAccessTests" time="0.133"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

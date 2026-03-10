@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Statistics" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:10:52" hostname="PINK" time="1.183">
+<testsuite name="Statistics" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:46:26" hostname="PINK" time="0.502">
   <properties/>
-  <testcase name="should track blob count after ingest" classname="io.supernode.network.SupernodeNetworkTest$StatisticsTests" time="0.676"/>
-  <testcase name="should return combined network stats" classname="io.supernode.network.SupernodeNetworkTest$StatisticsTests" time="0.505"/>
-  <system-out><![CDATA[]]></system-out>
+  <testcase name="should track blob count after ingest" classname="io.supernode.network.SupernodeNetworkTest$StatisticsTests" time="0.259"/>
+  <testcase name="should return combined network stats" classname="io.supernode.network.SupernodeNetworkTest$StatisticsTests" time="0.242"/>
+  <system-out><![CDATA[20:46:26.567 [nioEventLoopGroup-49-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 5 thread-local buffer(s) from thread: nioEventLoopGroup-49-1
+20:46:26.581 [nioEventLoopGroup-51-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 5 thread-local buffer(s) from thread: nioEventLoopGroup-51-1
+]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

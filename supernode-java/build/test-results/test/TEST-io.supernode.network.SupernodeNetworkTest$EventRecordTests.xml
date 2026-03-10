@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Event Records" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:10:47" hostname="PINK" time="2.804">
+<testsuite name="Event Records" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:46:24" hostname="PINK" time="0.766">
   <properties/>
-  <testcase name="should create FileIngestedEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.566"/>
-  <testcase name="should create FileRetrievedEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.514"/>
-  <testcase name="should create ListeningEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.414"/>
-  <testcase name="should create PeerEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.353"/>
-  <testcase name="should create NetworkStats correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.545"/>
-  <testcase name="should create DisconnectEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.404"/>
-  <system-out><![CDATA[20:10:47.758 [nioEventLoopGroup-47-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 8 thread-local buffer(s) from thread: nioEventLoopGroup-47-1
-20:10:47.758 [nioEventLoopGroup-45-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 9 thread-local buffer(s) from thread: nioEventLoopGroup-45-1
-20:10:49.364 [nioEventLoopGroup-49-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 5 thread-local buffer(s) from thread: nioEventLoopGroup-49-1
-20:10:49.397 [nioEventLoopGroup-51-1] DEBUG io.netty.buffer.PoolThreadCache -- Freed 5 thread-local buffer(s) from thread: nioEventLoopGroup-51-1
-]]></system-out>
+  <testcase name="should create FileIngestedEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.101"/>
+  <testcase name="should create FileRetrievedEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.113"/>
+  <testcase name="should create ListeningEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.116"/>
+  <testcase name="should create PeerEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.099"/>
+  <testcase name="should create NetworkStats correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.222"/>
+  <testcase name="should create DisconnectEvent correctly" classname="io.supernode.network.SupernodeNetworkTest$EventRecordTests" time="0.11"/>
+  <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

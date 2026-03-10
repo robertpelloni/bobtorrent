@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Available Transports" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:05" hostname="PINK" time="0.744">
+<testsuite name="Available Transports" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:46:31" hostname="PINK" time="0.202">
   <properties/>
-  <testcase name="should list healthy transports" classname="io.supernode.network.transport.TransportManagerTest$AvailabilityTests" time="0.374"/>
-  <testcase name="should list available transports" classname="io.supernode.network.transport.TransportManagerTest$AvailabilityTests" time="0.364"/>
-  <testcase name="should return empty list when no available transports" classname="io.supernode.network.transport.TransportManagerTest$AvailabilityTests" time="0.002"/>
+  <testcase name="should list healthy transports" classname="io.supernode.network.transport.TransportManagerTest$AvailabilityTests" time="0.116"/>
+  <testcase name="should list available transports" classname="io.supernode.network.transport.TransportManagerTest$AvailabilityTests" time="0.085"/>
+  <testcase name="should return empty list when no available transports" classname="io.supernode.network.transport.TransportManagerTest$AvailabilityTests" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

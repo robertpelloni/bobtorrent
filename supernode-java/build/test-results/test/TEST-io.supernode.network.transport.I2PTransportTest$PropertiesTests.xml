@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Transport Properties" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:00" hostname="PINK" time="0.008">
+<testsuite name="Transport Properties" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:46:29" hostname="PINK" time="0.03">
   <properties/>
-  <testcase name="should have I2P type" classname="io.supernode.network.transport.I2PTransportTest$PropertiesTests" time="0.004"/>
-  <testcase name="should not be running initially" classname="io.supernode.network.transport.I2PTransportTest$PropertiesTests" time="0.003"/>
+  <testcase name="should have I2P type" classname="io.supernode.network.transport.I2PTransportTest$PropertiesTests" time="0.014"/>
+  <testcase name="should not be running initially" classname="io.supernode.network.transport.I2PTransportTest$PropertiesTests" time="0.015"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Determinism" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:11:22" hostname="PINK" time="0.005">
+<testsuite name="Determinism" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:46:37" hostname="PINK" time="0.002">
   <properties/>
-  <testcase name="same content should produce same file ID" classname="io.supernode.storage.SupernodeStorageTest$DeterminismTests" time="0.005"/>
+  <testcase name="same content should produce same file ID" classname="io.supernode.storage.SupernodeStorageTest$DeterminismTests" time="0.002"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
