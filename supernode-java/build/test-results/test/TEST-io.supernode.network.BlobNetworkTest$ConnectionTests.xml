@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Connection" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:29:49" hostname="PINK" time="2.14">
+<testsuite name="Connection" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T06:30:12" hostname="PINK" time="2.426">
   <properties/>
-  <testcase name="should fail connect to invalid address" classname="io.supernode.network.BlobNetworkTest$ConnectionTests" time="1.85"/>
-  <testcase name="should reject connections after destroy" classname="io.supernode.network.BlobNetworkTest$ConnectionTests" time="0.289"/>
-  <system-out><![CDATA[23:29:49.742 [nioEventLoopGroup-11-1] DEBUG io.netty.buffer.AbstractByteBuf -- -Dio.netty.buffer.checkAccessible: true
-23:29:49.744 [nioEventLoopGroup-11-1] DEBUG io.netty.buffer.AbstractByteBuf -- -Dio.netty.buffer.checkBounds: true
-23:29:49.747 [nioEventLoopGroup-11-1] DEBUG io.netty.util.ResourceLeakDetectorFactory -- Loaded default ResourceLeakDetector: io.netty.util.ResourceLeakDetector@5fbd112f
+  <testcase name="should fail connect to invalid address" classname="io.supernode.network.BlobNetworkTest$ConnectionTests" time="1.962"/>
+  <testcase name="should reject connections after destroy" classname="io.supernode.network.BlobNetworkTest$ConnectionTests" time="0.459"/>
+  <system-out><![CDATA[02:30:13.222 [nioEventLoopGroup-11-1] DEBUG io.netty.buffer.AbstractByteBuf -- -Dio.netty.buffer.checkAccessible: true
+02:30:13.223 [nioEventLoopGroup-11-1] DEBUG io.netty.buffer.AbstractByteBuf -- -Dio.netty.buffer.checkBounds: true
+02:30:13.226 [nioEventLoopGroup-11-1] DEBUG io.netty.util.ResourceLeakDetectorFactory -- Loaded default ResourceLeakDetector: io.netty.util.ResourceLeakDetector@34c267d9
 ]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

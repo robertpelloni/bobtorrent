@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Lifecycle" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:30:24" hostname="PINK" time="0.985">
+<testsuite name="Lifecycle" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-10T06:30:53" hostname="PINK" time="0.72">
   <properties/>
-  <testcase name="should stop all registered transports" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.338"/>
-  <testcase name="should report running state" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.317"/>
+  <testcase name="should stop all registered transports" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.248"/>
+  <testcase name="should report running state" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.241"/>
   <testcase name="should handle empty manager start" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.004"/>
-  <testcase name="should handle empty manager stop" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.002"/>
-  <testcase name="should start all registered transports" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.322"/>
+  <testcase name="should handle empty manager stop" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.001"/>
+  <testcase name="should start all registered transports" classname="io.supernode.network.transport.TransportManagerTest$LifecycleTests" time="0.222"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

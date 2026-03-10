@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Determinism" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:30:42" hostname="PINK" time="3.067">
+<testsuite name="Determinism" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T06:31:14" hostname="PINK" time="4.16">
   <properties/>
-  <testcase name="should be reproducible across instances" classname="io.supernode.storage.isoforge.ISOForgeTest$DeterminismTests" time="0.979"/>
-  <testcase name="should produce different output for different seeds" classname="io.supernode.storage.isoforge.ISOForgeTest$DeterminismTests" time="0.877"/>
-  <testcase name="should produce identical output for same seed" classname="io.supernode.storage.isoforge.ISOForgeTest$DeterminismTests" time="1.208"/>
+  <testcase name="should be reproducible across instances" classname="io.supernode.storage.isoforge.ISOForgeTest$DeterminismTests" time="1.552"/>
+  <testcase name="should produce different output for different seeds" classname="io.supernode.storage.isoforge.ISOForgeTest$DeterminismTests" time="1.211"/>
+  <testcase name="should produce identical output for same seed" classname="io.supernode.storage.isoforge.ISOForgeTest$DeterminismTests" time="1.394"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Stats" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:30:15" hostname="PINK" time="0.543">
+<testsuite name="Stats" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T06:30:44" hostname="PINK" time="0.526">
   <properties/>
   <testcase name="should return stats" classname="io.supernode.network.transport.ClearnetTransportTest$StatsTests" time="0.277"/>
-  <testcase name="should return stats before start" classname="io.supernode.network.transport.ClearnetTransportTest$StatsTests" time="0.265"/>
+  <testcase name="should return stats before start" classname="io.supernode.network.transport.ClearnetTransportTest$StatsTests" time="0.248"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

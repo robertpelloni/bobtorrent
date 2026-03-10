@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Determinism" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:30:37" hostname="PINK" time="0.001">
+<testsuite name="Determinism" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-10T06:31:08" hostname="PINK" time="0.003">
   <properties/>
-  <testcase name="encoding should be deterministic" classname="io.supernode.storage.erasure.ErasureCoderTest$DeterminismTests" time="0.001"/>
+  <testcase name="encoding should be deterministic" classname="io.supernode.storage.erasure.ErasureCoderTest$DeterminismTests" time="0.003"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

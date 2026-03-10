@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Lookup" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:29:54" hostname="PINK" time="1.436">
+<testsuite name="Lookup" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T06:30:20" hostname="PINK" time="1.479">
   <properties/>
-  <testcase name="should complete lookup" classname="io.supernode.network.DHTDiscoveryTest$LookupTests" time="0.32"/>
-  <testcase name="should find peers with timeout" classname="io.supernode.network.DHTDiscoveryTest$LookupTests" time="1.116"/>
+  <testcase name="should complete lookup" classname="io.supernode.network.DHTDiscoveryTest$LookupTests" time="0.326"/>
+  <testcase name="should find peers with timeout" classname="io.supernode.network.DHTDiscoveryTest$LookupTests" time="1.15"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Blob Operations" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:29:51" hostname="PINK" time="0.455">
+<testsuite name="Blob Operations" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-03-10T06:30:15" hostname="PINK" time="0.808">
   <properties/>
-  <testcase name="should find peers with blob" classname="io.supernode.network.BlobNetworkTest$BlobOperationsTests" time="0.223"/>
-  <testcase name="should query for blob without error" classname="io.supernode.network.BlobNetworkTest$BlobOperationsTests" time="0.23"/>
+  <testcase name="should find peers with blob" classname="io.supernode.network.BlobNetworkTest$BlobOperationsTests" time="0.431"/>
+  <testcase name="should query for blob without error" classname="io.supernode.network.BlobNetworkTest$BlobOperationsTests" time="0.374"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

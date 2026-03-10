@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Address Handling" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-10T03:30:15" hostname="PINK" time="1.167">
+<testsuite name="Address Handling" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-10T06:30:44" hostname="PINK" time="1.484">
   <properties/>
-  <testcase name="should handle ws scheme" classname="io.supernode.network.transport.ClearnetTransportTest$AddressHandlingTests" time="0.241"/>
-  <testcase name="should parse ws address" classname="io.supernode.network.transport.ClearnetTransportTest$AddressHandlingTests" time="0.23"/>
-  <testcase name="should handle wss scheme" classname="io.supernode.network.transport.ClearnetTransportTest$AddressHandlingTests" time="0.228"/>
-  <testcase name="should not handle tor addresses" classname="io.supernode.network.transport.ClearnetTransportTest$AddressHandlingTests" time="0.239"/>
-  <testcase name="should parse wss address" classname="io.supernode.network.transport.ClearnetTransportTest$AddressHandlingTests" time="0.223"/>
+  <testcase name="should handle ws scheme" classname="io.supernode.network.transport.ClearnetTransportTest$AddressHandlingTests" time="0.296"/>
+  <testcase name="should parse ws address" classname="io.supernode.network.transport.ClearnetTransportTest$AddressHandlingTests" time="0.246"/>
+  <testcase name="should handle wss scheme" classname="io.supernode.network.transport.ClearnetTransportTest$AddressHandlingTests" time="0.272"/>
+  <testcase name="should not handle tor addresses" classname="io.supernode.network.transport.ClearnetTransportTest$AddressHandlingTests" time="0.307"/>
+  <testcase name="should parse wss address" classname="io.supernode.network.transport.ClearnetTransportTest$AddressHandlingTests" time="0.358"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
