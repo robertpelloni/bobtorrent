@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Wallet &amp; Balance" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:45:57" hostname="PINK" time="0.15">
+<testsuite name="Wallet &amp; Balance" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:47:17" hostname="PINK" time="0.114">
   <properties/>
-  <testcase name="should get account balance" classname="io.supernode.blockchain.BobcoinBridgeTest$WalletTests" time="0.15"/>
+  <testcase name="should get account balance" classname="io.supernode.blockchain.BobcoinBridgeTest$WalletTests" time="0.114"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

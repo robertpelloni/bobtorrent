@@ -41,7 +41,7 @@
 </td>
 <td>
 <div class="infoBox" id="duration">
-<div class="counter">14.763s</div>
+<div class="counter">12.800s</div>
 <p>duration</p>
 </div>
 </td>
@@ -81,19 +81,19 @@
 <tr>
 <td class="success">should discover and transfer blob between two nodes</td>
 <td class="success">discoverAndTransfer()</td>
-<td class="success">13.249s</td>
+<td class="success">11.780s</td>
 <td class="success">passed</td>
 </tr>
 <tr>
 <td class="success">should aggregate health status from all components</td>
 <td class="success">healthAggregation()</td>
-<td class="success">1.052s</td>
+<td class="success">0.434s</td>
 <td class="success">passed</td>
 </tr>
 <tr>
 <td class="success">should track peer events across unified network</td>
 <td class="success">peerEvents()</td>
-<td class="success">0.462s</td>
+<td class="success">0.586s</td>
 <td class="success">passed</td>
 </tr>
 </table>
@@ -101,18 +101,18 @@
 <div id="tab1" class="tab">
 <h2>Standard output</h2>
 <span class="code">
-<pre>20:46:12.561 [nioEventLoopGroup-47-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketClientHandshaker13 -- WebSocket version 13 client handshake key: mB7GaknRB+o+UQA0t/ZA2A==, expected response: yIs5b7yA5ayixEaQxREZT9KmqQg=
-20:46:12.587 [nioEventLoopGroup-47-1] DEBUG io.netty.util.Recycler -- -Dio.netty.recycler.maxCapacityPerThread: 4096
-20:46:12.588 [nioEventLoopGroup-47-1] DEBUG io.netty.util.Recycler -- -Dio.netty.recycler.ratio: 8
-20:46:12.588 [nioEventLoopGroup-47-1] DEBUG io.netty.util.Recycler -- -Dio.netty.recycler.chunkSize: 32
-20:46:12.588 [nioEventLoopGroup-47-1] DEBUG io.netty.util.Recycler -- -Dio.netty.recycler.blocking: false
-20:46:12.588 [nioEventLoopGroup-47-1] DEBUG io.netty.util.Recycler -- -Dio.netty.recycler.batchFastThreadLocalOnly: true
-20:46:12.690 [nioEventLoopGroup-45-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker -- [id: 0xc74bdc00, L:/127.0.0.1:51538 - R:/127.0.0.1:51540] WebSocket version V13 server handshake
-20:46:12.691 [nioEventLoopGroup-45-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker -- WebSocket version 13 server handshake key: mB7GaknRB+o+UQA0t/ZA2A==, response: yIs5b7yA5ayixEaQxREZT9KmqQg=
-Connecting to: ws://127.0.0.1:60510
-20:46:24.455 [nioEventLoopGroup-51-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketClientHandshaker13 -- WebSocket version 13 client handshake key: OMYcY6nyF/cBpgxsevt8Tw==, expected response: 6F5VJ9lgjb+886Qe9EjcoB6mi8Q=
-20:46:24.463 [nioEventLoopGroup-49-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker -- [id: 0xc4b6bb85, L:/127.0.0.1:60510 - R:/127.0.0.1:60512] WebSocket version V13 server handshake
-20:46:24.463 [nioEventLoopGroup-49-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker -- WebSocket version 13 server handshake key: OMYcY6nyF/cBpgxsevt8Tw==, response: 6F5VJ9lgjb+886Qe9EjcoB6mi8Q=
+<pre>22:47:29.729 [nioEventLoopGroup-47-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketClientHandshaker13 -- WebSocket version 13 client handshake key: FlwlQbplUXkn4SwTxbpB2A==, expected response: AVo1kEziH9EH2tPRy/93rJwJIlU=
+22:47:29.745 [nioEventLoopGroup-47-1] DEBUG io.netty.util.Recycler -- -Dio.netty.recycler.maxCapacityPerThread: 4096
+22:47:29.745 [nioEventLoopGroup-47-1] DEBUG io.netty.util.Recycler -- -Dio.netty.recycler.ratio: 8
+22:47:29.745 [nioEventLoopGroup-47-1] DEBUG io.netty.util.Recycler -- -Dio.netty.recycler.chunkSize: 32
+22:47:29.745 [nioEventLoopGroup-47-1] DEBUG io.netty.util.Recycler -- -Dio.netty.recycler.blocking: false
+22:47:29.745 [nioEventLoopGroup-47-1] DEBUG io.netty.util.Recycler -- -Dio.netty.recycler.batchFastThreadLocalOnly: true
+22:47:29.806 [nioEventLoopGroup-45-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker -- [id: 0x89b855f9, L:/127.0.0.1:65055 - R:/127.0.0.1:65057] WebSocket version V13 server handshake
+22:47:29.807 [nioEventLoopGroup-45-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker -- WebSocket version 13 server handshake key: FlwlQbplUXkn4SwTxbpB2A==, response: AVo1kEziH9EH2tPRy/93rJwJIlU=
+Connecting to: ws://127.0.0.1:65094
+22:47:41.588 [nioEventLoopGroup-51-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketClientHandshaker13 -- WebSocket version 13 client handshake key: fp4A3jhooFhfPA8/FDPG9Q==, expected response: 7kCnQiQxhnLPVtD5wZRuQTfhhAU=
+22:47:41.593 [nioEventLoopGroup-49-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker -- [id: 0x8b42aedf, L:/127.0.0.1:65094 - R:/127.0.0.1:65096] WebSocket version V13 server handshake
+22:47:41.594 [nioEventLoopGroup-49-1] DEBUG io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker -- WebSocket version 13 server handshake key: fp4A3jhooFhfPA8/FDPG9Q==, response: 7kCnQiQxhnLPVtD5wZRuQTfhhAU=
 Connection successful
 </pre>
 </span>
@@ -125,7 +125,7 @@ Connection successful
 <input id="line-wrapping-toggle" type="checkbox" autocomplete="off"/>
 </label>
 </div>Generated by 
-<a href="http://www.gradle.org">Gradle 8.5</a> at Mar 9, 2026, 8:46:49 PM</p>
+<a href="http://www.gradle.org">Gradle 8.5</a> at Mar 9, 2026, 10:48:10 PM</p>
 </div>
 </div>
 </body>

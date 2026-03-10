@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.supernode.storage.LRUBlobCacheTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:46:32" hostname="PINK" time="0.003">
+<testsuite name="io.supernode.storage.LRUBlobCacheTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:47:51" hostname="PINK" time="0.004">
   <properties/>
   <testcase name="testLRUOrder()" classname="io.supernode.storage.LRUBlobCacheTest" time="0.001"/>
-  <testcase name="testClear()" classname="io.supernode.storage.LRUBlobCacheTest" time="0.0"/>
+  <testcase name="testClear()" classname="io.supernode.storage.LRUBlobCacheTest" time="0.001"/>
   <testcase name="testEvictionByMaxEntries()" classname="io.supernode.storage.LRUBlobCacheTest" time="0.0"/>
-  <testcase name="testPutAndGet()" classname="io.supernode.storage.LRUBlobCacheTest" time="0.001"/>
-  <testcase name="testEvictionByMaxSize()" classname="io.supernode.storage.LRUBlobCacheTest" time="0.0"/>
+  <testcase name="testPutAndGet()" classname="io.supernode.storage.LRUBlobCacheTest" time="0.0"/>
+  <testcase name="testEvictionByMaxSize()" classname="io.supernode.storage.LRUBlobCacheTest" time="0.001"/>
   <testcase name="testInvalidate()" classname="io.supernode.storage.LRUBlobCacheTest" time="0.0"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

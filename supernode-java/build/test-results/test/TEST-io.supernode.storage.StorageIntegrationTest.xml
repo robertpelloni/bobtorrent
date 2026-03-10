@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Storage Layer Integration" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:46:32" hostname="PINK" time="4.734">
+<testsuite name="Storage Layer Integration" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:47:51" hostname="PINK" time="5.468">
   <properties/>
-  <testcase name="should track operations and cleanup correctly" classname="io.supernode.storage.StorageIntegrationTest" time="1.681"/>
-  <testcase name="should fail recovery when too many shards are lost" classname="io.supernode.storage.StorageIntegrationTest" time="0.029"/>
-  <testcase name="should perform full async ingest and retrieve cycle with progress" classname="io.supernode.storage.StorageIntegrationTest" time="3.02"/>
+  <testcase name="should track operations and cleanup correctly" classname="io.supernode.storage.StorageIntegrationTest" time="2.155"/>
+  <testcase name="should fail recovery when too many shards are lost" classname="io.supernode.storage.StorageIntegrationTest" time="0.035"/>
+  <testcase name="should perform full async ingest and retrieve cycle with progress" classname="io.supernode.storage.StorageIntegrationTest" time="3.274"/>
   <testcase name="should recover from partial shard loss using erasure coding" classname="io.supernode.storage.StorageIntegrationTest" time="0.004"/>
-  <system-out><![CDATA[On-The-Fly Repair logic successfully resolved and persisted missing shard for chunk: a1e7f13dddfe04465c99d4836cb74d4017ab99f1f98b34f1b1e069aaf5745af7
-On-The-Fly Repair logic successfully resolved and persisted missing shard for chunk: ba82af1dc86a8a4204f1319d29ab4a1b0e0c0096da3011d198df1b5bd8e7aabf
+  <system-out><![CDATA[On-The-Fly Repair logic successfully resolved and persisted missing shard for chunk: 4b3d459b85ddaae602f7fb39b60347e60806e1ebaafdbd1495e5957d48a6903b
+On-The-Fly Repair logic successfully resolved and persisted missing shard for chunk: bc4c358d9c01d0470c304d08844deef6d37c1ccf8aba20cc4c5b0a89d30cda63
 ]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Integration Tests" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:46:39" hostname="PINK" time="0.016">
+<testsuite name="Integration Tests" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:48:00" hostname="PINK" time="0.015">
   <properties/>
   <testcase name="should handle adaptive configuration changes" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$IntegrationTests" time="0.0"/>
-  <testcase name="should work with streaming and events together" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$IntegrationTests" time="0.005"/>
-  <testcase name="should encode and verify parity" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$IntegrationTests" time="0.005"/>
-  <testcase name="should detect corruption and repair" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$IntegrationTests" time="0.005"/>
+  <testcase name="should work with streaming and events together" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$IntegrationTests" time="0.006"/>
+  <testcase name="should encode and verify parity" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$IntegrationTests" time="0.003"/>
+  <testcase name="should detect corruption and repair" classname="io.supernode.storage.erasure.ErasureCoderAdvancedTest$IntegrationTests" time="0.004"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Transport Properties" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T00:46:28" hostname="PINK" time="0.405">
+<testsuite name="Transport Properties" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-10T02:47:46" hostname="PINK" time="0.405">
   <properties/>
-  <testcase name="should always be available" classname="io.supernode.network.transport.ClearnetTransportTest$PropertiesTests" time="0.134"/>
-  <testcase name="should have CLEARNET type" classname="io.supernode.network.transport.ClearnetTransportTest$PropertiesTests" time="0.137"/>
+  <testcase name="should always be available" classname="io.supernode.network.transport.ClearnetTransportTest$PropertiesTests" time="0.15"/>
+  <testcase name="should have CLEARNET type" classname="io.supernode.network.transport.ClearnetTransportTest$PropertiesTests" time="0.121"/>
   <testcase name="should not be running initially" classname="io.supernode.network.transport.ClearnetTransportTest$PropertiesTests" time="0.132"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
