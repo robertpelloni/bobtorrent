@@ -3,7 +3,7 @@
 ## Overview
 Bobtorrent and Supernode Java constitute the P2P supernode implementation and decentralized distribution layer for the Bobcoin/Filecoin network. 
 
-## Current Status: v11.2.4 (Tracker) / v0.2.0-SNAPSHOT (Java Supernode)
+## Current Status: v11.2.4 (Tracker) / v0.4.0 (Java Supernode)
 
 ### ✅ Completed Features (v0.1.0 to v0.2.0)
 - Core Node.js Tracker implementation with UDP/HTTP/WebSocket.
@@ -27,13 +27,13 @@ Bobtorrent and Supernode Java constitute the P2P supernode implementation and de
 - [x] **WebTransport Integration**:
   - QUIC-based HTTP/3 transport for the Node.js tracker with graceful fallback.
 
-### 🚀 Medium Term (v0.4.0)
-- [ ] **Enhanced Transport Protocol Implementations**
-  - Tor v3: Improve circuit rotation and stream multiplexing.
-  - IPFS: Add full CAR (Content Addressable Archive) payload extraction.
-  - Hyphanet: Enhanced splitfile recovery.
-- [ ] **Consensus-Verified Tracker Ledger**
-  - Hooking tracker peer states into a Solana/Stone.Ledger memo bridge to definitively ban bad actors.
+### ✅ Medium Term (v0.4.0) — COMPLETED
+- [x] **Enhanced Transport Protocol Implementations**
+  - Tor v3: MultiplexedCircuitPool with round-robin, failover, per-circuit rotation.
+  - IPFS: CARExtractor for CAR v1 archive parsing and block extraction.
+  - Hyphanet: SplitfileRecoveryOptions with retry escalation and priority boosting.
+- [x] **Consensus-Verified Tracker Ledger**
+  - TrackerLedger records peer violations as Solana memo txns; consensus-based bad actor banning.
 
 ### 🌍 Long Term (v1.0.0 "Universal Mesh")
 - [ ] **1000+ Concurrent Multi-Swarm Peer Handling**
