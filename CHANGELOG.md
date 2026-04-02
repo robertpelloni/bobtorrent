@@ -1,3 +1,9 @@
+## [11.3.1] - 2026-04-02
+### DHT Proxy Crawler & Database
+- **Implementation**: Developed a SQLite-backed peer storage system and a DHT crawler for the DHT Proxy utility.
+- **Features**: Added asynchronous DHT search triggering on torrent addition and a private announce API for peer discovery.
+- **Dependencies**: Integrated `github.com/anacrolix/dht/v2` and `modernc.org/sqlite`.
+
 ## [11.3.0] - 2026-04-02
 ### Go Port & DHT Proxy Initialization
 - **Architecture**: Planned the entire project's port to Go for enhanced performance, concurrency, and memory safety.
