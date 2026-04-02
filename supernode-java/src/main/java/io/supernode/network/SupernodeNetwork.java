@@ -184,7 +184,11 @@ public class SupernodeNetwork {
     }
     
     public CompletableFuture<IngestResult> ingestFileAsync(byte[] fileBuffer, String fileName, byte[] masterKey, Consumer<SupernodeStorage.Progress> progress) {
-        return storage.ingestAsync(fileBuffer, fileName, masterKey, progress).thenApply(result -> {
+        return ingestFileAsync(fileBuffer, fileName, masterKey, null, progress);
+    }
+
+    public CompletableFuture<IngestResult> ingestFileAsync(byte[] fileBuffer, String fileName, byte[] masterKey, SupernodeStorage.IngestOptions options, Consumer<SupernodeStorage.Progress> progress) {
+        return storage.ingestAsync(fileBuffer, fileName, masterKey, options, progress).thenApply(result -> {
             for (String chunkHash : result.chunkHashes()) {
                 dht.announce(chunkHash, port);
                 blobNetwork.announceBlob(chunkHash);

@@ -273,23 +273,25 @@ let subscriptionStore = null
 
 async function initChannel () {
   if (channel) return channel
-  
+
   const keyData = fs.existsSync(argv.keyfile)
     ? JSON.parse(fs.readFileSync(argv.keyfile))
     : null
-  
-  const keypair = keyData ? {
-    publicKey: Buffer.from(keyData.publicKey, 'hex'),
-    secretKey: Buffer.from(keyData.secretKey, 'hex')
-  } : null
+
+  const keypair = keyData
+    ? {
+        publicKey: Buffer.from(keyData.publicKey, 'hex'),
+        secretKey: Buffer.from(keyData.secretKey, 'hex')
+      }
+    : null
 
   dht = new DHT()
   await new Promise(resolve => dht.on('ready', resolve))
-  
+
   channel = createChannel(dht, { keypair })
   subscriptionStore = new SubscriptionStore(argv.subscriptions)
   subscriptionStore.load()
-  
+
   return channel
 }
 
@@ -303,29 +305,29 @@ function parseFilters (filtersArg) {
 
 if (command === 'channel-browse') {
   const topicPath = argv._[1] || ''
-  
+
   initChannel().then(async (ch) => {
     console.log(`Browsing topic: ${topicPath || '(root)'}`)
     console.log('---')
-    
+
     const result = await ch.browse(topicPath)
-    
+
     if (result.subtopics.length > 0) {
       console.log('Subtopics:')
       result.subtopics.forEach(st => console.log(`  ${topicPath}/${st}`))
     }
-    
+
     if (result.publishers.length > 0) {
       console.log('\nPublishers:')
       result.publishers.forEach(p => {
         console.log(`  ${p.name || 'Unknown'} [${p.pk.slice(0, 16)}...]`)
       })
     }
-    
+
     if (result.subtopics.length === 0 && result.publishers.length === 0) {
       console.log('(No subtopics or publishers found)')
     }
-    
+
     dht.destroy()
     process.exit(0)
   }).catch(err => {
@@ -340,19 +342,19 @@ if (command === 'channel-subscribe') {
     console.error('Please provide topic path (e.g., mp3/electronic)')
     process.exit(1)
   }
-  
+
   const filters = parseFilters(argv.filters)
-  
+
   initChannel().then(async (ch) => {
     console.log(`Subscribing to: ${topicPath}`)
     if (Object.keys(filters).length > 0) {
       console.log('Filters:', JSON.stringify(filters))
     }
-    
+
     subscriptionStore.addSubscription(topicPath, { filters })
-    
+
     const sub = ch.subscribe(topicPath, filters)
-    
+
     sub.on('content', (manifest) => {
       console.log('\n>>> NEW CONTENT <<<')
       console.log(`From: ${manifest.publicKey.slice(0, 16)}...`)
@@ -361,16 +363,16 @@ if (command === 'channel-subscribe') {
       manifest.collections.forEach((col, i) => {
         console.log(`  [${i}] ${col.title}: ${col.items.length} items`)
       })
-      
+
       subscriptionStore.updateLastSeq(topicPath, manifest.sequence)
     })
-    
+
     sub.on('error', (err) => {
       console.error('Subscription error:', err.message)
     })
-    
+
     console.log('Listening for updates... (Ctrl+C to stop)')
-    
+
     process.on('SIGINT', () => {
       console.log('\nUnsubscribing...')
       sub.stop()
@@ -390,16 +392,16 @@ if (command === 'channel-unsubscribe') {
     console.error('Please provide topic path')
     process.exit(1)
   }
-  
+
   subscriptionStore = new SubscriptionStore(argv.subscriptions)
   subscriptionStore.load()
-  
+
   if (subscriptionStore.removeSubscription(topicPath)) {
     console.log(`Unsubscribed from: ${topicPath}`)
   } else {
     console.log(`Not subscribed to: ${topicPath}`)
   }
-  
+
   subscriptionStore.destroy()
   process.exit(0)
 }
@@ -410,30 +412,30 @@ if (command === 'channel-publish') {
     console.error('Please provide topic path')
     process.exit(1)
   }
-  
+
   if (!argv.input) {
     console.error('Please specify manifest with -i')
     process.exit(1)
   }
-  
+
   if (!fs.existsSync(argv.keyfile)) {
     console.error('Keyfile not found. Run gen-key first.')
     process.exit(1)
   }
-  
+
   const manifestData = JSON.parse(fs.readFileSync(argv.input, 'utf-8'))
-  
+
   initChannel().then(async (ch) => {
     console.log(`Publishing to topic: ${topicPath}`)
-    
+
     await ch.publish(topicPath, manifestData.collections, {
       metadata: manifestData.metadata
     })
-    
+
     console.log('Published successfully!')
     console.log('(Will auto-republish every 45 minutes while running)')
     console.log('Press Ctrl+C to stop publishing')
-    
+
     process.on('SIGINT', () => {
       console.log('\nStopping...')
       dht.destroy()
@@ -448,17 +450,17 @@ if (command === 'channel-publish') {
 if (command === 'channel-list') {
   subscriptionStore = new SubscriptionStore(argv.subscriptions)
   subscriptionStore.load()
-  
+
   const subs = subscriptionStore.getAllSubscriptions()
-  
+
   if (subs.length === 0) {
     console.log('No subscriptions.')
   } else {
     console.log(`${subs.length} subscription(s):\n`)
     subs.forEach(sub => {
       const status = sub.enabled ? '✓' : '✗'
-      const lastPoll = sub.lastPollTime 
-        ? new Date(sub.lastPollTime).toLocaleString() 
+      const lastPoll = sub.lastPollTime
+        ? new Date(sub.lastPollTime).toLocaleString()
         : 'never'
       console.log(`[${status}] ${sub.topicPath}`)
       console.log(`    Added: ${new Date(sub.addedAt).toLocaleString()}`)
@@ -469,7 +471,7 @@ if (command === 'channel-list') {
       console.log('')
     })
   }
-  
+
   process.exit(0)
 }
 
@@ -480,20 +482,20 @@ let blobClient = null
 
 async function initBlobNetwork () {
   if (blobClient) return blobClient
-  
+
   blobStore = new BlobStore(argv.dir)
-  
+
   if (!dht) {
     dht = new DHT()
     await new Promise(resolve => dht.on('ready', resolve))
   }
-  
+
   blobTracker = new BlobTracker(dht, { port: 6881 })
   blobNetwork = new BlobNetwork(blobStore, { port: 0 })
-  
+
   await blobNetwork.listen()
   console.log(`Blob network listening on port ${blobNetwork.port}`)
-  
+
   blobClient = createBlobClient(blobStore, blobNetwork, blobTracker)
   return blobClient
 }
@@ -503,13 +505,13 @@ if (command === 'blob-seed') {
     console.error('Please specify file entry with -i')
     process.exit(1)
   }
-  
+
   const fileEntry = JSON.parse(fs.readFileSync(argv.input, 'utf-8'))
-  
+
   initBlobNetwork().then(async (client) => {
     const blobIds = fileEntry.chunks.map(c => c.blobId)
     let found = 0
-    
+
     for (const blobId of blobIds) {
       if (blobStore.has(blobId)) {
         found++
@@ -522,26 +524,26 @@ if (command === 'blob-seed') {
         }
       }
     }
-    
+
     if (found < blobIds.length) {
       console.error(`Missing ${blobIds.length - found} of ${blobIds.length} blobs`)
       console.error('Run ingest first to create blobs locally')
       process.exit(1)
     }
-    
+
     await client.seed(fileEntry)
-    
+
     console.log(`Seeding ${blobIds.length} blobs for: ${fileEntry.name}`)
     console.log('Press Ctrl+C to stop')
-    
+
     blobNetwork.on('upload', ({ blobId, size, peer }) => {
       console.log(`Uploaded ${blobId.slice(0, 16)}... (${size} bytes) to ${peer}`)
     })
-    
+
     blobNetwork.on('peer', ({ address }) => {
       console.log(`Peer connected: ${address}`)
     })
-    
+
     process.on('SIGINT', () => {
       console.log('\nStopping...')
       blobNetwork.destroy()
@@ -560,28 +562,28 @@ if (command === 'blob-fetch') {
     console.error('Please specify file entry with -i')
     process.exit(1)
   }
-  
+
   if (!argv.output) {
     console.error('Please specify output file with -o')
     process.exit(1)
   }
-  
+
   const fileEntry = JSON.parse(fs.readFileSync(argv.input, 'utf-8'))
-  
+
   initBlobNetwork().then(async (client) => {
     console.log(`Fetching: ${fileEntry.name}`)
     console.log(`Chunks: ${fileEntry.chunks.length}`)
-    
+
     const fileBuf = await client.fetch(fileEntry, {
       onProgress: ({ completed, total, blobId }) => {
         const pct = Math.round(completed / total * 100)
         console.log(`[${pct}%] Downloaded ${blobId.slice(0, 16)}...`)
       }
     })
-    
+
     fs.writeFileSync(argv.output, fileBuf)
     console.log(`Saved to: ${argv.output}`)
-    
+
     blobNetwork.destroy()
     blobTracker.destroy()
     if (dht) dht.destroy()
@@ -595,14 +597,14 @@ if (command === 'blob-fetch') {
 if (command === 'blob-status') {
   blobStore = new BlobStore(argv.dir)
   const stats = blobStore.stats()
-  
+
   console.log('Blob Store Status')
   console.log('---')
   console.log(`Blobs: ${stats.blobCount}`)
   console.log(`Size: ${(stats.currentSize / 1024 / 1024).toFixed(2)} MB`)
   console.log(`Max: ${(stats.maxSize / 1024 / 1024 / 1024).toFixed(2)} GB`)
   console.log(`Utilization: ${(stats.utilization * 100).toFixed(1)}%`)
-  
+
   const blobs = blobStore.list()
   if (blobs.length > 0) {
     console.log('\nRecent blobs:')
@@ -614,6 +616,6 @@ if (command === 'blob-status') {
       console.log(`  ... and ${blobs.length - 10} more`)
     }
   }
-  
+
   process.exit(0)
 }

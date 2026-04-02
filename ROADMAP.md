@@ -17,14 +17,22 @@ Supernode Java is a P2P (Peer-to-Peer) supernode implementation for the Filecoin
 
 ### 🔧 In Progress
 
-#### Short Term (v0.2.0)
-- [ ] Fix erasure coder parity test expectations
-  - Update test to check FULL shard arrays (data + parity) for differences
-  - Current test only checks data shards, which is incorrect
-  - Estimated: 1-2 hours
+#### Short Term (v2.4.0) - Settings & Configuration
+- [ ] **Unified Settings Interface**:
+  - Add "Settings" tab to Web UI.
+  - Expose Transport configuration (Ports, Keys) for I2P/Tor.
+  - Expose Storage configuration (Paths, Quotas).
+  - Persist settings to `config.json` on both backends.
+- [ ] **Blockchain Integration Wiring**:
+  - Wire `BobcoinBridge` into `UnifiedNetwork`.
+  - Implement `/api/wallet/status` to show bridge connection health.
+  - Add "Bridge Status" indicator to Wallet tab.
 
-#### Medium Term (v0.3.0)
-- [ ] Enhanced transport protocol implementations
+#### Medium Term (v2.5.0) - Reliability & Scale
+- [ ] **Automated Repair**:
+  - Background task to scan for missing shards (`ErasureCoder.repairParity`).
+  - Auto-fetch missing shards from network peers.
+- [ ] **Enhanced transport protocol implementations**
   - Tor: Improve circuit rotation and stream multiplexing
   - IPFS: Add CAR (Content Addressable Archive) support for efficient data transfer
   - Hyphanet: Enhanced splitfile management and recovery

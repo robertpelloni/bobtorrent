@@ -4,7 +4,7 @@ import { EventEmitter } from 'events'
 
 /**
  * SubscriptionStore - Persist channel subscriptions across restarts
- * 
+ *
  * Stores subscription state (topics, filters, last seen sequence numbers)
  * to a JSON file for recovery after restart.
  */
@@ -51,11 +51,11 @@ export class SubscriptionStore extends EventEmitter {
    */
   save () {
     this._dirty = true
-    
+
     if (this._saveDebounceTimer) {
       clearTimeout(this._saveDebounceTimer)
     }
-    
+
     this._saveDebounceTimer = setTimeout(() => {
       this._doSave()
     }, 500)
@@ -74,16 +74,16 @@ export class SubscriptionStore extends EventEmitter {
 
   _doSave () {
     if (!this._dirty) return
-    
+
     try {
       this.data.lastUpdated = Date.now()
-      
+
       // Ensure directory exists
       const dir = path.dirname(this.storePath)
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true })
       }
-      
+
       fs.writeFileSync(this.storePath, JSON.stringify(this.data, null, 2))
       this._dirty = false
       this.emit('saved', this.data)
@@ -99,7 +99,7 @@ export class SubscriptionStore extends EventEmitter {
    */
   addSubscription (topicPath, options = {}) {
     const existing = this.data.subscriptions[topicPath] || {}
-    
+
     this.data.subscriptions[topicPath] = {
       topicPath,
       addedAt: existing.addedAt || Date.now(),
@@ -111,10 +111,10 @@ export class SubscriptionStore extends EventEmitter {
       publisherCache: options.publisherCache || existing.publisherCache || [],
       metadata: { ...existing.metadata, ...options.metadata }
     }
-    
+
     this.save()
     this.emit('subscription-added', this.data.subscriptions[topicPath])
-    
+
     return this.data.subscriptions[topicPath]
   }
 

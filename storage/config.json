@@ -1,0 +1,19 @@
+{
+  "nodeName": "Test Node Modified",
+  "storagePath": "./storage",
+  "ports": {
+    "webApi": 3000,
+    "dht": 6881,
+    "tcp": 0
+  },
+  "transports": {
+    "clearnet": true,
+    "i2p": false,
+    "tor": false
+  },
+  "storage": {
+    "enableErasure": false,
+    "defaultDataShards": 4,
+    "defaultParityShards": 2
+  }
+}

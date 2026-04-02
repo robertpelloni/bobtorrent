@@ -65,6 +65,8 @@ public class SupernodeStorage {
         this.isoForge = new ISOForge();
         this.manifestStore = new ConcurrentHashMap<>();
         
+        loadManifests();
+
         this.enableErasure = options.enableErasure;
         if (enableErasure) {
             this.erasureCoder = new ErasureCoder(options.dataShards, options.parityShards);
@@ -76,12 +78,23 @@ public class SupernodeStorage {
     }
     
     public IngestResult ingest(byte[] fileBuffer, String fileName, byte[] masterKey) {
-        return ingest(fileBuffer, fileName, masterKey, null);
+        return ingest(fileBuffer, fileName, masterKey, null, null);
     }
     
     public IngestResult ingest(byte[] fileBuffer, String fileName, byte[] masterKey, Consumer<Progress> progress) {
+        return ingest(fileBuffer, fileName, masterKey, null, progress);
+    }
+
+    public IngestResult ingest(byte[] fileBuffer, String fileName, byte[] masterKey, IngestOptions options, Consumer<Progress> progress) {
         String fileId = "sha256:" + sha256Hex(fileBuffer);
         
+        // Use provided options or global defaults
+        IngestOptions effectiveOptions = options != null ? options : new IngestOptions(
+            this.options.enableErasure,
+            this.options.dataShards,
+            this.options.parityShards
+        );
+
         // CAS Deduplication: Check if file already exists
         if (manifestStore.containsKey(fileId)) {
             try {
@@ -138,8 +151,8 @@ public class SupernodeStorage {
                 MuxEngine.MuxResult muxResult = muxEngine.mux(chunk, chunkKey, isoSeed);
                 
                 Segment segment;
-                if (enableErasure) {
-                    segment = ingestWithErasure(muxResult.muxedData(), chunkKey, isoSeed, muxResult, chunk.length, chunkHashes);
+                if (effectiveOptions.enableErasure()) {
+                    segment = ingestWithErasure(muxResult.muxedData(), chunkKey, isoSeed, muxResult, chunk.length, chunkHashes, effectiveOptions);
                 } else {
                     String chunkHash = sha256Hex(muxResult.muxedData());
                     blobStore.put(chunkHash, muxResult.muxedData());
@@ -185,13 +198,18 @@ public class SupernodeStorage {
                 }
             } while (offset < fileBuffer.length);
             
+            ErasureConfig ecConfig = null;
+            if (effectiveOptions.enableErasure()) {
+                ecConfig = new ErasureConfig(effectiveOptions.dataShards(), effectiveOptions.parityShards());
+            }
+
             Manifest manifest = Manifest.create(new Manifest.ManifestOptions(
                 fileId,
                 fileName,
                 fileBuffer.length,
                 segments.get(0).isoSeed(),
                 isoSize.getBytes(),
-                enableErasure ? new ErasureConfig(erasureCoder.getDataShards(), erasureCoder.getParityShards()) : null,
+                ecConfig,
                 segments
             ));
             
@@ -218,27 +236,27 @@ public class SupernodeStorage {
     }
     
     public CompletableFuture<IngestResult> ingestAsync(byte[] fileBuffer, String fileName, byte[] masterKey) {
-        return ingestAsync(fileBuffer, fileName, masterKey, null);
+        return ingestAsync(fileBuffer, fileName, masterKey, null, null);
     }
     
-    public CompletableFuture<IngestResult> ingestAsync(byte[] fileBuffer, String fileName, byte[] masterKey, Consumer<Progress> progress) {
-        return CompletableFuture.supplyAsync(() -> ingest(fileBuffer, fileName, masterKey, progress), executor);
+    public CompletableFuture<IngestResult> ingestAsync(byte[] fileBuffer, String fileName, byte[] masterKey, IngestOptions options, Consumer<Progress> progress) {
+        return CompletableFuture.supplyAsync(() -> ingest(fileBuffer, fileName, masterKey, options, progress), executor);
     }
     
-    public IngestResult ingestStreaming(InputStream input, String fileName, byte[] masterKey, Consumer<Progress> progress) throws IOException {
+    public IngestResult ingestStreaming(InputStream input, String fileName, byte[] masterKey, IngestOptions options, Consumer<Progress> progress) throws IOException {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         byte[] chunk = new byte[8192];
         int read;
         while ((read = input.read(chunk)) != -1) {
             buffer.write(chunk, 0, read);
         }
-        return ingest(buffer.toByteArray(), fileName, masterKey, progress);
+        return ingest(buffer.toByteArray(), fileName, masterKey, options, progress);
     }
     
-    public CompletableFuture<IngestResult> ingestStreamingAsync(InputStream input, String fileName, byte[] masterKey, Consumer<Progress> progress) {
+    public CompletableFuture<IngestResult> ingestStreamingAsync(InputStream input, String fileName, byte[] masterKey, IngestOptions options, Consumer<Progress> progress) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                return ingestStreaming(input, fileName, masterKey, progress);
+                return ingestStreaming(input, fileName, masterKey, options, progress);
             } catch (IOException e) {
                 throw new CompletionException(e);
             }
@@ -247,8 +265,13 @@ public class SupernodeStorage {
     
     private Segment ingestWithErasure(byte[] muxedData, byte[] chunkKey, byte[] isoSeed, 
                                        MuxEngine.MuxResult muxResult, int originalSize,
-                                       List<String> allChunkHashes) {
-        ErasureCoder.EncodeResult encoded = erasureCoder.encode(muxedData);
+                                       List<String> allChunkHashes, IngestOptions opts) {
+        // Create coder on demand if options differ, or use default if matching?
+        // For simplicity and safety with varying options, we create a new instance or reuse if matching global.
+        // Actually, creating a new lightweight coder is cheap (it just builds tables/matrices).
+        ErasureCoder coder = new ErasureCoder(opts.dataShards, opts.parityShards);
+
+        ErasureCoder.EncodeResult encoded = coder.encode(muxedData);
         List<ShardInfo> shards = new ArrayList<>();
         
         for (int i = 0; i < encoded.shards().length; i++) {
@@ -261,8 +284,8 @@ public class SupernodeStorage {
         
         if (onErasureEncoded != null) {
             onErasureEncoded.accept(new ErasureEncodedEvent(
-                erasureCoder.getDataShards(),
-                erasureCoder.getParityShards(),
+                coder.getDataShards(),
+                coder.getParityShards(),
                 shards.size()
             ));
         }
@@ -492,11 +515,52 @@ public class SupernodeStorage {
     public Optional<byte[]> getManifest(String fileId) {
         return Optional.ofNullable(manifestStore.get(fileId));
     }
+
+    public List<String> listFiles() {
+        return new ArrayList<>(manifestStore.keySet());
+    }
     
     public void storeManifest(String fileId, byte[] encryptedManifest) {
         manifestStore.put(fileId, encryptedManifest);
+        saveManifest(fileId, encryptedManifest);
     }
     
+    private void saveManifest(String fileId, byte[] data) {
+        try {
+            java.nio.file.Path dir = java.nio.file.Paths.get("supernode_storage", "manifests");
+            if (!java.nio.file.Files.exists(dir)) java.nio.file.Files.createDirectories(dir);
+            java.nio.file.Files.write(dir.resolve(fileId.replace(":", "_")), data);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadManifests() {
+        try {
+            java.nio.file.Path dir = java.nio.file.Paths.get("supernode_storage", "manifests");
+            if (java.nio.file.Files.exists(dir)) {
+                try (java.util.stream.Stream<java.nio.file.Path> stream = java.nio.file.Files.list(dir)) {
+                    stream.forEach(path -> {
+                        try {
+                            String filename = path.getFileName().toString();
+                            // Simple heuristic to recover ID (replace first _ with :)
+                            // Ideally we store ID inside file or use better encoding
+                            String fileId = filename.replace("_", ":");
+                            if (!fileId.startsWith("sha256:")) fileId = "sha256:" + filename;
+
+                            byte[] data = java.nio.file.Files.readAllBytes(path);
+                            manifestStore.put(fileId, data);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public StorageStats stats() {
         BlobStore.BlobStoreStats blobStats = blobStore.stats();
         ErasureStats erasureStats = null;
@@ -527,6 +591,10 @@ public class SupernodeStorage {
     public StorageOptions getOptions() {
         return options;
     }
+
+    public ErasureCoder.NetworkContext getErasureNetworkContext() {
+        return erasureCoder != null ? erasureCoder.getNetworkContext() : null;
+    }
     
     public CompletableFuture<Void> shutdown() {
         return CompletableFuture.runAsync(() -> {
@@ -549,6 +617,151 @@ public class SupernodeStorage {
     public void setOnFileRetrieved(Consumer<FileRetrievedEvent> listener) { this.onFileRetrieved = listener; }
     public void setOnErasureDecoded(Consumer<ErasureDecodedEvent> listener) { this.onErasureDecoded = listener; }
     
+    public CompletableFuture<RepairStatus> repairFile(String fileId, byte[] masterKey) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                byte[] encryptedManifest = manifestStore.get(fileId);
+                if (encryptedManifest == null) {
+                    return new RepairStatus(fileId, false, "Manifest missing", 0);
+                }
+
+                byte[] manifestKey = Manifest.deriveManifestKey(masterKey, fileId);
+                Manifest manifest = Manifest.decrypt(encryptedManifest, manifestKey);
+
+                if (manifest.getErasure() == null) {
+                    return new RepairStatus(fileId, false, "Not erasure coded", 0);
+                }
+
+                ErasureCoder coder = new ErasureCoder(
+                    manifest.getErasure().dataShards(),
+                    manifest.getErasure().parityShards()
+                );
+
+                int totalRepaired = 0;
+
+                for (Segment segment : manifest.getSegments()) {
+                    if (segment.shards() == null || segment.shards().isEmpty()) continue;
+
+                    int totalShards = coder.getTotalShards();
+                    byte[][] shards = new byte[totalShards][];
+                    List<Integer> presentIndicesList = new ArrayList<>();
+
+                    for (ShardInfo shardInfo : segment.shards()) {
+                        Optional<byte[]> data = blobStore.get(shardInfo.hash());
+                        if (data.isPresent()) {
+                            shards[shardInfo.index()] = data.get();
+                            presentIndicesList.add(shardInfo.index());
+                        }
+                    }
+
+                    // If all present, skip
+                    if (presentIndicesList.size() == totalShards) continue;
+
+                    // If not enough to repair, fail
+                    if (presentIndicesList.size() < coder.getDataShards()) {
+                        return new RepairStatus(fileId, false, "Unrecoverable: Not enough shards", totalRepaired);
+                    }
+
+                    int[] presentIndices = presentIndicesList.stream().mapToInt(Integer::intValue).toArray();
+
+                    // The repairParity method fills in the missing shards in the 'shards' array
+                    ErasureCoder.RepairResult repairResult = coder.repairParity(
+                        shards, presentIndices, segment.originalSize(), segment.shardSize()
+                    );
+
+                    if (repairResult.success() && repairResult.repairedCount() > 0) {
+                        // Save repaired shards back to blob store
+                        for (int idx : repairResult.repairedShardIndices()) {
+                            // Find the hash for this index from manifest
+                            String hashToSave = null;
+                            for (ShardInfo si : segment.shards()) {
+                                if (si.index() == idx) {
+                                    hashToSave = si.hash();
+                                    break;
+                                }
+                            }
+                            if (hashToSave != null && shards[idx] != null) {
+                                blobStore.put(hashToSave, shards[idx]);
+                                totalRepaired++;
+                            }
+                        }
+                    }
+                }
+
+                if (totalRepaired > 0) {
+                    return new RepairStatus(fileId, true, "Repaired " + totalRepaired + " shards", totalRepaired);
+                } else {
+                    return new RepairStatus(fileId, true, "File is already healthy", 0);
+                }
+
+            } catch (Exception e) {
+                return new RepairStatus(fileId, false, "Repair failed: " + e.getMessage(), 0);
+            }
+        }, executor);
+    }
+
+    public FileHealth getFileHealth(String fileId, byte[] masterKey) {
+        try {
+            byte[] encryptedManifest = manifestStore.get(fileId);
+            if (encryptedManifest == null) {
+                return new FileHealth(fileId, "Manifest Missing", 0, 0, List.of(), null);
+            }
+
+            byte[] manifestKey = Manifest.deriveManifestKey(masterKey, fileId);
+            Manifest manifest = Manifest.decrypt(encryptedManifest, manifestKey);
+
+            List<ChunkHealth> chunks = new ArrayList<>();
+            int healthyChunks = 0;
+
+            for (int i = 0; i < manifest.getSegments().size(); i++) {
+                Segment segment = manifest.getSegments().get(i);
+                List<ShardHealth> shards = new ArrayList<>();
+                boolean isHealthy = false;
+
+                if (segment.shards() != null && !segment.shards().isEmpty()) {
+                    // Erasure Coded
+                    int presentShards = 0;
+                    for (ShardInfo shard : segment.shards()) {
+                        boolean present = blobStore.has(shard.hash());
+                        if (present) presentShards++;
+                        shards.add(new ShardHealth(shard.index(), present, shard.hash()));
+                    }
+
+                    if (manifest.getErasure() != null) {
+                        isHealthy = presentShards >= manifest.getErasure().dataShards();
+                    } else {
+                        // Fallback if erasure config missing but shards present (shouldn't happen)
+                        isHealthy = presentShards > 0;
+                    }
+
+                    chunks.add(new ChunkHealth(i, isHealthy ? "Healthy" : "Corrupt", shards));
+                } else {
+                    // Simple Replication
+                    boolean present = blobStore.has(segment.chunkHash());
+                    isHealthy = present;
+                    chunks.add(new ChunkHealth(i, isHealthy ? "Healthy" : "Missing", List.of()));
+                }
+
+                if (isHealthy) healthyChunks++;
+            }
+
+            String status = healthyChunks == manifest.getSegments().size() ? "Healthy"
+                : (healthyChunks > 0 ? "Degraded" : "Critical");
+
+            return new FileHealth(
+                fileId,
+                status,
+                manifest.getSegments().size(),
+                healthyChunks,
+                chunks,
+                manifest.getErasure()
+            );
+
+        } catch (Exception e) {
+            return new FileHealth(fileId, "Error: " + e.getMessage(), 0, 0, List.of(), null);
+        }
+    }
+
     private String generateOperationId() {
         return "op-" + operationCounter.incrementAndGet() + "-" + System.currentTimeMillis();
     }
@@ -735,4 +948,34 @@ public class SupernodeStorage {
     public record ChunkRetrievedEvent(String fileId, String chunkHash, double progress) {}
     public record FileRetrievedEvent(String fileId, String fileName, long size) {}
     public record ErasureDecodedEvent(int presentShards, int totalShards, boolean recovered) {}
+
+    public record IngestOptions(boolean enableErasure, int dataShards, int parityShards) {}
+
+    public record FileHealth(
+        String fileId,
+        String status,
+        int totalChunks,
+        int healthyChunks,
+        List<ChunkHealth> chunks,
+        ErasureConfig erasure
+    ) {}
+
+    public record ChunkHealth(
+        int index,
+        String status,
+        List<ShardHealth> shards
+    ) {}
+
+    public record ShardHealth(
+        int index,
+        boolean present,
+        String hash
+    ) {}
+
+    public record RepairStatus(
+        String fileId,
+        boolean success,
+        String message,
+        int shardsRepaired
+    ) {}
 }

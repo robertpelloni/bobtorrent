@@ -5,6 +5,8 @@ import io.supernode.storage.BlobStore;
 import io.supernode.storage.IPFSBlobStore;
 import io.supernode.storage.InMemoryBlobStore;
 import io.supernode.storage.SupernodeStorage;
+import io.supernode.intelligence.ResourceManager;
+import io.supernode.blockchain.BobcoinBridge;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -19,6 +21,12 @@ public class UnifiedNetwork {
     private final SupernodeStorage storage;
     private final Map<String, PeerInfo> peers = new ConcurrentHashMap<>();
     
+    // Components
+    private final DHTDiscovery dht;
+    private final ManifestDistributor manifestDistributor;
+    private final ResourceManager resourceManager;
+    private final BobcoinBridge bobcoinBridge;
+
     private Consumer<ListeningEvent> onListening;
     private Consumer<PeerEvent> onPeer;
     private Consumer<DisconnectEvent> onDisconnect;
@@ -62,10 +70,34 @@ public class UnifiedNetwork {
             : SupernodeStorage.StorageOptions.defaults();
         this.storage = new SupernodeStorage(primaryBlobStore, storageOptions);
         
+        // Initialize DHT
+        this.dht = new DHTDiscovery(DHTDiscovery.DHTOptions.defaults());
+
+        // Initialize ManifestDistributor
+        this.manifestDistributor = new ManifestDistributor(new ManifestDistributor.ManifestDistributorOptions(dht, storage));
+
+        // Initialize Intelligence
+        this.resourceManager = new ResourceManager(this);
+
+        // Initialize Blockchain
+        this.bobcoinBridge = new BobcoinBridge(options.bobcoinOptions != null
+            ? options.bobcoinOptions
+            : BobcoinBridge.BobcoinOptions.defaults());
+
         setupEventHandlers();
     }
 
     public CompletableFuture<Map<TransportType, TransportAddress>> start() {
+        // Start Components
+        dht.start();
+        resourceManager.start();
+
+        // Start Bridge (non-blocking)
+        bobcoinBridge.connect().exceptionally(e -> {
+            System.err.println("Failed to connect to Bobcoin Bridge: " + e.getMessage());
+            return false;
+        });
+
         return transportManager.startAll()
             .thenApply(addresses -> {
                 Map<TransportType, TransportAddress> result = new EnumMap<>(TransportType.class);
@@ -81,6 +113,7 @@ public class UnifiedNetwork {
 
     public CompletableFuture<Void> stop() {
         destroyed = true;
+        bobcoinBridge.disconnect();
         return transportManager.stopAll();
     }
 
@@ -101,7 +134,11 @@ public class UnifiedNetwork {
     }
 
     public SupernodeStorage.IngestResult ingestFile(byte[] data, String fileName, byte[] masterKey) {
-        SupernodeStorage.IngestResult result = storage.ingest(data, fileName, masterKey);
+        return ingestFile(data, fileName, masterKey, null);
+    }
+
+    public SupernodeStorage.IngestResult ingestFile(byte[] data, String fileName, byte[] masterKey, SupernodeStorage.IngestOptions options) {
+        SupernodeStorage.IngestResult result = storage.ingest(data, fileName, masterKey, options, null);
         
         if (ipfsBlobStore != null) {
             replicateToIPFS(result);
@@ -184,6 +221,22 @@ public class UnifiedNetwork {
         return storage;
     }
 
+    public DHTDiscovery getDht() {
+        return dht;
+    }
+
+    public ManifestDistributor getManifestDistributor() {
+        return manifestDistributor;
+    }
+
+    public ResourceManager getResourceManager() {
+        return resourceManager;
+    }
+
+    public BobcoinBridge getBobcoinBridge() {
+        return bobcoinBridge;
+    }
+
     public boolean isDestroyed() {
         return destroyed;
     }
@@ -195,6 +248,40 @@ public class UnifiedNetwork {
             peers.size(),
             getAddressesByType()
         );
+    }
+
+    public List<PeerDetail> getPeerDetails() {
+        List<PeerDetail> details = new ArrayList<>();
+        io.supernode.storage.erasure.ErasureCoder.NetworkContext ctx = storage.getErasureNetworkContext();
+
+        for (PeerInfo peer : peers.values()) {
+            double score = 0.0;
+            long latency = 0;
+            long successes = 0;
+            long failures = 0;
+
+            if (ctx != null) {
+                var metrics = ctx.getPeerMetrics().get(peer.peerId);
+                if (metrics != null) {
+                    score = ctx.calculatePeerScore(peer.peerId);
+                    latency = metrics.avgLatency();
+                    successes = metrics.successCount();
+                    failures = metrics.failureCount();
+                }
+            }
+
+            details.add(new PeerDetail(
+                peer.peerId,
+                peer.connection.getRemoteAddress().toString(),
+                peer.connection.getTransportType().toString(),
+                latency,
+                score,
+                successes,
+                failures,
+                peer.connection.isOpen() ? "Connected" : "Disconnected"
+            ));
+        }
+        return details;
     }
 
     public void setOnListening(Consumer<ListeningEvent> handler) {
@@ -306,6 +393,17 @@ public class UnifiedNetwork {
         Map<TransportType, TransportAddress> addresses
     ) {}
 
+    public record PeerDetail(
+        String id,
+        String address,
+        String transport,
+        long latency,
+        double score,
+        long packetsSuccess,
+        long packetsLost,
+        String status
+    ) {}
+
     public static class UnifiedNetworkOptions {
         public BlobStore blobStore;
         public String isoSeed;
@@ -332,6 +430,8 @@ public class UnifiedNetwork {
         
         public boolean enableIPFS = true;
         public IPFSTransport.IPFSOptions ipfsOptions = IPFSTransport.IPFSOptions.defaults();
+
+        public BobcoinBridge.BobcoinOptions bobcoinOptions = BobcoinBridge.BobcoinOptions.defaults();
 
         public UnifiedNetworkOptions() {}
 

@@ -42,6 +42,15 @@
   - Integrate with `SupernodeNetwork` stats
   - Provide load level recommendations
 
+- [ ] **Unified Settings Interface (v2.4.0)**
+  - Implement `/api/config` GET/POST endpoints.
+  - Create Settings UI tab.
+  - Persist config to disk.
+
+- [ ] **Blockchain Bridge Wiring**
+  - Instantiate `BobcoinBridge` in `UnifiedNetwork`.
+  - Expose bridge status via API.
+
 - [ ] **Advanced routing and content delivery**
   - Add DHT integration with Filecoin for content routing
   - Implement content-addressed storage with automatic deduplication
