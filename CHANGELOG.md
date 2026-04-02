@@ -1,3 +1,9 @@
+## [11.3.0] - 2026-04-02
+### Go Port & DHT Proxy Initialization
+- **Architecture**: Planned the entire project's port to Go for enhanced performance, concurrency, and memory safety.
+- **Utility**: Initialized the DHT Proxy utility to hide user IPs from the BitTorrent DHT and public trackers.
+- **Scaffolding**: Created the `bobtorrent` Go module and initial structure for the DHT Proxy.
+
 ## [11.2.4] - 2026-03-09
 ### Omni-workspace Stabilization & Autonomous Refactoring
 - **Documentation**: Consolidated Agent instructions into `UNIVERSAL_LLM_INSTRUCTIONS.md`. Rebuilt `VISION.md`, `ROADMAP.md`, `TODO.md`, `DASHBOARD.md`, `DEPLOY.md`, `MEMORY.md`. 
