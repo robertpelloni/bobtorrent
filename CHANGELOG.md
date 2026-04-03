@@ -1,3 +1,9 @@
+## [11.4.1] - 2026-04-03
+### Go Port: Proximity Sorting & Erasure Storage
+- **DHT Proxy**: Implemented Haversine distance calculation for discovered peers, sorting `/api/announce` results by proximity to the requester's IP.
+- **Storage**: Developed `pkg/storage` in Go, implementing SIMD-accelerated 4+2 erasure coding and IETF ChaCha20-Poly1305 authenticated encryption for high-performance block storage.
+- **Security**: Added secure random padding to encrypted blocks to mitigate size-based traffic analysis.
+
 ## [11.4.0] - 2026-04-03
 ### Submodule Synchronization & Documentation Synthesis
 - **Bobcoin**: Synchronized `bobcoin` submodule to `v3.5.0`, including the latest NFT protocol, atomic swaps, and lattice consensus features.

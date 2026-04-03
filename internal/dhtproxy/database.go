@@ -3,7 +3,9 @@ package dhtproxy
 import (
 	"database/sql"
 	"fmt"
+	"sort"
 	"time"
+	"bobtorrent/pkg/torrent"
 
 	_ "modernc.org/sqlite"
 )
@@ -77,10 +79,11 @@ func (d *Database) AddPeer(infoHash, ip string, port int, country string, lat, l
 	return err
 }
 
-func (d *Database) GetPeers(infoHash string, limit int) ([]Peer, error) {
+func (d *Database) GetPeers(infoHash string, limit int, refLat, refLon float64) ([]Peer, error) {
+	// Fetch up to 500 peers to sort them by proximity
 	query := `SELECT ip, port, country_code, latitude, longitude FROM peers
-			  WHERE info_hash = ? ORDER BY last_seen DESC LIMIT ?`
-	rows, err := d.db.Query(query, infoHash, limit)
+			  WHERE info_hash = ? ORDER BY last_seen DESC LIMIT 500`
+	rows, err := d.db.Query(query, infoHash)
 	if err != nil {
 		return nil, err
 	}
@@ -93,6 +96,20 @@ func (d *Database) GetPeers(infoHash string, limit int) ([]Peer, error) {
 			return nil, err
 		}
 		peers = append(peers, p)
+	}
+
+	// If we have reference coordinates, sort by distance
+	if refLat != 0 || refLon != 0 {
+		sort.Slice(peers, func(i, j int) bool {
+			distI := torrent.Distance(refLat, refLon, peers[i].Latitude, peers[i].Longitude)
+			distJ := torrent.Distance(refLat, refLon, peers[j].Latitude, peers[j].Longitude)
+			return distI < distJ
+		})
+	}
+
+	// Apply limit
+	if len(peers) > limit {
+		peers = peers[:limit]
 	}
 
 	return peers, nil

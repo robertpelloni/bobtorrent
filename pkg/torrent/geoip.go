@@ -2,6 +2,7 @@ package torrent
 
 import (
 	"fmt"
+	"math"
 	"net"
 
 	"github.com/oschwald/geoip2-golang"
@@ -42,4 +43,19 @@ func (s *GeoIPService) Lookup(ipStr string) (country string, lat, lon float64, e
 	lat = record.Location.Latitude
 	lon = record.Location.Longitude
 	return country, lat, lon, nil
+}
+
+// Distance calculates the Haversine distance between two sets of coordinates (in km).
+func Distance(lat1, lon1, lat2, lon2 float64) float64 {
+	const R = 6371 // Earth radius in km
+	dLat := (lat2 - lat1) * (math.Pi / 180)
+	dLon := (lon2 - lon1) * (math.Pi / 180)
+	lat1Rad := lat1 * (math.Pi / 180)
+	lat2Rad := lat2 * (math.Pi / 180)
+
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1Rad)*math.Cos(lat2Rad)*
+			math.Sin(dLon/2)*math.Sin(dLon/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return R * c
 }
