@@ -1,31 +1,19 @@
-# AI Agent Handoff Document
+# Bobtorrent Omni-Workspace Handoff (v11.4.0)
 
-## 📅 Session Overview
-- **Date**: 2026-04-02
-- **Agent Focus**: Go Port Architecture Planning & DHT Proxy Implementation (Crawler & DB)
-- **Old Version**: 11.2.4
-- **New Version**: 11.3.1
+## Session Summary
+-   **Submodule Sync**: Synchronized `bobcoin` to the latest `v3.6.0` (origin/main), which includes NFT protocols, atomic swaps, and the new asynchronous block lattice consensus. 
+-   **GeoIP Enrichment**: Implemented `pkg/torrent/geoip.go` and updated `internal/dhtproxy` to enrich discovered BitTorrent peers with location data (country, lat, lon) using MaxMind GeoLite2.
+-   **Instruction Unification**: Implemented `docs/UNIVERSAL_LLM_INSTRUCTIONS.md` as the monorepo-wide protocol. All `AGENTS.md`, `CLAUDE.md`, etc., now point to this single source.
+-   **Build Process**: Updated `build.bat` to compile the new Go port (`dht-proxy`) into `build/`.
+-   **Documentation**: Refreshed `DASHBOARD.md`, `ROADMAP.md`, and `TODO.md` to reflect the current state of the Go port and `bobcoin` integration.
 
-## 🔍 What Was Accomplished
-1. **Architecture & Strategy**: Analyzed the Node.js and Java Supernode components and documented the strategy for porting the entire `bobtorrent` ecosystem to Go (`docs/GO_PORT_ARCHITECTURE.md`) to achieve 100% 1:1 parity.
-2. **DHT Proxy Utility Implementation**:
-    - **Database**: Implemented a SQLite-backed storage layer (`internal/dhtproxy/database.go`) for tracking torrents and peers.
-    - **Crawler**: Implemented a DHT crawler (`internal/dhtproxy/crawler.go`) using `github.com/anacrolix/dht/v2` to discover peers for specific info hashes.
-    - **API Integration**: Updated the main entrypoint (`cmd/dht-proxy/main.go`) to handle adding torrents, triggering background DHT crawls, and serving peers via a private announce API.
-3. **Go Module Management**: Managed dependencies with `go mod tidy`, adding `anacrolix/dht` and `modernc.org/sqlite`.
-4. **Build Verification**: Verified that the DHT Proxy compiles successfully (`go build ./cmd/dht-proxy/main.go`).
+## Key Observations
+-   `bobcoin` has undergone massive development, moving from SQLite to a native block lattice for consensus and governance.
+-   The Go Port is focusing on privacy-first utilities like the DHT Proxy before implementing the full tracker.
+-   `qbittorrent` submodule remote is currently unreachable (`repository not found`), but local files are present and synced to `v5.1.0-beta`.
 
-## 🧠 Core Analysis & Next Steps
-- **GeoIP Enrichment**: The current peer storage defaults to "XX" country code and (0,0) coordinates. The next step should be integrating a GeoIP library (e.g., `github.com/oschwald/geoip2-golang`) to enrich peers with geographic data, enabling distance-based peer selection.
-- **Tracker Announcer**: Implement a background worker to announce to public trackers (HTTP/UDP) to complement the DHT discovery.
-- **Web UI**: Scaffold a simple web UI for the DHT Proxy to manage tracked torrents and view peer statistics.
-- **Core Tracker Port**: Begin porting the core BitTorrent tracker logic (`internal/tracker`) from the Node.js implementation to Go.
-
-## 🚀 Ongoing Task (Current Execution Pipeline)
-- [x] Analyze codebase and plan Go port.
-- [x] Design DHT Proxy utility.
-- [x] Implement SQLite peer database for `internal/dhtproxy`.
-- [x] Implement DHT crawler for `internal/dhtproxy`.
-- [ ] **Next**: Integrate GeoIP enrichment for discovered peers.
-- [ ] **Next**: Implement public tracker announcer worker.
-- [ ] **Next**: Start porting Node.js tracker core to Go.
+## Next Steps for Implementor
+1.  **DHT Proxy Distance Sorting**: Update `internal/dhtproxy/database.go` and `cmd/dht-proxy/main.go` to sort peers returned in `/api/announce` based on proximity to the requester's IP (using `GeoIPService`).
+2.  **Go Storage Layer**: Begin implementation of `pkg/storage` in Go, porting the erasure coding (Reed-Solomon) logic from the Node.js/Java implementations.
+3.  **Bobcoin UI integration**: Verify that the latest `v3.6.0` features in `bobcoin/frontend` are correctly calling the `bobcoin-consensus` server.
+4.  **Java Supernode Modernization**: Check if any logic from the Java Supernode should be migrated to the Go port next.

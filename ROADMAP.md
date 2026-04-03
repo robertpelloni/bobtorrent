@@ -15,7 +15,14 @@ Bobtorrent and Supernode Java constitute the P2P supernode implementation and de
 - Filecoin blockchain integration via BobcoinBridge.
 - Predictive JVM resource allocation.
 
-### ✅ Current Short Term Focus (v0.3.0) — COMPLETED
+### ✅ Current Short Term Focus (v11.4.0) — COMPLETED
+- [x] **DHT Proxy GeoIP Enrichment**:
+  - Integrated `github.com/oschwald/geoip2-golang` for peer location tracking.
+  - Implemented `GeoIPService` for MaxMind GeoLite2 lookup.
+  - Updated Crawler to store latitude/longitude/country code in SQLite.
+- [x] **Omni-Workspace Synchronization**:
+  - Updated `bobcoin` to v3.6.0 with NFT and Lattice consensus support.
+  - Unified AI agent instructions across all modules.
 - [x] **Node CLI and Diagnostics Tools**: 
   - Implementation of a terminal UI/CLI for node configuration, manifest inspection, and real-time swarm diagnostic monitoring.
 - [x] **Distributed Manifest Synchronization**:

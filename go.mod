@@ -32,6 +32,8 @@ require (
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/oschwald/geoip2-golang v1.13.0 // indirect
+	github.com/oschwald/maxminddb-golang v1.13.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rs/dnscache v0.0.0-20211102005908-e0241e321417 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect

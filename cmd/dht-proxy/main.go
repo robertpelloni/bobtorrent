@@ -21,7 +21,8 @@ func main() {
 	}
 	defer db.Close()
 
-	crawler, err = dhtproxy.NewCrawler(db)
+	geoIPPath := "GeoLite2-City.mmdb" // Hardcoded path for now
+	crawler, err = dhtproxy.NewCrawler(db, geoIPPath)
 	if err != nil {
 		log.Fatalf("Failed to initialize crawler: %v", err)
 	}

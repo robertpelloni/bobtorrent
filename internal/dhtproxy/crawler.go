@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"time"
+	"bobtorrent/pkg/torrent"
 
 	"github.com/anacrolix/dht/v2"
 	"github.com/anacrolix/torrent/metainfo"
@@ -13,18 +14,28 @@ import (
 type Crawler struct {
 	dhtServer *dht.Server
 	db        *Database
+	geoIP     *torrent.GeoIPService
 }
 
-func NewCrawler(db *Database) (*Crawler, error) {
+func NewCrawler(db *Database, geoIPPath string) (*Crawler, error) {
 	// Start DHT server on a random port
 	server, err := dht.NewServer(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start DHT server: %w", err)
 	}
 
+	var geoIP *torrent.GeoIPService
+	if geoIPPath != "" {
+		geoIP, err = torrent.NewGeoIPService(geoIPPath)
+		if err != nil {
+			log.Printf("Warning: Failed to load GeoIP database: %v. Peers will not be enriched.", err)
+		}
+	}
+
 	return &Crawler{
 		dhtServer: server,
 		db:        db,
+		geoIP:     geoIP,
 	}, nil
 }
 
@@ -58,8 +69,18 @@ func (c *Crawler) Crawl(infoHashHex string) {
 			}
 			
 			for _, peer := range result.Peers {
-				// For now, we skip GeoIP enrichment
-				err := c.db.AddPeer(infoHashHex, peer.IP.String(), peer.Port, "XX", 0, 0)
+				country := "XX"
+				var lat, lon float64
+				
+				if c.geoIP != nil {
+					if c, lt, ln, err := c.geoIP.Lookup(peer.IP.String()); err == nil {
+						country = c
+						lat = lt
+						lon = ln
+					}
+				}
+
+				err := c.db.AddPeer(infoHashHex, peer.IP.String(), peer.Port, country, lat, lon)
 				if err != nil {
 					log.Printf("Failed to save peer: %v", err)
 				}
