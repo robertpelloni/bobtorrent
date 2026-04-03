@@ -1,3 +1,10 @@
+## [11.5.0] - 2026-04-03
+### Go Port: Lattice Consensus Engine & Ecosystem Unification
+- **Consensus**: Ported the entire asynchronous block lattice engine from Node.js to Go (`internal/consensus`). Implemented secure chain validation, demurrage calculations, and O(1) block indexing.
+- **Server**: Developed a high-performance HTTP API for the Go lattice node, enabling full compatibility with existing frontend and supernode interactions.
+- **Unification**: Structured the Go port into a suite of specialized binaries (`lattice-go`, `supernode-go`, `dht-proxy`) for maximum scalability and deployment flexibility.
+- **Build System**: Updated `build.bat` to orchestrate the compilation of the entire unified Go ecosystem.
+
 ## [11.4.4] - 2026-04-03
 ### Go Port: Supernode TUI Dashboard
 - **TUI**: Implemented a comprehensive terminal dashboard using `github.com/charmbracelet/bubbletea`, providing real-time visibility into account balances, lattice market bids, and node status.
