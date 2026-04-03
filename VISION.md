@@ -48,6 +48,15 @@ To build a **Production-Grade, Autonomous P2P Storage Supernode Network** that b
 -   [ ] **WebTransport (QUIC) Trackers**: Sub-millisecond peer discovery for Bobzilla integration.
 -   [ ] **Cross-Chain Interoperability**: Extend rewards to Solana and Ethereum networks.
 
+## 🛠️ The Go Port Vision (v11.5.0+)
+
+The project is currently undergoing a complete architectural modernization through a systematic port to Go. This "Go Port" is designed to achieve:
+
+1.  **Extreme Concurrency**: Utilizing goroutines to handle 10,000+ simultaneous BitTorrent swarms and lattice block arrivals without bottlenecking.
+2.  **Memory Safety**: Eliminating legacy vulnerabilities while maintaining high performance.
+3.  **Unified Ecosystem**: Consolidating Tracker, DHT, Supernode, and Consensus into a single performant codebase with specialized binaries (`supernode-go`, `lattice-go`, `dht-proxy`).
+4.  **Privacy-First Networking**: Deep integration of the DHT Proxy and multi-transport support directly into the core engine.
+
 ## 🧠 Design Philosophy
 
 -   **"Code is Law, Performance is King"**: No compromise on security or speed.
