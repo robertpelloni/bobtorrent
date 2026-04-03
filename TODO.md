@@ -6,10 +6,10 @@
 - **DHT Proxy Improvements**: Integrated GeoIP enrichment and distance-based sorting for discovered peers in the Go DHT Proxy.
 - **Go Storage Layer**: Implemented high-performance erasure coding (4+2), IETF ChaCha20-Poly1305 encryption, and secure random padding in `pkg/storage`.
 - **Go Tracker & DHT**: Implemented HTTP/UDP multi-protocol tracker and standalone Kademlia DHT server in Go.
-- **Go Supernode Core**: Implemented Ed25519 wallet handling and SPoRA challenge endpoints in Go.
+- **Go Supernode (v1)**: Integrated real torrent seeding, automated lattice market polling, and autonomous bid acceptance.
 
-## Active Feature Backlog (v11.4.2+)
-- [ ] **Go Market Poller**: Port the Node.js background market polling loop to Go, enabling autonomous bid acceptance on the Lattice.
-- [ ] **Go Torrent Engine Integration**: Integrate `github.com/anacrolix/torrent` client to enable real file seeding and data provisioning in the Go Supernode.
+## Active Feature Backlog (v11.4.3+)
+- [ ] **Go Supernode TUI**: Implement a terminal user interface using `github.com/rivo/tview` or `github.com/charmbracelet/bubbletea` for real-time monitoring of swarms and bids.
+- [ ] **Go Consensus Node**: Port the Node.js `bobcoin-consensus` server to Go for improved throughput and lower latency.
 - [ ] **Full Game Engine Integration**: Extend `GameAssetStreamer` into a native Unreal/Unity plugin.
 - [ ] **Global Decentralized Storage Network Launch**: Production launch sequence.

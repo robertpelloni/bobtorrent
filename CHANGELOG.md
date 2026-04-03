@@ -1,3 +1,10 @@
+## [11.4.3] - 2026-04-03
+### Go Port: Autonomous Supernode & Torrent Seeding
+- **Torrent**: Integrated `github.com/anacrolix/torrent` for native file seeding and data provisioning in Go.
+- **Market**: Developed a background poller using `github.com/go-resty/resty/v2` to autonomously discover and accept storage bids on the Bobcoin Lattice.
+- **Consensus**: Implemented `pkg/torrent/block.go` for Go-native Block Lattice operations, enabling the Supernode to sign and broadcast its own `accept_bid` blocks.
+- **Unified Binary**: The `supernode-go` binary now orchestrates tracker, DHT, seeding, and lattice interaction in a single performant process.
+
 ## [11.4.2] - 2026-04-03
 ### Go Port: Tracker, DHT, and Supernode Core
 - **Tracker**: Implemented multi-protocol support including BEP 3 (HTTP Bencoded) and BEP 15 (UDP), featuring compact peer list generation.
