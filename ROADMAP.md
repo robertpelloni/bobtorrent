@@ -15,14 +15,16 @@ Bobtorrent and Supernode Java constitute the P2P supernode implementation and de
 - Filecoin blockchain integration via BobcoinBridge.
 - Predictive JVM resource allocation.
 
-### ✅ Current Short Term Focus (v11.4.1) — COMPLETED
-- [x] **DHT Proxy Distance Sorting**:
-  - Implemented Haversine distance calculation in `pkg/torrent/geoip.go`.
-  - Updated Go DHT Proxy to sort discovered peers by proximity to the requester's IP.
-- [x] **High-Performance Go Storage Layer**:
-  - Ported Node.js/Java storage logic to Go (`pkg/storage`).
-  - Integrated `github.com/klauspost/reedsolomon` for SIMD-accelerated erasure coding.
-  - Implemented IETF ChaCha20-Poly1305 authenticated encryption and secure random padding.
+### ✅ Current Short Term Focus (v11.4.2) — COMPLETED
+- [x] **Full Multi-Protocol Go Tracker**:
+  - Implemented BEP 3 (HTTP Bencoded) and BEP 15 (UDP) tracker protocols in Go.
+  - Added support for compact peer lists to reduce bandwidth overhead.
+- [x] **Kademlia DHT Node (Go)**:
+  - Integrated `github.com/anacrolix/dht/v2` into a reusable `transport.DHTNode`.
+  - Added bootstrapping and peer discovery capabilities to the Supernode.
+- [x] **Go Supernode Core**:
+  - Implemented wallet persistence with Ed25519 keypairs (Solana-style Base58).
+  - Ported the SPoRA (Succinct Proof of Random Access) endpoint to Go.
 - [x] **Node CLI and Diagnostics Tools**: 
   - Implementation of a terminal UI/CLI for node configuration, manifest inspection, and real-time swarm diagnostic monitoring.
 - [x] **Distributed Manifest Synchronization**:

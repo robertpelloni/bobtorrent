@@ -1,3 +1,10 @@
+## [11.4.2] - 2026-04-03
+### Go Port: Tracker, DHT, and Supernode Core
+- **Tracker**: Implemented multi-protocol support including BEP 3 (HTTP Bencoded) and BEP 15 (UDP), featuring compact peer list generation.
+- **DHT**: Stand up a standalone Kademlia DHT node using `github.com/anacrolix/dht/v2` with full bootstrapping and search capabilities.
+- **Supernode**: Initialized the unified `supernode-go` binary with Ed25519 wallet persistence and SPoRA (Succinct Proof of Random Access) challenge handlers.
+- **Crypto**: Developed `pkg/torrent/crypto.go` providing Ed25519 signing/verification and SHA-256 hashing compatible with the Bobcoin lattice.
+
 ## [11.4.1] - 2026-04-03
 ### Go Port: Proximity Sorting & Erasure Storage
 - **DHT Proxy**: Implemented Haversine distance calculation for discovered peers, sorting `/api/announce` results by proximity to the requester's IP.
