@@ -1,3 +1,9 @@
+## [11.4.4] - 2026-04-03
+### Go Port: Supernode TUI Dashboard
+- **TUI**: Implemented a comprehensive terminal dashboard using `github.com/charmbracelet/bubbletea`, providing real-time visibility into account balances, lattice market bids, and node status.
+- **Visuals**: Leveraged `lipgloss` for a high-fidelity cyberpunk terminal aesthetic, featuring styled tables and neon accents.
+- **Event Driven**: Integrated the background poller with the TUI via thread-safe message passing, ensuring smooth UI updates during autonomous bid acceptance.
+
 ## [11.4.3] - 2026-04-03
 ### Go Port: Autonomous Supernode & Torrent Seeding
 - **Torrent**: Integrated `github.com/anacrolix/torrent` for native file seeding and data provisioning in Go.

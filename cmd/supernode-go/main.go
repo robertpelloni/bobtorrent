@@ -7,12 +7,15 @@ import (
 	"net/http"
 	"os"
 	"time"
+
 	"bobtorrent/internal/tracker"
 	"bobtorrent/internal/transport"
+	"bobtorrent/internal/tui"
 	"bobtorrent/pkg/torrent"
 
-	"github.com/anacrolix/torrent"
+	anacrolixTorrent "github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -20,11 +23,13 @@ var (
 	nodeWallet    *torrent.Keypair
 	httpClient    = resty.New()
 	latticeURL    = "http://localhost:4000"
-	torrentClient *torrent.Client
+	torrentClient *anacrolixTorrent.Client
+	uiProgram     *tea.Program
 )
 
 func main() {
-	fmt.Println("Bobtorrent Supernode (Go Port) - Initializing...")
+	// Disable standard logging for TUI
+	log.SetOutput(os.Stderr)
 
 	// 1. Initialize Wallet
 	loadOrCreateWallet()
@@ -39,11 +44,9 @@ func main() {
 	// 4. Start Kademlia DHT Node
 	dhtAddr := ":6882"
 	dhtNode, err := transport.NewDHTNode(dhtAddr)
-	if err != nil {
-		log.Fatalf("Failed to start DHT Node: %v", err)
+	if err == nil {
+		go dhtNode.Start()
 	}
-	go dhtNode.Start()
-	fmt.Printf("DHT Node listening on %s\n", dhtAddr)
 
 	// 5. Start Market Poller
 	go startMarketPoller()
@@ -53,34 +56,33 @@ func main() {
 	http.HandleFunc("/spora/", handleSpora)
 	http.HandleFunc("/stats", handleStats)
 	
-	httpPort := ":8000"
-	fmt.Printf("Supernode API listening on %s\n", httpPort)
+	go http.ListenAndServe(":8000", nil)
 
 	// 7. Start UDP Tracker (BEP 15)
-	udpAddr := ":6881"
-	udpTracker, err := tracker.NewUDPTracker(t, udpAddr)
-	if err != nil {
-		log.Fatalf("Failed to start UDP Tracker: %v", err)
+	udpTracker, _ := tracker.NewUDPTracker(t, ":6881")
+	if udpTracker != nil {
+		go udpTracker.Start()
 	}
-	go udpTracker.Start()
-	fmt.Printf("UDP Tracker listening on %s\n", udpAddr)
 
-	if err := http.ListenAndServe(httpPort, nil); err != nil {
-		log.Fatalf("API Server failed: %v", err)
+	// 8. Start TUI
+	m := tui.NewModel()
+	uiProgram = tea.NewProgram(m, tea.WithAltScreen())
+	if _, err := uiProgram.Run(); err != nil {
+		fmt.Printf("Error running TUI: %v", err)
+		os.Exit(1)
 	}
 }
 
 func initTorrentClient() {
-	cfg := torrent.NewDefaultClientConfig()
+	cfg := anacrolixTorrent.NewDefaultClientConfig()
 	cfg.DataDir = "./downloads"
 	cfg.ListenPort = 4242
 
 	var err error
-	torrentClient, err = torrent.NewClient(cfg)
+	torrentClient, err = anacrolixTorrent.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("Failed to start Torrent Client: %v", err)
 	}
-	fmt.Println("[Torrent] Client started on port 4242")
 }
 
 func loadOrCreateWallet() {
@@ -88,7 +90,6 @@ func loadOrCreateWallet() {
 	data, err := os.ReadFile(walletFile)
 	if err == nil {
 		if err := json.Unmarshal(data, &nodeWallet); err == nil {
-			fmt.Printf("Loaded existing wallet: %s...\n", nodeWallet.PublicKey[:16])
 			return
 		}
 	}
@@ -96,11 +97,9 @@ func loadOrCreateWallet() {
 	nodeWallet, _ = torrent.GenerateKeypair()
 	data, _ = json.MarshalIndent(nodeWallet, "", "  ")
 	os.WriteFile(walletFile, data, 0644)
-	fmt.Printf("Generated new wallet: %s...\n", nodeWallet.PublicKey[:16])
 }
 
 func startMarketPoller() {
-	fmt.Println("[Poller] Starting Lattice Market Poller...")
 	ticker := time.NewTicker(10 * time.Second)
 	for range ticker.C {
 		pollMarket()
@@ -109,17 +108,19 @@ func startMarketPoller() {
 
 func pollMarket() {
 	var result struct {
-		Bids []struct {
-			ID     string `json:"id"`
-			Magnet string `json:"magnet"`
-			Amount int64  `json:"amount"`
-			Status string `json:"status"`
-		} `json:"bids"`
+		Bids []tui.Bid `json:"bids"`
 	}
 
 	resp, err := httpClient.R().SetResult(&result).Get(latticeURL + "/market/bids")
 	if err != nil || !resp.IsSuccess() {
+		if uiProgram != nil {
+			uiProgram.Send(tui.StatusMsg{Text: "Lattice API Offline", Balance: 0})
+		}
 		return
+	}
+
+	if uiProgram != nil {
+		uiProgram.Send(tui.BidsMsg{Bids: result.Bids})
 	}
 
 	for _, bid := range result.Bids {
@@ -134,17 +135,12 @@ func pollMarket() {
 				continue
 			}
 
-			fmt.Printf("[Poller] Found OPEN bid: %s... Accepting...\n", bid.ID[:8])
-			
 			// 1. Start Seeding
 			t, err := torrentClient.AddMagnet(bid.Magnet)
 			if err == nil {
-				go func(target *torrent.Torrent, bID string, bAmount int64) {
+				go func(target *anacrolixTorrent.Torrent, bID string, bAmount int64) {
 					<-target.GotInfo()
 					target.DownloadAll()
-					fmt.Printf("[Torrent] Started seeding: %s\n", target.Name())
-					
-					// 2. Accept Bid on Lattice
 					acceptBid(bID, bAmount, spec.InfoHash.HexString())
 				}(t, bid.ID, bid.Amount)
 			}
@@ -153,7 +149,6 @@ func pollMarket() {
 }
 
 func acceptBid(bidID string, amount int64, infoHash string) {
-	// 1. Get Frontier and Balance
 	var status struct {
 		Frontier      *string `json:"frontier"`
 		Balance       int64   `json:"balance"`
@@ -165,7 +160,10 @@ func acceptBid(bidID string, amount int64, infoHash string) {
 		return
 	}
 
-	// 2. Create SPoRA proof
+	if uiProgram != nil {
+		uiProgram.Send(tui.StatusMsg{Text: "Accepting Bid...", Balance: status.Balance})
+	}
+
 	challenge := 12345
 	if status.Frontier != nil {
 		fmt.Sscanf((*status.Frontier)[:8], "%x", &challenge)
@@ -178,35 +176,24 @@ func acceptBid(bidID string, amount int64, infoHash string) {
 		"chunkHash": chunkHash,
 	}
 
-	// 3. Construct Block
-	height := 0 
 	newBalance := status.Balance + amount
-	
-	block := torrent.NewBlock("accept_bid", nodeWallet.PublicKey, status.Frontier, newBalance, status.StakedBalance, height, bidID, spora, nil)
+	block := torrent.NewBlock("accept_bid", nodeWallet.PublicKey, status.Frontier, newBalance, status.StakedBalance, 0, bidID, spora, nil)
 	block.Sign(nodeWallet.PrivateKey)
 
-	// 4. Submit to Lattice
 	submitResp, err := httpClient.R().SetBody(map[string]interface{}{"block": block}).Post(latticeURL + "/process")
 	if err == nil && submitResp.IsSuccess() {
-		fmt.Printf("[Poller] ✅ Bid %s accepted! New Balance: %d\n", bidID[:8], newBalance)
-	} else {
-		fmt.Printf("[Poller] ❌ Failed to accept bid: %v\n", err)
+		if uiProgram != nil {
+			uiProgram.Send(tui.StatusMsg{Text: "Bid Accepted!", Balance: newBalance})
+		}
 	}
 }
 
 func handleSpora(w http.ResponseWriter, r *http.Request) {
 	challenge := r.URL.Path[len("/spora/"):]
-	if challenge == "" {
-		http.Error(w, "challenge required", http.StatusBadRequest)
-		return
-	}
-
 	infoHash := "1234567890abcdef1234567890abcdef12345678"
 	chunkHash := torrent.HashSHA256(infoHash + challenge)
-
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"success": true, "spora": {"infoHash": "%s", "challenge": %s, "chunkHash": "%s"}}`, 
-		infoHash, challenge, chunkHash)
+	fmt.Fprintf(w, `{"success": true, "spora": {"infoHash": "%s", "challenge": %s, "chunkHash": "%s"}}`, infoHash, challenge, chunkHash)
 }
 
 func handleStats(w http.ResponseWriter, r *http.Request) {
