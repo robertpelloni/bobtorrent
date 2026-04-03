@@ -1,3 +1,10 @@
+## [11.4.0] - 2026-04-03
+### Submodule Synchronization & Documentation Synthesis
+- **Bobcoin**: Synchronized `bobcoin` submodule to `v3.5.0`, including the latest NFT protocol, atomic swaps, and lattice consensus features.
+- **Universal Instructions**: Implemented `docs/UNIVERSAL_LLM_INSTRUCTIONS.md` as the single source of truth for all AI agents across the monorepo.
+- **Dashboard**: Refreshed the root-level `DASHBOARD.md` to reflect the latest project structure and submodule versions.
+- **CI/CD**: Verified `bobcoin` build results and synchronized nested research repositories.
+
 ## [11.3.1] - 2026-04-02
 ### DHT Proxy Crawler & Database
 - **Implementation**: Developed a SQLite-backed peer storage system and a DHT crawler for the DHT Proxy utility.
