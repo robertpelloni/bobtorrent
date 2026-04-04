@@ -1,62 +1,60 @@
-# Bobtorrent Omni-Workspace Handoff (v11.18.0)
+# Bobtorrent Omni-Workspace Handoff (v11.19.0)
 
 ## Session Objective
-Upgrade the Bobcoin archive from an intelligent search surface into a reusable operator workspace by adding saved filter presets and grouping modes, then sync the root workspace to the new submodule state.
+Deepen archive provenance beyond text-only publisher metadata by adding publisher profile overlays and linked proof/attestation URLs to manifest anchors, then sync the root workspace to the new Bobcoin submodule state.
 
 ## What Was Implemented
 
-### 1. Bobcoin Saved Archive Presets + Grouping
+### 1. Signed Publisher Profile Overlays
+Root files changed:
+- `internal/consensus/lattice.go`
+- `internal/consensus/lattice_test.go`
+
+Enhancements:
+- manifest anchors can now store:
+  - `publisherAvatar`
+  - `publisherProofs`
+- these fields are carried in the signed `publish_manifest` payload
+- Go tests now validate persistence of the richer publisher-profile fields
+
+### 2. Bobcoin Vault Profile Surfacing
 Bobcoin submodule latest pushed commit this session:
-- `c157e83` — merged saved-presets/grouping workflow on top of upstream Go rollback/audit hardening
+- `7061a04` — merged publisher-profile overlay state on top of newer upstream semantic fixes
 
-New Vault workflow features:
-- saved archive presets
-- preset reapplication
-- preset deletion
-- grouping by owner
-- grouping by type
-- preset persistence for:
-  - search query
-  - network query
-  - type filter
-  - signed-only toggle
-  - sort mode
-  - group mode
+Frontend changes:
+- `StorageWasmWorkbench.jsx`
+  - accepts avatar URL and proof/attestation links for publisher provenance
+- `Vault.jsx`
+  - archive search indexes proof links
+  - archive cards can render publisher avatar/profile cards
+  - proof/attestation links are surfaced directly in the UI
 
-### 2. Validation
+### 3. Validation
 Executed successfully:
+- `go test ./internal/consensus -buildvcs=false`
+- `go build -buildvcs=false ./...`
 - `cd bobcoin/frontend && npm run build`
-- result: ✅ production frontend build succeeds after preset/grouping integration
-
-### 3. Root Sync
-The root repo is being updated to:
-- point at the new Bobcoin archive-workflow state
-- update docs/versioning to `v11.18.0`
-- reflect that the next gap is now batch/archive actions and deeper publisher identity, not basic workspace persistence
 
 ## Strategic State After This Session
-The archive stack now supports:
-- publication
-- restoration
-- lattice anchoring
-- archive reuse
-- trust overlays
-- signed publisher metadata
-- degraded recovery diagnostics
-- saved presets
-- grouped inspection
+Archive provenance now includes:
+- wallet owner identity
+- publication proof signature
+- publisher alias / website / statement
+- publisher avatar/profile overlay
+- linked proof/attestation URLs
+- heuristic trust/reputation overlays
 
 ## Recommended Next Steps
-1. Deepen publisher identity semantics
-   - profile overlays
-   - linked proofs / attestations
-2. Export richer archive recovery diagnostics
+1. Export richer recovery diagnostics
    - exportable reports
    - stronger corruption/source attribution
-3. Add batch/archive workspace actions
+2. Add batch/archive workspace actions
    - preset sharing/export
    - bulk copy/export helpers
+3. Deepen linked-attestation semantics further
+   - richer proof typing
+   - publisher profile cards with stronger identity context
 
 ## Notes for the Next Agent
-- Vault is now a persistent operator workspace, not just an intelligent browser.
-- The best next move is richer identity semantics or batch/archive operator actions.
+- The archive now carries both heuristic trust and richer signed publisher profile metadata.
+- The next strongest move is probably exportable operator diagnostics unless identity depth is the higher priority.

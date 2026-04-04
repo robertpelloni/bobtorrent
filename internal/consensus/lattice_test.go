@@ -38,6 +38,8 @@ func TestProcessPublishManifestAnchorsWalletAttributedManifest(t *testing.T) {
 			"alias":     "CipherArchivist",
 			"website":   "https://bob.example",
 			"statement": "Preserving sovereign knowledge across the lattice.",
+			"avatar":    "https://bob.example/avatar.png",
+			"proofs":    []interface{}{"https://github.com/cipherarchivist", "https://orcid.org/0000-0000-0000-0000"},
 		},
 		"publicationProof": map[string]interface{}{
 			"messageHash": proofHash,
@@ -69,5 +71,11 @@ func TestProcessPublishManifestAnchorsWalletAttributedManifest(t *testing.T) {
 	}
 	if stored.PublisherWebsite != "https://bob.example" {
 		t.Fatalf("unexpected publisher website: %s", stored.PublisherWebsite)
+	}
+	if stored.PublisherAvatar != "https://bob.example/avatar.png" {
+		t.Fatalf("unexpected publisher avatar: %s", stored.PublisherAvatar)
+	}
+	if len(stored.PublisherProofs) != 2 {
+		t.Fatalf("unexpected publisher proofs length: %d", len(stored.PublisherProofs))
 	}
 }
