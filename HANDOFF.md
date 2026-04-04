@@ -1,60 +1,59 @@
-# Bobtorrent Omni-Workspace Handoff (v11.19.0)
+# Bobtorrent Omni-Workspace Handoff (v11.20.0)
 
 ## Session Objective
-Deepen archive provenance beyond text-only publisher metadata by adding publisher profile overlays and linked proof/attestation URLs to manifest anchors, then sync the root workspace to the new Bobcoin submodule state.
+Turn degraded recovery diagnostics into a reusable operator artifact by adding downloadable JSON recovery reports in the Bobcoin workbench, then sync the root workspace to the new submodule state.
 
 ## What Was Implemented
 
-### 1. Signed Publisher Profile Overlays
-Root files changed:
-- `internal/consensus/lattice.go`
-- `internal/consensus/lattice_test.go`
-
-Enhancements:
-- manifest anchors can now store:
-  - `publisherAvatar`
-  - `publisherProofs`
-- these fields are carried in the signed `publish_manifest` payload
-- Go tests now validate persistence of the richer publisher-profile fields
-
-### 2. Bobcoin Vault Profile Surfacing
+### 1. Exportable Recovery Reports
 Bobcoin submodule latest pushed commit this session:
-- `7061a04` — merged publisher-profile overlay state on top of newer upstream semantic fixes
+- `57dd2fd` — merged exportable recovery-report diagnostics on top of newer upstream Go semantic hardening
 
-Frontend changes:
-- `StorageWasmWorkbench.jsx`
-  - accepts avatar URL and proof/attestation links for publisher provenance
-- `Vault.jsx`
-  - archive search indexes proof links
-  - archive cards can render publisher avatar/profile cards
-  - proof/attestation links are surfaced directly in the UI
+New restore/reporting behavior:
+- downloadable structured JSON report from the recovery diagnostics panel
+- includes:
+  - manifest identity
+  - parity sufficiency
+  - omitted shard test inputs
+  - per-shard failure reasons
+  - restored-file metadata when available
 
-### 3. Validation
+This means restore evidence is no longer trapped in transient UI state.
+
+### 2. Validation
 Executed successfully:
-- `go test ./internal/consensus -buildvcs=false`
-- `go build -buildvcs=false ./...`
 - `cd bobcoin/frontend && npm run build`
+- result: ✅ production frontend build succeeds after recovery-report export integration
+
+### 3. Root Sync
+The root repo is being updated to:
+- point at the latest Bobcoin recovery-report state
+- update docs/versioning to `v11.20.0`
+- reflect that the next major gap is stronger corruption/source attribution plus richer archive workspace actions
 
 ## Strategic State After This Session
-Archive provenance now includes:
-- wallet owner identity
-- publication proof signature
-- publisher alias / website / statement
-- publisher avatar/profile overlay
-- linked proof/attestation URLs
-- heuristic trust/reputation overlays
+The archive stack now supports:
+- publication
+- restoration
+- lattice anchoring
+- archive reuse
+- trust overlays
+- signed publisher metadata
+- degraded recovery diagnostics
+- exportable recovery reports
+- saved/grouped operator workflows
 
 ## Recommended Next Steps
-1. Export richer recovery diagnostics
-   - exportable reports
-   - stronger corruption/source attribution
+1. Strengthen corruption/source attribution
+   - richer failure categorization
+   - more explicit source-path reporting per shard
 2. Add batch/archive workspace actions
    - preset sharing/export
    - bulk copy/export helpers
-3. Deepen linked-attestation semantics further
-   - richer proof typing
-   - publisher profile cards with stronger identity context
+3. Deepen publisher identity semantics further
+   - richer linked proof semantics
+   - external attestation integrations
 
 ## Notes for the Next Agent
-- The archive now carries both heuristic trust and richer signed publisher profile metadata.
-- The next strongest move is probably exportable operator diagnostics unless identity depth is the higher priority.
+- Recovery diagnostics are now exportable, not just visible.
+- The next strongest move is likely stronger corruption attribution unless archive workspace batching is the higher priority.

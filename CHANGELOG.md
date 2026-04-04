@@ -4,6 +4,12 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.20.0] - 2026-04-04
+### Go Port: Exportable Recovery Diagnostics
+- **Bobcoin Recovery Reporting**: Updated the `bobcoin` submodule to its latest recovery-reporting state, allowing operators to download structured JSON reports from the degraded-recovery diagnostics panel.
+- **Operator Workflow Improvement**: Recovery evidence is no longer trapped in transient UI state; manifest identity, shard-failure reasons, parity status, and restored-file metadata can now be preserved for debugging and postmortem analysis.
+- **Validation**: Re-validated the Bobcoin frontend production build after recovery-report export integration and synchronized the root workspace to the new submodule pointer.
+
 ## [11.19.0] - 2026-04-04
 ### Go Port: Publisher Profile Overlays & Linked Proofs
 - **Publisher Identity Depth**: Updated the `bobcoin` submodule to the latest archive identity state, adding avatar/profile overlays and linked proof/attestation URLs to signed manifest-anchor metadata.
