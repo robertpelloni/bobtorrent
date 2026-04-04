@@ -1,3 +1,9 @@
+## [11.12.0] - 2026-04-04
+### Go Port: Cross-Surface Archive Reuse in Bobcoin UI
+- **Bobcoin Surface Expansion**: Updated the `bobcoin` submodule to its latest archive-reuse state, allowing anchored manifests to be selected directly from the Go-lattice archive inside both Storage Market and Gallery flows.
+- **Archive-Backed UX**: Manifest anchors now act as reusable content sources across Vault, Market, and Gallery, turning the Go storage/archive system into a broader product substrate rather than a single-purpose workflow.
+- **Validation**: Re-validated the Bobcoin frontend production build after cross-surface archive reuse integration and synchronized the root workspace to the new submodule pointer.
+
 ## [11.11.0] - 2026-04-03
 ### Go Port: Vault Archive Surface for Manifest Anchors
 - **Bobcoin Surface Integration**: Updated the `bobcoin` submodule to `v8.11.0`, rebuilding the Vault page into a dedicated Go-lattice archive browser for manifest anchors.
