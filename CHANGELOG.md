@@ -4,6 +4,12 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.25.0] - 2026-04-04
+### Go Port: Typed Publisher Proof Semantics
+- **Consensus Proof Typing**: Extended Go manifest anchors with `publisherProofKinds` alongside `publisherProofs`, allowing publisher attestations to carry explicit semantic hints instead of undifferentiated URLs.
+- **Bobcoin Identity UX**: Updated the `bobcoin` submodule to `v8.35.0`, where the storage workbench accepts `kind|url` proof entries and Vault renders typed proof badges for publisher attestations.
+- **Validation**: Re-validated `go test ./internal/consensus -buildvcs=false`, `go build -buildvcs=false ./...`, and the Bobcoin frontend production build after typed-proof integration.
+
 ## [11.24.0] - 2026-04-04
 ### Go Port: Source Reliability Dashboard Sync
 - **Bobcoin Reliability Analytics**: Updated the `bobcoin` submodule to its latest archive-analytics state, adding a first-pass source reliability dashboard derived from persisted recovery reports.

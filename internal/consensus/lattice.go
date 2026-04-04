@@ -218,6 +218,7 @@ type ManifestAnchor struct {
 	PublisherStatement string   `json:"publisherStatement,omitempty"`
 	PublisherAvatar    string   `json:"publisherAvatar,omitempty"`
 	PublisherProofs    []string `json:"publisherProofs,omitempty"`
+	PublisherProofKinds []string `json:"publisherProofKinds,omitempty"`
 	Magnet             string   `json:"magnet,omitempty"`
 	Timestamp          int64    `json:"timestamp"`
 }
@@ -984,6 +985,7 @@ func (l *Lattice) processPublishManifest(b *torrent.Block, prevBalance int64) er
 	publisherStatement := ""
 	publisherAvatar := ""
 	var publisherProofs []string
+	var publisherProofKinds []string
 	if publisher, ok := payload["publisher"].(map[string]interface{}); ok {
 		publisherAlias, _ = publisher["alias"].(string)
 		publisherWebsite, _ = publisher["website"].(string)
@@ -991,8 +993,22 @@ func (l *Lattice) processPublishManifest(b *torrent.Block, prevBalance int64) er
 		publisherAvatar, _ = publisher["avatar"].(string)
 		if rawProofs, ok := publisher["proofs"].([]interface{}); ok {
 			for _, raw := range rawProofs {
-				if proof, ok := raw.(string); ok && strings.TrimSpace(proof) != "" {
-					publisherProofs = append(publisherProofs, proof)
+				switch v := raw.(type) {
+				case string:
+					if strings.TrimSpace(v) != "" {
+						publisherProofs = append(publisherProofs, v)
+						publisherProofKinds = append(publisherProofKinds, "link")
+					}
+				case map[string]interface{}:
+					url, _ := v["url"].(string)
+					kind, _ := v["kind"].(string)
+					if strings.TrimSpace(url) != "" {
+						publisherProofs = append(publisherProofs, url)
+						if strings.TrimSpace(kind) == "" {
+							kind = "link"
+						}
+						publisherProofKinds = append(publisherProofKinds, kind)
+					}
 				}
 			}
 		}
@@ -1043,6 +1059,7 @@ func (l *Lattice) processPublishManifest(b *torrent.Block, prevBalance int64) er
 		PublisherStatement: publisherStatement,
 		PublisherAvatar:    publisherAvatar,
 		PublisherProofs:    publisherProofs,
+		PublisherProofKinds: publisherProofKinds,
 		Timestamp:          b.Timestamp,
 	}
 	return nil

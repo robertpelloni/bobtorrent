@@ -39,7 +39,10 @@ func TestProcessPublishManifestAnchorsWalletAttributedManifest(t *testing.T) {
 			"website":   "https://bob.example",
 			"statement": "Preserving sovereign knowledge across the lattice.",
 			"avatar":    "https://bob.example/avatar.png",
-			"proofs":    []interface{}{"https://github.com/cipherarchivist", "https://orcid.org/0000-0000-0000-0000"},
+			"proofs": []interface{}{
+				map[string]interface{}{"kind": "github", "url": "https://github.com/cipherarchivist"},
+				map[string]interface{}{"kind": "orcid", "url": "https://orcid.org/0000-0000-0000-0000"},
+			},
 		},
 		"publicationProof": map[string]interface{}{
 			"messageHash": proofHash,
@@ -77,5 +80,11 @@ func TestProcessPublishManifestAnchorsWalletAttributedManifest(t *testing.T) {
 	}
 	if len(stored.PublisherProofs) != 2 {
 		t.Fatalf("unexpected publisher proofs length: %d", len(stored.PublisherProofs))
+	}
+	if len(stored.PublisherProofKinds) != 2 {
+		t.Fatalf("unexpected publisher proof kinds length: %d", len(stored.PublisherProofKinds))
+	}
+	if stored.PublisherProofKinds[0] != "github" {
+		t.Fatalf("unexpected first proof kind: %s", stored.PublisherProofKinds[0])
 	}
 }

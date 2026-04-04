@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.24.0
+## ✅ Completed Through v11.25.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -25,6 +25,7 @@
 - Bobcoin shard failure categorization and source host attribution in restore diagnostics
 - Bobcoin preset export/import and batch archive export/copy actions in Vault
 - Bobcoin host-level source reliability summaries derived from persisted recovery reports
+- Go manifest anchors with typed publisher proof-kind metadata
 - Frontend compatibility endpoints for existing bobcoin pages
 - Go supernode compatibility endpoints for Bobcoin UI (`/stats`, `/add-torrent`, `/remove-torrent`)
 - Go supernode static serving for `storage.wasm` and `wasm_exec.js`

@@ -1,58 +1,37 @@
-# Bobtorrent Omni-Workspace Handoff (v11.24.0)
+# Bobtorrent Omni-Workspace Handoff (v11.25.0)
 
 ## Session Objective
-Upgrade the archive diagnostics from per-restore incident evidence into cross-session host/source reliability summaries, then sync the root workspace to the new Bobcoin submodule state.
+Synchronize the root workspace to the latest archive-identity milestone: typed publisher proof semantics in the Go lattice plus the Bobcoin UI support for entering and rendering typed attestation links.
 
-## What Was Implemented
+## What Was Synced
+- Root Go consensus now stores typed publisher proof-kind metadata on manifest anchors.
+- Bobcoin submodule updated to `v8.35.0`.
+- Root docs/version bumped to `v11.25.0`.
 
-### 1. Bobcoin Source Reliability Dashboard
-Bobcoin submodule latest pushed commit this session:
-- `d08b57b` — merged source reliability snapshot on top of upstream replay-order hardening
-
-New Vault analytics:
-- host-level failure totals
-- successful recovery counts
-- per-category failure rollups
-- latest-seen timestamps
-
-These summaries are derived from persisted recovery reports accumulated across restore sessions.
-
-### 2. Validation
-Executed successfully:
-- `cd bobcoin/frontend && npm run build`
-- result: ✅ production frontend build succeeds after source reliability summary integration
-
-### 3. Root Sync
-The root repo is being updated to:
-- point at the latest Bobcoin archive-analytics state
-- update docs/versioning to `v11.24.0`
-- reflect that the next frontier is deeper publisher attestation semantics plus longer-horizon source reliability analytics
-
-## Strategic State After This Session
-The archive stack now supports:
-- publication
-- restoration
-- lattice anchoring
-- archive reuse
+## Concrete Feature State Reflected Here
+The combined stack now supports:
+- publisher alias / website / statement
+- publisher avatar
+- linked proof/attestation URLs
+- explicit proof-kind metadata
+- typed proof badges in Vault
 - trust overlays
-- signed publisher metadata
-- degraded recovery diagnostics
+- source reliability summaries
 - exportable recovery reports
-- source failure attribution
-- host-level reliability summaries
-- saved/grouped portable operator workflows
+- saved/grouped archive workflows
+- batch/archive operator actions
+
+## Validation Basis
+- `go test ./internal/consensus -buildvcs=false`
+- `go build -buildvcs=false ./...`
+- `cd bobcoin/frontend && npm run build`
 
 ## Recommended Next Steps
-1. Deepen publisher identity semantics
-   - richer linked proof typing
-   - external attestation integrations
-2. Expand source reliability analysis further
-   - longer-horizon trend visibility
-   - stronger comparative host diagnostics
-3. Add richer batch/archive workspace actions
-   - batch manifest operations
-   - preset template libraries
+1. Deepen publisher identity semantics further
+   - richer external attestations
+   - stronger proof typing taxonomy
+2. Expand long-horizon source reliability analysis
+3. Add stronger batch/archive operations beyond the current export/copy helpers
 
 ## Notes for the Next Agent
-- The archive now supports both single-incident recovery evidence and aggregated source reliability summaries.
-- The strongest next move is likely attestation depth or longer-horizon source reliability analytics.
+- The next meaningful jump is likely richer attestation semantics or source trend analysis, not more baseline storage plumbing.
