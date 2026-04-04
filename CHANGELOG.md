@@ -1,3 +1,9 @@
+## [11.15.0] - 2026-04-04
+### Go Port: Bobcoin Trust-Aware Archive Intelligence Sync
+- **Bobcoin Intelligence Surface**: Updated the `bobcoin` submodule to `v8.16.0`, preserving upstream Go-parity hardening while adding owner trust scores, trust tiers, sorting modes, and a sovereign publisher leaderboard to the Vault archive surface.
+- **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
+- **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
+
 ## [11.14.0] - 2026-04-04
 ### Go Port: Archive Trust & Reputation Overlay
 - **Bobcoin Archive Intelligence**: Updated the `bobcoin` submodule to the latest merged archive-intelligence state, adding owner trust scores, trust tiers, sorting modes, and a sovereign publisher leaderboard to the Vault surface.
