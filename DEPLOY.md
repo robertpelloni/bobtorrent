@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.7.0`
+- **Version**: `11.8.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -49,6 +49,10 @@ Additional frontend-facing endpoints now provided by `supernode-go`:
 - `GET /stats`
 - `POST /add-torrent`
 - `POST /remove-torrent`
+- `POST /upload-shard`
+- `POST /publish-manifest`
+- `GET /manifests/:id`
+- `GET /shards/:hash`
 - `GET /storage.wasm`
 - `GET /wasm_exec.js`
 
@@ -79,6 +83,8 @@ Minimal browser integration flow:
 3. Load the Go runtime from the supernode origin
 4. Call `createBobtorrentStorageClient()`
 5. Use `encrypt`, `encodeErasure`, `decrypt`, `decodeErasure`
+6. Upload prepared shards via `POST /upload-shard`
+7. Publish the final manifest via `POST /publish-manifest`
 
 See:
 - `docs/WASM_STORAGE_BRIDGE.md`

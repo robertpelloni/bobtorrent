@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"bobtorrent/internal/bridges"
+	"bobtorrent/internal/publish"
 	"bobtorrent/internal/tracker"
 	"bobtorrent/internal/transport"
 	"bobtorrent/internal/tui"
@@ -25,14 +27,15 @@ import (
 )
 
 var (
-	nodeWallet    *torrent.Keypair
-	httpClient    = resty.New().SetTimeout(10 * time.Second)
-	latticeURL    = "http://localhost:4000"
-	torrentClient *anacrolixTorrent.Client
-	uiProgram     *tea.Program
-	fcBridge      *bridges.FilecoinBridge
-	dhtNode       *transport.DHTNode
-	startedAt     = time.Now()
+	nodeWallet      *torrent.Keypair
+	httpClient      = resty.New().SetTimeout(10 * time.Second)
+	latticeURL      = "http://localhost:4000"
+	torrentClient   *anacrolixTorrent.Client
+	uiProgram       *tea.Program
+	fcBridge        *bridges.FilecoinBridge
+	dhtNode         *transport.DHTNode
+	publishRegistry *publish.Registry
+	startedAt       = time.Now()
 )
 
 // main boots the Go supernode stack:
@@ -49,6 +52,7 @@ func main() {
 	defer torrentClient.Close()
 
 	fcBridge = bridges.NewFilecoinBridge("f1bobtorrentnode")
+	initPublishRegistry()
 
 	model := tui.NewModel()
 	uiProgram = tea.NewProgram(model, tea.WithAltScreen())
@@ -66,16 +70,21 @@ func main() {
 
 func startTrackerServices() {
 	trackerCore := tracker.NewTracker()
+	mux := http.NewServeMux()
 
-	http.HandleFunc("/announce", trackerCore.HTTPHandler())
-	http.HandleFunc("/spora/", handleSpora)
-	http.HandleFunc("/stats", handleStats)
-	http.HandleFunc("/add-torrent", handleAddTorrent)
-	http.HandleFunc("/remove-torrent", handleRemoveTorrent)
-	http.HandleFunc("/storage.wasm", serveStorageWASM)
-	http.HandleFunc("/wasm_exec.js", serveWASMExec)
+	mux.HandleFunc("/announce", withCORS(trackerCore.HTTPHandler()))
+	mux.HandleFunc("/spora/", withCORS(handleSpora))
+	mux.HandleFunc("/stats", withCORS(handleStats))
+	mux.HandleFunc("/add-torrent", withCORS(handleAddTorrent))
+	mux.HandleFunc("/remove-torrent", withCORS(handleRemoveTorrent))
+	mux.HandleFunc("/upload-shard", withCORS(handleUploadShard))
+	mux.HandleFunc("/publish-manifest", withCORS(handlePublishManifest))
+	mux.HandleFunc("/manifests/", withCORS(handleGetManifest))
+	mux.HandleFunc("/shards/", withCORS(handleGetShard))
+	mux.HandleFunc("/storage.wasm", withCORS(serveStorageWASM))
+	mux.HandleFunc("/wasm_exec.js", withCORS(serveWASMExec))
 	go func() {
-		if err := http.ListenAndServe(":8000", nil); err != nil {
+		if err := http.ListenAndServe(":8000", mux); err != nil {
 			log.Printf("HTTP tracker failed: %v", err)
 		}
 	}()
@@ -96,6 +105,14 @@ func startDHT() {
 		return
 	}
 	go dhtNode.Start()
+}
+
+func initPublishRegistry() {
+	var err error
+	publishRegistry, err = publish.NewRegistry(filepath.Join("data", "published"))
+	if err != nil {
+		log.Fatalf("failed to initialize publish registry: %v", err)
+	}
 }
 
 func initTorrentClient() {
@@ -477,6 +494,112 @@ func handleRemoveTorrent(w http.ResponseWriter, r *http.Request) {
 		"success":  true,
 		"infoHash": req.InfoHash,
 	})
+}
+
+func handleUploadShard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Hash string `json:"hash"`
+		Data string `json:"data"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Data == "" {
+		http.Error(w, "valid shard payload required", http.StatusBadRequest)
+		return
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(req.Data)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid base64 shard data: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	stored, err := publishRegistry.StoreShard(req.Hash, decoded, publicBaseURL(r))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"shard":   stored,
+	})
+}
+
+func handlePublishManifest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, fmt.Sprintf("invalid manifest payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	manifest := body
+	if rawManifest, ok := body["manifest"].(map[string]interface{}); ok {
+		manifest = rawManifest
+	}
+
+	stored, err := publishRegistry.PublishManifest(manifest, publicBaseURL(r))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":     true,
+		"id":          stored.ID,
+		"locator":     stored.Locator,
+		"manifestUrl": stored.ManifestURL,
+		"manifest":    stored.Manifest,
+	})
+}
+
+func handleGetManifest(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/manifests/")
+	if id == "" {
+		http.Error(w, "manifest id required", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	http.ServeFile(w, r, publishRegistry.ManifestPath(id))
+}
+
+func handleGetShard(w http.ResponseWriter, r *http.Request) {
+	hash := strings.TrimPrefix(r.URL.Path, "/shards/")
+	if hash == "" {
+		http.Error(w, "shard hash required", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	http.ServeFile(w, r, publishRegistry.ShardPath(hash))
+}
+
+func publicBaseURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s", scheme, r.Host)
+}
+
+func withCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next(w, r)
+	}
 }
 
 func serveStorageWASM(w http.ResponseWriter, r *http.Request) {

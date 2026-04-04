@@ -1,88 +1,84 @@
-# Bobtorrent Omni-Workspace Handoff (v11.7.0)
+# Bobtorrent Omni-Workspace Handoff (v11.8.0)
 
 ## Session Objective
-Continue from the `v11.6.0` Go-port baseline by completing the next practical integration step: wire the new storage WASM runtime into the Bobcoin frontend, preserve upstream Bobcoin progress during rebase, expose the necessary Go supernode endpoints for the UI, validate builds, and push everything cleanly without stopping active processes.
+Advance from the `v11.7.0` WASM/frontend wiring milestone into a real publish path: accept browser-prepared shards in the Go supernode, persist manifests durably on disk, wire the Bobcoin frontend to use those endpoints, validate both the Go workspace and React build, and push everything without stopping any active processes.
 
 ## What Was Implemented
 
-### 1. Bobcoin Frontend WASM Integration
-Submodule: `bobcoin` → pushed to `main`
-Latest submodule commit during this session:
-- `6f7517f` (plus rebased feature commit `2021564` beneath it)
+### 1. Real Publication Registry in Go
+New package:
+- `internal/publish/registry.go`
+- `internal/publish/registry_test.go`
 
-Implemented inside `bobcoin/frontend`:
-- `frontend/src/lib/storageWasm.js`
-  - browser-side Go WASM bootstrap utility
-  - loads `wasm_exec.js`
-  - loads `storage.wasm`
-  - exposes encrypt/decrypt/encode/decode helpers
-  - provides runtime availability probing
-- `frontend/src/components/StorageWasmWorkbench.jsx`
-  - file picker + preprocessing workbench
-  - ChaCha20-Poly1305 encryption in browser
-  - Reed-Solomon (4+2) shard generation
-  - ciphertext/shard hashing
-  - JSON manifest download / copy support
-- `frontend/src/pages/Supernode.jsx`
-  - integrated the workbench into the Supernode page
-  - normalized partial `/stats` payloads for compatibility with the lighter Go API
-- `frontend/src/pages/SystemStatus.jsx`
-  - added diagnostics for Go storage WASM runtime availability
-- `frontend/src/api.js`
-  - supernode default points toward the Go service
-- `frontend/src/lib/storageWasm.js` follow-up fix
-  - defaults the WASM artifact URLs to the Go supernode origin (`http://localhost:8000`)
+Capabilities added:
+- content-addressed shard storage using SHA-256
+- deterministic manifest persistence on disk
+- manifest ID derivation from `encryption.ciphertextHash` when present
+- automatic shard URL injection into manifest entries
+- local durable storage under `data/published/`
+- idempotent shard uploads
 
-### 2. Bobcoin Upstream Preservation During Rebase
-The Bobcoin submodule was behind remote `origin/main` by dozens of commits.
+Why this matters:
+- the Bobcoin WASM workbench is no longer just a local cryptographic preview
+- the Go supernode now has a concrete persistence layer for uploaded assets
+- this creates the missing bridge between browser-side preprocessing and actual stored Bobtorrent artifacts
 
-Actions taken:
-- fetched remote state
-- rebased the local WASM frontend work onto the newer upstream Bobcoin branch
-- resolved conflicts in:
-  - `CHANGELOG.md`
-  - `HANDOFF.md`
-  - `ROADMAP.md`
-  - `VERSION.md`
-  - `frontend/src/api.js`
-  - `frontend/src/pages/SystemStatus.jsx`
-- preserved upstream 8.x production features instead of overwriting them with the older local 3.x version line
-- updated Bobcoin versioning to `v8.7.0`
+Validation:
+- `go test ./internal/publish -buildvcs=false` ✅
 
-Bobcoin validation performed:
-- `cd bobcoin/frontend && npm install`
-- `cd bobcoin/frontend && npm run build`
-- result: ✅ build succeeds
-- warnings remain for large chunks / browser-externalized modules, but build is successful
-
-### 3. Go Supernode UI Compatibility Layer
+### 2. Go Supernode Publication + Browser Access API
 File:
 - `cmd/supernode-go/main.go`
 
-Added / improved:
-- `GET /stats`
-  - now returns richer Bobcoin-UI-friendly data:
-    - address
-    - uptime
-    - network peer count
-    - average download/upload throughput
-    - storage total size
-    - torrent list with info hash, name, progress, peers, size
-- `POST /add-torrent`
-  - adds a magnet to the Go torrent client
-  - begins downloading after metadata is available
-- `POST /remove-torrent`
-  - drops an active torrent by info hash
-- `GET /storage.wasm`
-  - serves the compiled Go storage kernel from the root build output
-- `GET /wasm_exec.js`
-  - serves the Go WASM runtime bridge from the root build output
+Added endpoints:
+- `POST /upload-shard`
+- `POST /publish-manifest`
+- `GET /manifests/:id`
+- `GET /shards/:hash`
+- existing frontend-compatible endpoints retained:
+  - `GET /stats`
+  - `POST /add-torrent`
+  - `POST /remove-torrent`
+  - `GET /storage.wasm`
+  - `GET /wasm_exec.js`
 
-This closes the biggest operational gap from the previous session: the Bobcoin frontend can now default to the Go supernode for both control-plane requests and WASM runtime artifact fetching.
+Additional hardening:
+- added permissive CORS wrapper for the browser-facing endpoints
+- publication registry initialized at startup
+- `supernode-go` now acts as both:
+  - torrent/storage operator
+  - manifest/shard publication host
 
-### 4. Root Documentation + Version Sync
+### 3. Bobcoin Frontend: Publish to Go Supernode
+Submodule: `bobcoin`
+Pushed latest submodule commit:
+- `01499c4` — `feat(frontend): publish wasm-prepared storage to go supernode (v8.8.0)`
+
+Updated files inside Bobcoin:
+- `frontend/src/api.js`
+  - added `uploadStorageShard()`
+  - added `publishStorageManifest()`
+- `frontend/src/components/StorageWasmWorkbench.jsx`
+  - retains browser-side Go encryption + erasure coding
+  - now uploads prepared shards sequentially to `supernode-go`
+  - now publishes the final manifest to the supernode registry
+  - shows publication status, locator, and manifest URL
+- `frontend/src/lib/storageWasm.js`
+  - already defaulted WASM runtime artifact URLs to the Go supernode origin
+
+Net result:
+- browser-side preprocessing → actual shard upload → manifest publication is now a real flow
+
+### 4. Bobcoin Documentation / Versioning
+Updated inside submodule:
+- `VERSION.md` → `8.8.0`
+- `CHANGELOG.md`
+- `TODO.md`
+- `HANDOFF.md`
+
+### 5. Root Documentation / Versioning
 Updated root docs to reflect the new state:
-- `VERSION` → `11.7.0`
+- `VERSION` → `11.8.0`
 - `CHANGELOG.md`
 - `ROADMAP.md`
 - `TODO.md`
@@ -91,51 +87,63 @@ Updated root docs to reflect the new state:
 - `MEMORY.md`
 - `HANDOFF.md`
 
-Core doc changes:
-- marked Bobcoin WASM frontend wiring as completed
-- moved the next backlog from “wire WASM into frontend” to “complete upload/publish flow”
-- documented that `supernode-go` now serves WASM artifacts directly
+The backlog has been moved forward accordingly:
+- "wire WASM frontend" is done
+- "publish to supernode" is done
+- next real items are now:
+  - lattice anchoring
+  - retrieval UX
+  - durable consensus persistence
 
-## Build Validation Performed
-### Root Repo
-Validated successfully:
+## Validation Performed
+### Root repo
+Executed successfully:
+- `go test ./internal/publish -buildvcs=false`
 - `go build -buildvcs=false ./...`
 
-### Bobcoin Submodule
-Validated successfully:
-- `cd bobcoin/frontend && npm install`
+### Bobcoin frontend
+Executed successfully:
 - `cd bobcoin/frontend && npm run build`
+- result: ✅ production Vite build succeeds
+- warnings remain for chunk size and browser-externalized dependency modules, but build passes
 
 ## Git / Push Summary
-### Root repo
-- existing pushed baseline before this session continuation: `77fc27c`
-- pending in current working tree after Bobcoin push: root updates + submodule pointer + supernode API enhancements
-
 ### Bobcoin submodule
 Successfully pushed:
-- `2021564` — rebased WASM frontend work on top of upstream Bobcoin main
-- `6f7517f` — default storage WASM asset origin to Go supernode origin
+- `01499c4` — publish WASM-prepared storage to Go supernode (`v8.8.0`)
 
-## Important Current State
+### Root repo
+Current session root-level changes include:
+- new publication registry package
+- expanded `supernode-go` API
+- updated Bobcoin submodule pointer
+- doc/version sync to `v11.8.0`
+
+## Current State
 - No processes were killed.
-- Bobcoin frontend now has a genuine browser-side Go storage preprocessing workbench.
-- The Go supernode can now serve the WASM runtime assets directly.
-- The next missing piece is not runtime loading anymore — it is **real shard upload + manifest publication**.
+- The Go supernode can now:
+  - serve WASM runtime assets
+  - receive uploaded shards
+  - persist and serve manifests
+- The Bobcoin frontend can now:
+  - preprocess files in-browser with the Go WASM kernel
+  - upload the resulting shards
+  - publish a retrievable manifest entry
 
-## Recommended Next Steps
-1. **Commit and push the current root repo state**
-   - includes updated Bobcoin submodule pointer
-   - includes `supernode-go` UI compatibility endpoints
-2. **Implement end-to-end publish flow**
-   - take manifest generated by the Bobcoin workbench
-   - upload shards to Go supernode / storage peers
-   - persist manifest metadata in lattice/storage market payloads
+## Remaining Gaps / Next Steps
+1. **Anchor manifest metadata on the lattice**
+   - create storage-market / NFT / manifest-specific block linkage
+   - tie manifest IDs to wallet identities and on-chain records
+2. **Add retrieval UX**
+   - fetch published manifest JSON
+   - retrieve shards by hash
+   - reconstruct and decrypt the original file in-browser or via a helper endpoint
 3. **Persist lattice state durably**
-   - crash recovery
-   - restart-safe consensus state
-4. **Replace mock Filecoin bridge** with real Lotus or RPC integration
+   - current consensus state still lacks robust restart-safe persistence in the main root Go path
+4. **Replace mock Filecoin archival**
+   - move from simulated bridge to real Lotus/Filecoin RPC
 
-## Notes for the Next Agent
-- Do not revert the Bobcoin submodule back to the older local version line; upstream Bobcoin has advanced substantially and the WASM work was intentionally rebased on top of it.
-- The frontend build has been validated after the rebase.
-- The root repo still needs a final commit/push for this session’s root-level changes and the new Bobcoin submodule pointer.
+## Guidance for the Next Agent
+- Do not undo the Bobcoin publish flow; it is validated and pushed.
+- The next high-value step is **retrieval + lattice anchoring**, not more preprocessing UI.
+- `qbittorrent` remains an unresolved untracked/broken remote situation at the root.

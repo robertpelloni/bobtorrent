@@ -1,3 +1,10 @@
+## [11.8.0] - 2026-04-03
+### Go Port: Real Shard Upload + Manifest Publication Flow
+- **Publication Registry**: Added `internal/publish` with durable shard + manifest persistence for supernode-hosted Bobtorrent assets, including a tested content-addressed shard store and manifest registry.
+- **Supernode Publish API**: Expanded `supernode-go` with `POST /upload-shard`, `POST /publish-manifest`, `GET /manifests/:id`, and `GET /shards/:hash`, plus permissive CORS for browser-based Bobcoin integration.
+- **Bobcoin Workflow**: Updated the Bobcoin frontend workbench to upload WASM-prepared shards directly to the Go supernode and publish a retrievable manifest entry, upgrading the flow from preprocessing-only to actual publication.
+- **Validation**: Verified `go test ./internal/publish`, `go build -buildvcs=false ./...`, and a successful Bobcoin frontend production build after publish-flow wiring.
+
 ## [11.7.0] - 2026-04-03
 ### Go Port: Bobcoin WASM Frontend Wiring & Supernode UI Compatibility
 - **Bobcoin Integration**: Updated the `bobcoin` submodule to `v8.7.0`, integrating a browser-side Go storage WASM workbench into the frontend Supernode page and retargeting the default WASM asset origin to the Go supernode.
