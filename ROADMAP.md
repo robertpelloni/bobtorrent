@@ -8,14 +8,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - operator experience
 
 ## Current Release Train
-- **Current Version**: `11.8.0`
+- **Current Version**: `11.9.0`
 - **Primary Runtime Targets**:
   - `lattice-go` — block lattice consensus node
   - `supernode-go` — torrent seeding, market polling, TUI operations
   - `dht-proxy` — privacy-preserving peer discovery utility
   - `storage.wasm` — browser-side Go storage kernel
 
-## ✅ Completed Through v11.8.0
+## ✅ Completed Through v11.9.0
 
 ### 1. Go Consensus Node
 - Ported the Bobcoin asynchronous block lattice to Go.
@@ -74,6 +74,7 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Defaulted the Bobcoin frontend WASM client to the Go supernode origin so the browser can fetch artifacts directly from port `8000`.
 - Added a supernode-hosted publication registry for uploaded shards and published manifests.
 - Upgraded the Bobcoin workbench from preprocessing-only to real shard upload + manifest publication.
+- Added Bobcoin browser-side restoration flow from published manifest back to reconstructed/decrypted file.
 
 ### 6. Build + Toolchain Hardening
 - Fixed third-party API drift in `anacrolix/dht` and `reedsolomon` integrations.
@@ -85,10 +86,10 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 
 ## 🚧 Active Near-Term Focus
 
-### A. Lattice Anchoring + Retrieval UX
+### A. Lattice Anchoring + Identity Binding
 - Anchor published manifest IDs into lattice/storage-market/NFT metadata.
-- Add end-user retrieval flow from manifest registry back to decrypted original file.
-- Support reconstruction from missing-shard sets using the published manifest metadata.
+- Bind publications to Bobcoin identities and signatures.
+- Support richer recovery modes for partial or degraded shard sets.
 
 ### B. Persistent Consensus State
 - Move lattice state from in-memory maps to durable storage.

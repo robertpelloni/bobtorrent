@@ -1,3 +1,9 @@
+## [11.9.0] - 2026-04-03
+### Go Port: Browser Round-Trip Retrieval & Reconstruction
+- **Bobcoin Retrieval UX**: Updated the `bobcoin` submodule to `v8.9.0`, adding manifest loading by locator/ID/URL plus in-browser shard download, hash verification, Reed-Solomon reconstruction, Go WASM decryption, and restored-file download.
+- **Round-Trip Milestone**: The storage flow now supports the full operator round-trip: preprocess → publish → fetch manifest → fetch shards → reconstruct → decrypt → download.
+- **Validation**: Re-validated the Bobcoin frontend production build after retrieval-flow wiring while preserving the root Go workspace stability.
+
 ## [11.8.0] - 2026-04-03
 ### Go Port: Real Shard Upload + Manifest Publication Flow
 - **Publication Registry**: Added `internal/publish` with durable shard + manifest persistence for supernode-hosted Bobtorrent assets, including a tested content-addressed shard store and manifest registry.

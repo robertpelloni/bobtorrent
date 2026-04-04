@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.8.0`
+- **Root Version**: `11.9.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -38,7 +38,7 @@ bobtorrent/
 ## Submodule / External Status
 | Component | Location | Status | Notes |
 |---|---|---:|---|
-| Bobcoin | `bobcoin/` | Active | Frontend + game stack remains the primary UI reference; now includes Go storage WASM workbench and supernode publication flow integration (`v8.8.0`). |
+| Bobcoin | `bobcoin/` | Active | Frontend + game stack remains the primary UI reference; now includes Go storage WASM workbench, publication flow, and browser-side retrieval/reconstruction integration (`v8.9.0`). |
 | qBittorrent fork | `qbittorrent/` | Blocked | Local files exist, but remote repo reference remains unreachable. |
 | Forest research | `bobcoin/research/forest` | Blocked | Nested submodule metadata issue remains unresolved upstream/local. |
 | Solana research | `bobcoin/research/solana` | Blocked | Nested submodule metadata issue remains unresolved upstream/local. |
@@ -65,5 +65,5 @@ bobtorrent/
 ## Current Known Gaps
 - Lattice state is still in-memory only
 - Filecoin bridge is simulated, not production RPC-backed
-- bobcoin frontend is not yet fully wired to `storage.wasm`
+- Publication identity binding / lattice anchoring for manifests is not yet implemented
 - qBittorrent remote reference remains broken

@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.8.0`
+- **Version**: `11.9.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -85,6 +85,7 @@ Minimal browser integration flow:
 5. Use `encrypt`, `encodeErasure`, `decrypt`, `decodeErasure`
 6. Upload prepared shards via `POST /upload-shard`
 7. Publish the final manifest via `POST /publish-manifest`
+8. Restore the file later by loading the manifest, downloading shard URLs, reconstructing ciphertext, and decrypting in the browser via the Bobcoin workbench
 
 See:
 - `docs/WASM_STORAGE_BRIDGE.md`
