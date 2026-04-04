@@ -1,48 +1,50 @@
-# Bobtorrent Omni-Workspace Handoff (v11.13.0)
+# Bobtorrent Omni-Workspace Handoff (v11.14.0)
 
 ## Session Objective
-Upgrade the archive experience from passive browsing into a discovery/provenance surface by adding search/filtering and provenance badging in Bobcoin Vault, then sync the root workspace to the new Bobcoin submodule state.
+Build the next archive-intelligence layer on top of the anchored storage workflow by adding trust/reputation overlays, sorting, and leaderboard semantics in Bobcoin Vault, then sync the root repo to the new submodule state.
 
 ## What Was Implemented
 
-### 1. Bobcoin Vault Discovery / Provenance Surface
+### 1. Bobcoin Vault Trust / Reputation Overlay
 Bobcoin submodule latest pushed commit this session:
-- `c3af6c2` — `feat(vault): add archive discovery and provenance surfacing (v8.14.0)`
+- `2563193` — merged trust/reputation overlay state on top of upstream `v8.15.0` Go-parity hardening
 
-Changes inside `bobcoin/frontend/pages/Vault.*`:
-- added search over:
-  - name
+New Vault capabilities:
+- owner trust scores derived from:
+  - signed anchor count
+  - manifest anchor count
+  - legacy anchor count
+  - archived size volume
+- owner trust tiers:
+  - `SOVEREIGN`
+  - `TRUSTED`
+  - `EMERGING`
+  - `UNVERIFIED`
+- archive sorting modes:
+  - recent
+  - trust
+  - size
   - owner
-  - locator
-  - manifest ID
-  - ciphertext hash
-  - proof hash
-  - anchor type
-- added filter controls for:
-  - type
-  - signed/provenance-rich anchors
-  - network stream query
-- added provenance surfacing:
-  - signed/unsigned badges
-  - ciphertext presence
-  - locator presence
-  - cloaked legacy anchor state
-- added copy-owner and clearer hash/proof displays
-
-Net result:
-- Vault is now a searchable archive intelligence surface rather than a passive list
-- provenance is visibly surfaced to the operator
+  - name
+- sovereign publisher leaderboard
+- richer provenance card surfacing:
+  - signed/unsigned
+  - trust tier
+  - trust score
+  - ciphertext present
+  - locator present
+  - cloaked status
 
 ### 2. Validation
 Executed successfully:
 - `cd bobcoin/frontend && npm run build`
-- result: ✅ production frontend build succeeds after discovery/provenance integration
+- result: ✅ production frontend build succeeds after trust/reputation overlay integration
 
 ### 3. Root Sync
 The root repo is being updated to:
-- point at Bobcoin `v8.14.0`
-- update docs/versioning to `v11.13.0`
-- reflect that archive discovery is now live and the next major gap is deeper provenance semantics plus degraded recovery ergonomics
+- point at the new Bobcoin archive-intelligence state
+- update docs/versioning to `v11.14.0`
+- reflect that the next frontier is deeper provenance semantics, not just heuristic trust overlays
 
 ## Strategic State After This Session
 Storage/archive lifecycle now spans:
@@ -53,20 +55,21 @@ Storage/archive lifecycle now spans:
 - signed lattice anchor
 - Vault archive browsing
 - Market/Gallery archive reuse
-- searchable/discoverable archive intelligence surface
+- searchable discovery
+- trust/reputation overlays
 
 ## Recommended Next Steps
-1. **Expand provenance semantics further**
+1. **Expand provenance semantics beyond heuristics**
    - richer signed metadata
-   - uploader profile / reputation overlays
+   - uploader profile / identity overlays
 2. **Improve degraded recovery UX**
-   - partial shard availability diagnostics
+   - partial shard diagnostics
    - degraded reconstruction guidance
-3. **Strengthen archive ergonomics**
+3. **Enhance archive ergonomics further**
    - saved filters
-   - grouping/sorting modes
-   - cross-view discovery improvements
+   - grouping presets
+   - richer cross-view discovery
 
 ## Notes for the Next Agent
-- The archive is now intentionally both reusable and searchable.
-- The best next move is no longer broad UI plumbing; it is deeper provenance semantics and recovery ergonomics.
+- The archive surface is now trust-aware, but the trust model is still heuristic.
+- The best next move is deeper provenance semantics rather than more generic archive UI tweaks.
