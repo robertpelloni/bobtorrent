@@ -4,6 +4,12 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.18.0] - 2026-04-04
+### Go Port: Saved Archive Presets & Grouped Inspection
+- **Bobcoin Workflow Ergonomics**: Updated the `bobcoin` submodule to its latest archive-workflow state, adding saved Vault filter presets plus grouping by owner/type for repeatable archive investigations.
+- **Archive Workspace Upgrade**: Bobcoin Vault now supports persistent operator workflows instead of only transient search and sorting interactions.
+- **Validation**: Re-validated the Bobcoin frontend production build after preset/grouping integration and synchronized the root workspace to the new submodule pointer.
+
 ## [11.17.0] - 2026-04-04
 ### Go Port: Degraded Recovery Diagnostics & Parity Testing
 - **Bobcoin Recovery UX**: Updated the `bobcoin` submodule to its latest restore-diagnostics state, adding parity sufficiency reporting, per-shard failure reasons, and manual shard-omission testing controls to the browser recovery flow.
