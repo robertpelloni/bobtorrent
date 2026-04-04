@@ -88,10 +88,10 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 
 ## 🚧 Active Near-Term Focus
 
-### A. Deeper Provenance + Recovery Ergonomics
-- Expand provenance beyond current heuristic trust overlays into richer identity/reputation layers.
-- Improve degraded recovery diagnostics and partial-shard recovery flows.
+### A. Deeper Publisher Identity + Archive Ergonomics
+- Deepen publisher identity semantics beyond alias/website/statement into richer profile overlays.
 - Add stronger saved filters/grouping/search ergonomics across archive-backed product surfaces.
+- Export richer recovery diagnostics and corruption-source attribution.
 
 ### B. Persistent Consensus State
 - Move lattice state from in-memory maps to durable storage.

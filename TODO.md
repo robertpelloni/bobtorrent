@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.16.0
+## ✅ Completed Through v11.17.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -18,6 +18,7 @@
 - Bobcoin Vault search/filter/discovery and provenance badging for archive intelligence
 - Bobcoin Vault owner trust scores, tiers, sorting modes, and sovereign publisher leaderboard
 - Bobcoin signed publisher alias/website/statement metadata on manifest anchors
+- Bobcoin degraded recovery diagnostics, parity sufficiency reporting, and manual shard-omission testing controls
 - Frontend compatibility endpoints for existing bobcoin pages
 - Go supernode compatibility endpoints for Bobcoin UI (`/stats`, `/add-torrent`, `/remove-torrent`)
 - Go supernode static serving for `storage.wasm` and `wasm_exec.js`
@@ -29,9 +30,9 @@
 - [ ] **Expand publication provenance beyond current publisher metadata**
   - optional uploader profile / reputation layer
   - richer identity-linked proofs
-- [ ] **Improve archive recovery UX**
-  - partial shard recovery diagnostics
-  - degraded reconstruction guidance
+- [ ] **Export richer archive recovery diagnostics**
+  - exportable recovery reports
+  - stronger corruption/source attribution
 - [ ] **Persist lattice state**
   - durable storage for chains, blocks, pending txs, NFTs, proposals, swaps
   - startup replay / restore path

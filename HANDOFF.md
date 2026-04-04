@@ -1,70 +1,55 @@
-# Bobtorrent Omni-Workspace Handoff (v11.16.0)
+# Bobtorrent Omni-Workspace Handoff (v11.17.0)
 
 ## Session Objective
-Move the archive system beyond heuristic trust alone by adding signed publisher metadata (alias, website, statement) to manifest anchors, surfacing that identity context in Vault, and syncing the root workspace to the new Bobcoin submodule state.
+Push the storage restore flow from a black-box success/fail path into an operator-grade diagnostic workflow by surfacing degraded recovery conditions, parity sufficiency, and shard-failure reasons in the Bobcoin frontend, then sync the root workspace to the new submodule state.
 
 ## What Was Implemented
 
-### 1. Signed Publisher Metadata In Manifest Anchors
-Root files changed:
-- `internal/consensus/lattice.go`
-- `internal/consensus/lattice_test.go`
-
-Enhancements:
-- manifest anchors can now store:
-  - `publisherAlias`
-  - `publisherWebsite`
-  - `publisherStatement`
-- this metadata is carried in the `publish_manifest` payload
-- it is covered by the signed publication proof message used during anchor submission
-- Go tests now validate persistence of the new publisher metadata fields
-
-### 2. Bobcoin Workbench Identity Inputs
+### 1. Bobcoin Degraded Recovery Diagnostics
 Bobcoin submodule latest pushed commit this session:
-- `b7c63f0` — `feat(vault): add signed publisher provenance metadata (v8.17.0)`
+- `e612a5d` — degraded recovery diagnostics integrated on top of the newer upstream semantic-audit state
 
-Frontend changes:
-- `StorageWasmWorkbench.jsx`
-  - new publisher metadata inputs:
-    - alias
-    - website/profile URL
-    - statement
-  - these fields are included in the anchor payload and proof message
-- `Vault.jsx`
-  - archive search now includes publisher metadata fields
-  - publisher alias / website / statement are displayed in archive cards when present
+Restore-flow improvements:
+- per-shard failure tracking
+- parity sufficiency vs insufficiency reporting
+- explicit missing/corrupt shard counts
+- optional manual shard omission for recovery testing
+- explicit indication when parity reconstruction was used to restore the file
 
-### 3. Validation
+### 2. Validation
 Executed successfully:
-- `go test ./internal/consensus -buildvcs=false`
-- `go build -buildvcs=false ./...`
 - `cd bobcoin/frontend && npm run build`
+- result: ✅ production frontend build succeeds after degraded-recovery integration
 
-Result:
-- ✅ root Go workspace stable
-- ✅ consensus tests green
-- ✅ Bobcoin frontend production build green
+### 3. Root Sync
+The root repo is being updated to:
+- point at the latest Bobcoin recovery-diagnostics state
+- update docs/versioning to `v11.17.0`
+- reflect that the next frontier is richer publisher identity semantics plus exportable recovery/provenance ergonomics
 
 ## Strategic State After This Session
-Archive provenance now includes:
-- wallet owner identity
-- publication proof signature
-- heuristic trust/reputation overlays
-- signed publisher alias / website / statement metadata
-
-This is a meaningful step from "trust heuristics" toward actual attributable publisher identity.
+The archive stack now supports:
+- preprocess
+- publication
+- restore
+- lattice anchoring
+- archive reuse
+- archive discovery
+- trust overlays
+- signed publisher metadata
+- explicit degraded recovery diagnostics
 
 ## Recommended Next Steps
-1. Improve degraded recovery UX
-   - partial shard diagnostics
-   - degraded reconstruction guidance
-2. Deepen publisher identity further
+1. Deepen publisher identity semantics
    - richer profile overlays
    - linked proofs / attestations
+2. Export richer recovery diagnostics
+   - exportable reports
+   - stronger corruption/source attribution
 3. Improve archive ergonomics
    - saved filters
    - grouping and custom sorting presets
 
 ## Notes for the Next Agent
-- The archive now has both heuristic trust and explicitly signed publisher metadata.
-- The next best move is probably recovery ergonomics, unless the priority is publisher identity depth.
+- Recovery now exposes parity-aware diagnostics rather than opaque failure.
+- The next strongest move is probably richer identity/provenance, unless operator diagnostics are the immediate priority.
