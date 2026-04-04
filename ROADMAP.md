@@ -8,14 +8,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - operator experience
 
 ## Current Release Train
-- **Current Version**: `11.6.0`
+- **Current Version**: `11.7.0`
 - **Primary Runtime Targets**:
   - `lattice-go` — block lattice consensus node
   - `supernode-go` — torrent seeding, market polling, TUI operations
   - `dht-proxy` — privacy-preserving peer discovery utility
   - `storage.wasm` — browser-side Go storage kernel
 
-## ✅ Completed Through v11.6.0
+## ✅ Completed Through v11.7.0
 
 ### 1. Go Consensus Node
 - Ported the Bobcoin asynchronous block lattice to Go.
@@ -56,6 +56,13 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
   - the lattice market poller
   - the lattice websocket feed
 - Added simulated Filecoin archival during autonomous bid acceptance.
+- Added frontend-facing HTTP compatibility endpoints:
+  - `/stats`
+  - `/add-torrent`
+  - `/remove-torrent`
+- Added static serving for:
+  - `/storage.wasm`
+  - `/wasm_exec.js`
 
 ### 5. Storage Kernel + WASM
 - Implemented Go-native encrypted storage with ChaCha20-Poly1305.
@@ -63,6 +70,8 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Exported the storage kernel to WebAssembly.
 - Added a reusable browser-side loader at `web/storage-wasm-loader.js`.
 - Added build pipeline packaging for `storage.wasm` and `wasm_exec.js`.
+- Integrated the Go WASM preprocessing path into `bobcoin/frontend` via a Supernode workbench.
+- Defaulted the Bobcoin frontend WASM client to the Go supernode origin so the browser can fetch artifacts directly from port `8000`.
 
 ### 6. Build + Toolchain Hardening
 - Fixed third-party API drift in `anacrolix/dht` and `reedsolomon` integrations.
@@ -74,10 +83,10 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 
 ## 🚧 Active Near-Term Focus
 
-### A. Real Frontend Integration
-- Wire `web/storage-wasm-loader.js` into `bobcoin/frontend`.
-- Replace JS-side file preprocessing with Go WASM storage functions.
-- Add a real upload flow that produces shard metadata manifests.
+### A. Publish Flow Completion
+- Extend the current Bobcoin WASM workbench from preprocessing-only into a real upload flow.
+- Upload prepared shards to Go supernode or storage peers.
+- Persist generated manifest metadata on the lattice and/or storage market.
 
 ### B. Persistent Consensus State
 - Move lattice state from in-memory maps to durable storage.

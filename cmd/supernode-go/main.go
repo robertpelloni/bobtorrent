@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,6 +32,7 @@ var (
 	uiProgram     *tea.Program
 	fcBridge      *bridges.FilecoinBridge
 	dhtNode       *transport.DHTNode
+	startedAt     = time.Now()
 )
 
 // main boots the Go supernode stack:
@@ -68,6 +70,10 @@ func startTrackerServices() {
 	http.HandleFunc("/announce", trackerCore.HTTPHandler())
 	http.HandleFunc("/spora/", handleSpora)
 	http.HandleFunc("/stats", handleStats)
+	http.HandleFunc("/add-torrent", handleAddTorrent)
+	http.HandleFunc("/remove-torrent", handleRemoveTorrent)
+	http.HandleFunc("/storage.wasm", serveStorageWASM)
+	http.HandleFunc("/wasm_exec.js", serveWASMExec)
 	go func() {
 		if err := http.ListenAndServe(":8000", nil); err != nil {
 			log.Printf("HTTP tracker failed: %v", err)
@@ -187,7 +193,6 @@ func pollMarket() {
 			<-target.GotInfo()
 			target.DownloadAll()
 
-			// Archive the accepted deal metadata into the Filecoin bridge.
 			if fcBridge != nil {
 				if _, err := fcBridge.PublishDeal(infoHash, 1024*1024, 30); err != nil {
 					log.Printf("filecoin archival failed for %s: %v", infoHash, err)
@@ -339,9 +344,168 @@ func handleSpora(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleStats(w http.ResponseWriter, r *http.Request) {
+	uptimeSeconds := time.Since(startedAt).Seconds()
+	if uptimeSeconds <= 0 {
+		uptimeSeconds = 1
+	}
+
+	peerCount := 0
+	if dhtNode != nil {
+		peerCount = dhtNode.Stats().GoodNodes
+	}
+
+	torrents := torrentClient.Torrents()
+	storageEntries := make([]map[string]interface{}, 0, len(torrents))
+	totalSize := int64(0)
+	totalDownloadBytes := int64(0)
+	totalUploadBytes := int64(0)
+
+	for _, t := range torrents {
+		length := t.Length()
+		completed := t.BytesCompleted()
+		progress := 0.0
+		if length > 0 {
+			progress = float64(completed) / float64(length)
+		}
+
+		stats := t.Stats()
+		downloadBytes := stats.BytesReadData.Int64()
+		uploadBytes := stats.BytesWrittenData.Int64()
+		totalDownloadBytes += downloadBytes
+		totalUploadBytes += uploadBytes
+		totalSize += length
+
+		storageEntries = append(storageEntries, map[string]interface{}{
+			"infoHash":  t.InfoHash().HexString(),
+			"name":      t.Name(),
+			"progress":  progress,
+			"peers":     len(t.PeerConns()),
+			"totalSize": length,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"address": nodeWallet.PublicKey,
+		"service": "Go Supernode",
+		"status":  "online",
+		"uptime":  int64(uptimeSeconds),
+		"network": map[string]interface{}{
+			"peers":         peerCount,
+			"downloadSpeed": int64(float64(totalDownloadBytes) / uptimeSeconds),
+			"uploadSpeed":   int64(float64(totalUploadBytes) / uptimeSeconds),
+		},
+		"storage": map[string]interface{}{
+			"totalSize": totalSize,
+			"torrents":  storageEntries,
+		},
+	})
+}
+
+func handleAddTorrent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Magnet string `json:"magnet"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Magnet == "" {
+		http.Error(w, "valid magnet required", http.StatusBadRequest)
+		return
+	}
+
+	spec, err := metainfo.ParseMagnetUri(req.Magnet)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid magnet: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if _, exists := torrentClient.Torrent(spec.InfoHash); exists {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"success":  true,
+			"infoHash": spec.InfoHash.HexString(),
+			"message":  "torrent already loaded",
+		})
+		return
+	}
+
+	t, err := torrentClient.AddMagnet(req.Magnet)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to add torrent: %v", err), http.StatusInternalServerError)
+		return
+	}
+	go func() {
+		<-t.GotInfo()
+		t.DownloadAll()
+	}()
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":  true,
+		"infoHash": spec.InfoHash.HexString(),
+	})
+}
+
+func handleRemoveTorrent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		InfoHash string `json:"infoHash"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.InfoHash == "" {
+		http.Error(w, "valid infoHash required", http.StatusBadRequest)
+		return
+	}
+
+	var ih metainfo.Hash
+	if err := ih.FromHexString(req.InfoHash); err != nil {
+		http.Error(w, fmt.Sprintf("invalid infoHash: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	t, exists := torrentClient.Torrent(ih)
+	if !exists {
+		http.Error(w, "torrent not found", http.StatusNotFound)
+		return
+	}
+	t.Drop()
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":  true,
+		"infoHash": req.InfoHash,
+	})
+}
+
+func serveStorageWASM(w http.ResponseWriter, r *http.Request) {
+	servePreferredFile(w, r, "application/wasm", []string{
+		filepath.Join("build", "storage.wasm"),
+		"storage.wasm",
+	})
+}
+
+func serveWASMExec(w http.ResponseWriter, r *http.Request) {
+	servePreferredFile(w, r, "application/javascript", []string{
+		filepath.Join("build", "wasm_exec.js"),
+		"wasm_exec.js",
+	})
+}
+
+func servePreferredFile(w http.ResponseWriter, r *http.Request, contentType string, candidates []string) {
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			w.Header().Set("Content-Type", contentType)
+			http.ServeFile(w, r, candidate)
+			return
+		}
+	}
+	http.Error(w, "artifact not found; run the root build pipeline first", http.StatusNotFound)
+}
+
+func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"address": "%s", "service": "Go Supernode", "status": "online", "torrents": %d}`,
-		nodeWallet.PublicKey,
-		len(torrentClient.Torrents()),
-	)
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
 }

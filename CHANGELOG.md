@@ -1,3 +1,10 @@
+## [11.7.0] - 2026-04-03
+### Go Port: Bobcoin WASM Frontend Wiring & Supernode UI Compatibility
+- **Bobcoin Integration**: Updated the `bobcoin` submodule to `v8.7.0`, integrating a browser-side Go storage WASM workbench into the frontend Supernode page and retargeting the default WASM asset origin to the Go supernode.
+- **Supernode API Compatibility**: Expanded `supernode-go` with Bobcoin UI-friendly endpoints: `GET /stats`, `POST /add-torrent`, and `POST /remove-torrent`.
+- **WASM Artifact Serving**: `supernode-go` now serves `GET /storage.wasm` and `GET /wasm_exec.js` directly from the generated build artifacts so frontend clients can fetch the Go runtime without manual copying.
+- **Validation**: Rebuilt the root Go workspace successfully and validated the Bobcoin frontend production build after WASM integration and rebase onto the newer upstream Bobcoin mainline.
+
 ## [11.6.0] - 2026-04-03
 ### Go Port: Compatibility Hardening, Live Feed Integration, and WASM Packaging
 - **Consensus Compatibility**: Hardened the Go lattice server to accept both raw block payloads and `{ "block": ... }` wrapped submissions, added `/pending/:account`, `/proposals`, and root WebSocket compatibility for the existing bobcoin frontend.

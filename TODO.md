@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.6.0
+## ✅ Completed Through v11.7.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -9,15 +9,18 @@
 - Go storage layer with ChaCha20-Poly1305 + Reed-Solomon
 - WASM export of the Go storage kernel
 - Browser-side loader for `storage.wasm`
+- Bobcoin frontend Go WASM workbench for browser-side encryption + erasure preprocessing
 - Frontend compatibility endpoints for existing bobcoin pages
+- Go supernode compatibility endpoints for Bobcoin UI (`/stats`, `/add-torrent`, `/remove-torrent`)
+- Go supernode static serving for `storage.wasm` and `wasm_exec.js`
 - Build pipeline packaging of `storage.wasm` and `wasm_exec.js`
 - Full repository compile validation with `go build -buildvcs=false ./...`
 
 ## Highest Priority Next Steps
-- [ ] **Wire WASM into bobcoin frontend**
-  - import/copy `web/storage-wasm-loader.js`
-  - load `wasm_exec.js` + `storage.wasm`
-  - switch upload preprocessing from JS to Go WASM
+- [ ] **Complete end-to-end Bobcoin upload publish flow**
+  - move from preprocessing-only manifest generation to actual shard upload
+  - persist manifests in lattice/storage market payloads
+  - optionally generate publishable Bobtorrent/Bittorrent locators
 - [ ] **Persist lattice state**
   - durable storage for chains, blocks, pending txs, NFTs, proposals, swaps
   - startup replay / restore path

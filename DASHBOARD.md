@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.6.0`
+- **Root Version**: `11.7.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -37,7 +37,7 @@ bobtorrent/
 ## Submodule / External Status
 | Component | Location | Status | Notes |
 |---|---|---:|---|
-| Bobcoin | `bobcoin/` | Active | Frontend + game stack remains the primary UI reference. |
+| Bobcoin | `bobcoin/` | Active | Frontend + game stack remains the primary UI reference; now includes Go storage WASM workbench integration (`v8.7.0`). |
 | qBittorrent fork | `qbittorrent/` | Blocked | Local files exist, but remote repo reference remains unreachable. |
 | Forest research | `bobcoin/research/forest` | Blocked | Nested submodule metadata issue remains unresolved upstream/local. |
 | Solana research | `bobcoin/research/solana` | Blocked | Nested submodule metadata issue remains unresolved upstream/local. |
@@ -47,7 +47,7 @@ bobtorrent/
 |---|---|---:|---|
 | DHT Proxy | `build/dht-proxy` | Buildable | Privacy-preserving peer discovery with GeoIP sorting |
 | Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed |
-| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI |
+| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible stats/control endpoints, and WASM artifact serving |
 | Storage WASM | `build/storage.wasm` | Buildable | Browser-side Go storage kernel |
 | Go WASM Runtime | `build/wasm_exec.js` | Packaged | Required runtime bridge for browser execution |
 

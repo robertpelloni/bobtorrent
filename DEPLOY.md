@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.6.0`
+- **Version**: `11.7.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -45,6 +45,13 @@ Default services:
 
 The supernode expects the lattice node to be available at `http://localhost:4000`.
 
+Additional frontend-facing endpoints now provided by `supernode-go`:
+- `GET /stats`
+- `POST /add-torrent`
+- `POST /remove-torrent`
+- `GET /storage.wasm`
+- `GET /wasm_exec.js`
+
 ## 4. Run the DHT Proxy
 ```bash
 ./build/dht-proxy
@@ -62,10 +69,14 @@ The build now produces:
 Recommended loader:
 - `web/storage-wasm-loader.js`
 
+The Go supernode now serves these artifacts directly, so a browser client can target:
+- `http://localhost:8000/storage.wasm`
+- `http://localhost:8000/wasm_exec.js`
+
 Minimal browser integration flow:
-1. Serve `storage.wasm`
-2. Serve `wasm_exec.js`
-3. Load `web/storage-wasm-loader.js`
+1. Run `build.bat`
+2. Start `./build/supernode-go`
+3. Load the Go runtime from the supernode origin
 4. Call `createBobtorrentStorageClient()`
 5. Use `encrypt`, `encodeErasure`, `decrypt`, `decodeErasure`
 
