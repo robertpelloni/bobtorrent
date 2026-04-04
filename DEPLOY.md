@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.20.0`
+- **Version**: `11.21.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
