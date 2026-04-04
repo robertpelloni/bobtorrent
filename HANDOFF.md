@@ -1,35 +1,32 @@
-# Bobtorrent Omni-Workspace Handoff (v11.21.0)
+# Bobtorrent Omni-Workspace Handoff (v11.22.0)
 
 ## Session Objective
-Upgrade degraded recovery diagnostics from raw per-shard errors into more actionable operator evidence by adding failure categorization and source attribution in the Bobcoin restore flow, then sync the root workspace to the new submodule state.
+Push the Vault beyond saved local state into a more portable operator workspace by adding preset export/import and batch actions over visible archive results, then sync the root workspace to the new Bobcoin submodule state.
 
 ## What Was Implemented
 
-### 1. Failure Categorization + Source Attribution
+### 1. Bobcoin Portable Presets + Batch Archive Actions
 Bobcoin submodule latest pushed commit this session:
-- `c93367d` — merged source-attribution diagnostics on top of newer upstream parity-test coverage
+- `7c33d8a` — merged preset export/import and batch archive actions on top of newer upstream durable recovery replay coverage
 
-New recovery-diagnostics behavior:
-- failure category classification:
-  - operator omission
-  - integrity mismatch
-  - network fetch failure
-  - missing shard
-  - unknown failure
-- source reference capture for each failed shard
-- source host extraction for each failed shard
-- aggregated failure counts by category
+New Vault operator actions:
+- export saved presets to JSON
+- import presets from JSON
+- export the currently visible archive result set
+- bulk copy visible locators
+
+This turns the archive surface into a more portable and actionable workspace.
 
 ### 2. Validation
 Executed successfully:
 - `cd bobcoin/frontend && npm run build`
-- result: ✅ production frontend build succeeds after source-attribution diagnostics integration
+- result: ✅ production frontend build succeeds after preset-sharing and batch-action integration
 
 ### 3. Root Sync
 The root repo is being updated to:
-- point at the latest Bobcoin diagnostics state
-- update docs/versioning to `v11.21.0`
-- reflect that the next frontier is now batch/operator actions plus deeper publisher attestation semantics
+- point at the latest Bobcoin archive-workspace state
+- update docs/versioning to `v11.22.0`
+- reflect that the next frontier is deeper publisher attestation semantics plus longer-horizon source reliability analysis
 
 ## Strategic State After This Session
 The archive stack now supports:
@@ -41,20 +38,21 @@ The archive stack now supports:
 - signed publisher metadata
 - degraded recovery diagnostics
 - exportable recovery reports
-- per-shard failure categorization
-- source host/source reference attribution
+- saved/grouped archive workflows
+- portable preset sharing
+- batch export/copy actions
 
 ## Recommended Next Steps
-1. Add batch/archive workspace actions
-   - preset sharing/export
-   - bulk copy/export helpers
-2. Deepen publisher identity semantics
-   - richer linked proof semantics
+1. Deepen publisher identity semantics
+   - richer linked proof typing
    - external attestation integrations
-3. Expand source reliability analysis
+2. Expand source reliability analysis
    - source trend visibility
    - stronger host-level diagnostics over time
+3. Add stronger batch/archive actions
+   - batch manifest operations
+   - preset template libraries
 
 ## Notes for the Next Agent
-- Restore diagnostics are now both exportable and source-attributed.
-- The next strongest move is likely batch operator actions unless attestation depth is the higher priority.
+- Vault is now both searchable and portable as an operator workspace.
+- The best next move is likely deeper attestation semantics or source reliability analytics.
