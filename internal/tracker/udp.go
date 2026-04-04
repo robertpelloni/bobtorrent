@@ -2,7 +2,6 @@ package tracker
 
 import (
 	"encoding/binary"
-	"fmt"
 	"log"
 	"net"
 	"sync"
@@ -94,13 +93,13 @@ func (u *UDPTracker) handleAnnounce(addr *net.UDPAddr, transactionID uint32, dat
 	var ih metainfo.Hash
 	copy(ih[:], data[0:20])
 	peerID := string(data[20:40])
-	downloaded := binary.BigEndian.Uint64(data[40:48])
-	left := binary.BigEndian.Uint64(data[48:56])
-	uploaded := binary.BigEndian.Uint64(data[56:64])
-	event := binary.BigEndian.Uint32(data[64:68])
+	_ = binary.BigEndian.Uint64(data[40:48]) // downloaded
+	_ = binary.BigEndian.Uint64(data[48:56]) // left
+	_ = binary.BigEndian.Uint64(data[56:64]) // uploaded
+	_ = binary.BigEndian.Uint32(data[64:68]) // event
 	ip := net.IP(data[68:72])
-	key := binary.BigEndian.Uint32(data[72:76])
-	numWant := int32(binary.BigEndian.Uint32(data[76:80]))
+	_ = binary.BigEndian.Uint32(data[72:76]) // key
+	_ = int32(binary.BigEndian.Uint32(data[76:80])) // numWant
 	port := binary.BigEndian.Uint16(data[80:82])
 
 	// Use Remote IP if none specified

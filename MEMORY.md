@@ -1,15 +1,33 @@
 # Project Memory & Observations
 
-## Architectural Transitions
--   **Go Port Progress**: The project is successfully transitioning to Go. We now have a unified suite of binaries (`supernode-go`, `lattice-go`, `dht-proxy`) that mirror and exceed the performance of the legacy Node.js/Java stack.
--   **Lattice Dominance**: The Bobcoin economy has fully migrated from SQLite-based persistence to a native, asynchronous Block Lattice consensus model. This is now implemented in both Node.js and Go.
--   **Storage Excellence**: The Go `pkg/storage` implementation provides 1:1 feature parity with the legacy stack while gaining SIMD-accelerated Reed-Solomon encoding and IETF-standard authenticated encryption.
+## Core Architectural State
+- The Bobtorrent Go port is now a real multi-binary platform rather than a thin prototype.
+- The Go lattice has moved beyond a minimal proof-of-concept and now includes governance, NFT, staking, swap, market, websocket, and peer-broadcast capabilities.
+- The storage layer exists in both native Go and WebAssembly form, which is strategically important because it reduces frontend/backend crypto drift.
 
-## Design Preferences
--   **Privacy First**: Integration of GeoIP distance-based sorting was carefully implemented to ensure no identifying information is leaked to public trackers; the proxy acts as the sole point of contact.
--   **Autonomous Operations**: The Supernode now autonomously polls the market and accepts bids without human intervention, fulfilling the "Production-Grade Autonomous" vision.
--   **Developer Experience**: The introduction of the Bubble Tea TUI dashboard has significantly improved the observability of the Supernode.
+## Compatibility Findings
+- The existing bobcoin frontend still speaks a partially older lattice dialect.
+- Important compatibility expectations discovered during this session:
+  - some pages POST wrapped blocks as `{ block: ... }`
+  - some pages expect `/proposals` rather than `/governance/proposals`
+  - some pages expect websocket upgrades at the lattice root URL
+  - some pages still omit explicit `height` and `staked_balance`
+  - NFT transfer UI currently uses `recipient` naming, while newer Go code preferred `newOwner`
+- The Go lattice now includes compatibility handling for all of the above, but this is a temporary bridge, not the final state.
 
-## Technical Debt & Roadblocks
--   **Submodule Reachability**: `qbittorrent` submodule remote is currently unreachable on GitHub (`repository not found`), though local files are intact. This needs investigation in future sessions.
--   **Rust SP1 Integration**: The ZK-Service integration in the `game-server` currently uses an "AI Oracle" mock. Real SP1 verification requires a localized Rust environment.
+## Build / Toolchain Findings
+- `anacrolix/dht` API drift required moving from an imagined `Addr` field to explicit `net.ListenPacket` wiring through `ServerConfig.Conn`.
+- `reedsolomon.Encoder.Join` writes to an `io.Writer`, so buffer-based joining is required.
+- `go build ./...` in this workspace requires `-buildvcs=false` because VCS stamping can fail under the current submodule / repo state.
+- `cmd/wasm/main.go` must be gated behind `//go:build js && wasm` so host builds do not try to compile `syscall/js`.
+
+## Operational Preferences
+- Keep the supernode autonomous and observable.
+- Preserve compatibility with the legacy bobcoin frontend until the frontend is explicitly migrated.
+- Prefer shipping reusable bridge layers (like `web/storage-wasm-loader.js`) so future UI wiring is fast and low-risk.
+
+## Technical Debt / Roadblocks
+- Lattice state is still in-memory only.
+- Filecoin archival is simulated rather than backed by Lotus or real RPC infrastructure.
+- `qbittorrent` remote remains unreachable.
+- Nested `bobcoin/research/*` submodule metadata still needs cleanup.

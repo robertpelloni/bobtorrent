@@ -1,88 +1,264 @@
 package consensus
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
+
 	"bobtorrent/pkg/torrent"
 
 	"github.com/gorilla/websocket"
 )
 
+// Server exposes the Go lattice over HTTP and WebSocket transport.
+//
+// Compatibility goals:
+//   - Serve the newer Go-native endpoints used by the supernode and TUI.
+//   - Remain compatible with the existing bobcoin frontend, which expects
+//     legacy paths such as /proposals, /pending/:account, and a WebSocket
+//     connection on the lattice root URL.
 type Server struct {
-	lattice *Lattice
+	lattice  *Lattice
+	hub      *Hub
 	upgrader websocket.Upgrader
 }
 
+// NewServer creates a lattice server with a fresh in-memory consensus state.
 func NewServer() *Server {
 	return &Server{
 		lattice: NewLattice(),
+		hub:     NewHub(),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
 	}
 }
 
+// HTTPHandler wires all HTTP and WebSocket routes.
 func (s *Server) HTTPHandler() http.Handler {
 	mux := http.NewServeMux()
+
+	// Root compatibility handler:
+	// - If a frontend opens ws://host:4000, upgrade to WebSocket.
+	// - If a browser hits http://host:4000/, return status JSON.
+	mux.HandleFunc("/", s.handleRoot)
+
+	// Core lattice endpoints.
 	mux.HandleFunc("/status", s.handleStatus)
 	mux.HandleFunc("/process", s.handleProcess)
 	mux.HandleFunc("/balance/", s.handleBalance)
 	mux.HandleFunc("/frontier/", s.handleFrontier)
+	mux.HandleFunc("/chain/", s.handleChain)
+	mux.HandleFunc("/block/", s.handleBlock)
+	mux.HandleFunc("/pending/", s.handlePending)
+
+	// Domain-specific endpoints.
 	mux.HandleFunc("/market/bids", s.handleMarketBids)
+	mux.HandleFunc("/proposals", s.handleProposals)
+	mux.HandleFunc("/governance/proposals", s.handleProposals)
+	mux.HandleFunc("/nfts", s.handleNFTs)
+	mux.HandleFunc("/nfts/", s.handleNFTsByOwner)
+	mux.HandleFunc("/swaps", s.handleSwaps)
+	mux.HandleFunc("/peers", s.handlePeers)
+	mux.HandleFunc("/ws", s.handleWebSocket)
+
 	return mux
+}
+
+func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
+	if websocket.IsWebSocketUpgrade(r) {
+		s.handleWebSocket(w, r)
+		return
+	}
+
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+
+	s.handleStatus(w, r)
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	s.lattice.mu.RLock()
 	defer s.lattice.mu.RUnlock()
-	
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "online",
-		"service": "Go Block Lattice Node",
-		"chains": len(s.lattice.chains),
-		"blocks": len(s.lattice.blocks),
-		"stateHash": s.lattice.stateHash,
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":      "online",
+		"service":     "Go Block Lattice Node",
+		"chains":      len(s.lattice.chains),
+		"accounts":    len(s.lattice.chains),
+		"blocks":      len(s.lattice.blocks),
+		"totalBlocks": len(s.lattice.blocks),
+		"stateHash":   s.lattice.stateHash,
+		"peers":       len(s.lattice.peers),
+		"wsClients":   s.hub.ClientCount(),
+		"proposals":   len(s.lattice.proposals),
+		"nfts":        len(s.lattice.nfts),
+		"marketBids":  len(s.lattice.marketBids),
+		"activeSwaps": len(s.lattice.swaps),
 	})
 }
 
+// handleProcess accepts either:
+//   1. a raw block JSON object, or
+//   2. a wrapper object in the shape {"block": {...}}
+//
+// Supporting both formats keeps the Go node compatible with both the
+// bobcoin frontend and the Go supernode poller.
 func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
-	var block torrent.Block
-	if err := json.NewDecoder(r.Body).Decode(&block); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
 		return
+	}
+
+	var body map[string]json.RawMessage
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, fmt.Sprintf("invalid JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	var block torrent.Block
+	if raw, ok := body["block"]; ok {
+		if err := json.Unmarshal(raw, &block); err != nil {
+			http.Error(w, fmt.Sprintf("invalid wrapped block: %v", err), http.StatusBadRequest)
+			return
+		}
+	} else {
+		reencoded, err := json.Marshal(body)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("failed to re-encode request: %v", err), http.StatusBadRequest)
+			return
+		}
+		if err := json.Unmarshal(reencoded, &block); err != nil {
+			http.Error(w, fmt.Sprintf("invalid block payload: %v", err), http.StatusBadRequest)
+			return
+		}
 	}
 
 	if err := s.lattice.ProcessBlock(&block); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("block rejected: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "hash": block.Hash})
+	s.lattice.mu.RLock()
+	chains := len(s.lattice.chains)
+	blocks := len(s.lattice.blocks)
+	stateHash := s.lattice.stateHash
+	s.lattice.mu.RUnlock()
+
+	go s.broadcastBlock(&block)
+	go s.hub.BroadcastBlock(&block, stateHash, chains, blocks)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":   true,
+		"hash":      block.Hash,
+		"stateHash": stateHash,
+	})
 }
 
 func (s *Server) handleBalance(w http.ResponseWriter, r *http.Request) {
-	account := r.URL.Path[len("/balance/"):]
+	account := strings.TrimPrefix(r.URL.Path, "/balance/")
+	if account == "" {
+		http.Error(w, "account required", http.StatusBadRequest)
+		return
+	}
+
+	s.lattice.mu.RLock()
 	balance := s.lattice.GetBalance(account)
-	json.NewEncoder(w).Encode(map[string]interface{}{"balance": balance})
+	s.lattice.mu.RUnlock()
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"account": account,
+		"balance": balance,
+	})
 }
 
 func (s *Server) handleFrontier(w http.ResponseWriter, r *http.Request) {
-	account := r.URL.Path[len("/frontier/"):]
-	f := s.lattice.GetFrontier(account)
-	
-	var hash *string
-	staked := int64(0)
-	if f != nil {
-		hash = &f.Hash
-		staked = f.StakedBalance
+	account := strings.TrimPrefix(r.URL.Path, "/frontier/")
+	if account == "" {
+		http.Error(w, "account required", http.StatusBadRequest)
+		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"frontier": hash,
-		"balance": s.lattice.GetBalance(account),
+	s.lattice.mu.RLock()
+	frontier := s.lattice.GetFrontier(account)
+	balance := s.lattice.GetBalance(account)
+	s.lattice.mu.RUnlock()
+
+	var hash *string
+	staked := int64(0)
+	height := 0
+	if frontier != nil {
+		hash = &frontier.Hash
+		staked = frontier.StakedBalance
+		height = frontier.Height
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"account":        account,
+		"frontier":       hash,
+		"balance":        balance,
 		"staked_balance": staked,
+		"height":         height,
+	})
+}
+
+func (s *Server) handleChain(w http.ResponseWriter, r *http.Request) {
+	account := strings.TrimPrefix(r.URL.Path, "/chain/")
+	if account == "" {
+		http.Error(w, "account required", http.StatusBadRequest)
+		return
+	}
+
+	s.lattice.mu.RLock()
+	chain := append([]*torrent.Block(nil), s.lattice.chains[account]...)
+	s.lattice.mu.RUnlock()
+
+	// Return both "blocks" and "chain" keys for compatibility.
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"account": account,
+		"blocks":  chain,
+		"chain":   chain,
+		"length":  len(chain),
+	})
+}
+
+func (s *Server) handleBlock(w http.ResponseWriter, r *http.Request) {
+	hash := strings.TrimPrefix(r.URL.Path, "/block/")
+	if hash == "" {
+		http.Error(w, "hash required", http.StatusBadRequest)
+		return
+	}
+
+	s.lattice.mu.RLock()
+	block, ok := s.lattice.blocks[hash]
+	s.lattice.mu.RUnlock()
+	if !ok {
+		http.Error(w, "block not found", http.StatusNotFound)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, block)
+}
+
+func (s *Server) handlePending(w http.ResponseWriter, r *http.Request) {
+	account := strings.TrimPrefix(r.URL.Path, "/pending/")
+	if account == "" {
+		http.Error(w, "account required", http.StatusBadRequest)
+		return
+	}
+
+	s.lattice.mu.RLock()
+	pending := append([]PendingTx(nil), s.lattice.pending[account]...)
+	s.lattice.mu.RUnlock()
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"account": account,
+		"pending": pending,
 	})
 }
 
@@ -91,10 +267,160 @@ func (s *Server) handleMarketBids(w http.ResponseWriter, r *http.Request) {
 	defer s.lattice.mu.RUnlock()
 
 	var bids []*MarketBid
-	for _, b := range s.lattice.marketBids {
-		if b.Status == "OPEN" {
-			bids = append(bids, b)
+	for _, bid := range s.lattice.marketBids {
+		if bid.Status == "OPEN" {
+			bids = append(bids, bid)
 		}
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{"bids": bids})
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"bids": bids})
+}
+
+func (s *Server) handleProposals(w http.ResponseWriter, r *http.Request) {
+	s.lattice.mu.RLock()
+	defer s.lattice.mu.RUnlock()
+
+	var proposals []*Proposal
+	for _, proposal := range s.lattice.proposals {
+		proposals = append(proposals, proposal)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"proposals": proposals,
+	})
+}
+
+func (s *Server) handleNFTs(w http.ResponseWriter, r *http.Request) {
+	s.lattice.mu.RLock()
+	defer s.lattice.mu.RUnlock()
+
+	var nfts []*NFT
+	for _, nft := range s.lattice.nfts {
+		nfts = append(nfts, nft)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"nfts": nfts})
+}
+
+func (s *Server) handleNFTsByOwner(w http.ResponseWriter, r *http.Request) {
+	owner := strings.TrimPrefix(r.URL.Path, "/nfts/")
+	if owner == "" {
+		http.Error(w, "owner required", http.StatusBadRequest)
+		return
+	}
+
+	s.lattice.mu.RLock()
+	defer s.lattice.mu.RUnlock()
+
+	var nfts []*NFT
+	for _, nft := range s.lattice.nfts {
+		if nft.Owner == owner {
+			nfts = append(nfts, nft)
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"owner": owner,
+		"nfts":  nfts,
+	})
+}
+
+func (s *Server) handleSwaps(w http.ResponseWriter, r *http.Request) {
+	s.lattice.mu.RLock()
+	defer s.lattice.mu.RUnlock()
+
+	var swaps []*Swap
+	for _, swap := range s.lattice.swaps {
+		swaps = append(swaps, swap)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"swaps": swaps})
+}
+
+func (s *Server) handlePeers(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		peers := s.lattice.GetPeers()
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"peers": peers,
+			"count": len(peers),
+		})
+	case http.MethodPost:
+		var req struct {
+			Addr string `json:"addr"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Addr == "" {
+			http.Error(w, "valid addr required", http.StatusBadRequest)
+			return
+		}
+		s.lattice.AddPeer(req.Addr)
+		writeJSON(w, http.StatusOK, map[string]interface{}{"registered": req.Addr})
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) broadcastBlock(block *torrent.Block) {
+	peers := s.lattice.GetPeers()
+	if len(peers) == 0 {
+		return
+	}
+
+	payload, err := json.Marshal(map[string]interface{}{"block": block})
+	if err != nil {
+		return
+	}
+
+	for _, peerAddr := range peers {
+		go func(addr string) {
+			resp, err := http.Post(fmt.Sprintf("http://%s/process", addr), "application/json", bytes.NewBuffer(payload))
+			if err != nil {
+				log.Printf("[consensus] broadcast to %s failed: %v", addr, err)
+				return
+			}
+			resp.Body.Close()
+		}(peerAddr)
+	}
+}
+
+func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("[consensus] websocket upgrade failed: %v", err)
+		return
+	}
+
+	s.hub.Register(conn)
+
+	s.lattice.mu.RLock()
+	welcome := map[string]interface{}{
+		"type":        "STATS",
+		"event":       "CONNECTED",
+		"service":     "Go Block Lattice Node",
+		"accounts":    len(s.lattice.chains),
+		"chains":      len(s.lattice.chains),
+		"totalBlocks": len(s.lattice.blocks),
+		"stateHash":   s.lattice.stateHash,
+	}
+	s.lattice.mu.RUnlock()
+
+	if err := conn.WriteJSON(welcome); err != nil {
+		s.hub.Unregister(conn)
+		return
+	}
+
+	go func() {
+		defer s.hub.Unregister(conn)
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				break
+			}
+		}
+	}()
+}
+
+func writeJSON(w http.ResponseWriter, status int, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
 }

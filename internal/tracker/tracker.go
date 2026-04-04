@@ -2,7 +2,6 @@ package tracker
 
 import (
 	"bytes"
-	"fmt"
 	"net"
 	"net/http"
 	"strconv"

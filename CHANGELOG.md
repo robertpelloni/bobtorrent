@@ -1,3 +1,19 @@
+## [11.6.0] - 2026-04-03
+### Go Port: Compatibility Hardening, Live Feed Integration, and WASM Packaging
+- **Consensus Compatibility**: Hardened the Go lattice server to accept both raw block payloads and `{ "block": ... }` wrapped submissions, added `/pending/:account`, `/proposals`, and root WebSocket compatibility for the existing bobcoin frontend.
+- **Consensus Features**: Expanded the Go lattice engine with governance, NFT, staking, and swap state transitions plus a temporary legacy compatibility shim for frontend blocks that still omit `height` and `staked_balance`.
+- **WebSocket Feed**: Added a real-time lattice WebSocket hub emitting `NEW_BLOCK` events with compatibility-friendly `type`/`event` fields for both frontend and TUI consumers.
+- **Supernode UX**: Upgraded `supernode-go` to subscribe to the lattice feed, publish richer TUI state, and operate against the repaired DHT/tracker/storage integrations.
+- **WASM Packaging**: Added `web/storage-wasm-loader.js`, documented the bridge in `docs/WASM_STORAGE_BRIDGE.md`, and updated `build.bat` to package `storage.wasm` and `wasm_exec.js` automatically.
+- **Build Validation**: Fixed compile issues caused by third-party API drift and verified `go build -buildvcs=false ./...` plus explicit native/WASM artifact builds.
+
+## [11.5.1] - 2026-04-03
+### Go Port: WASM Briding & Consensus Hardening
+- **WASM**: Compiled the high-performance Go storage primitives (ChaCha20-Poly1305 and Reed-Solomon) to WebAssembly (`storage.wasm`), enabling browser-side zero-trust storage sharding.
+- **P2P Consensus**: Implemented HTTP-based block broadcasting between `lattice-go` instances, hardening the consensus layer against single-node failures.
+- **Bridges**: Developed `internal/bridges/filecoin.go` to provide a standardized interface for cross-chain metadata archival, integrated directly into the Supernode's autonomous polling loop.
+- **Build**: Integrated WASM compilation into the main `build.bat` pipeline.
+
 ## [11.5.0] - 2026-04-03
 ### Go Port: Lattice Consensus Engine & Ecosystem Unification
 - **Consensus**: Ported the entire asynchronous block lattice engine from Node.js to Go (`internal/consensus`). Implemented secure chain validation, demurrage calculations, and O(1) block indexing.

@@ -1,63 +1,101 @@
-# Supernode Java & Bobtorrent Roadmap
+# Bobtorrent Go Port Roadmap
 
 ## Overview
-Bobtorrent and Supernode Java constitute the P2P supernode implementation and decentralized distribution layer for the Bobcoin/Filecoin network. 
+Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unified Go-first distributed systems platform. The current roadmap centers on making the Go port production-credible across four domains:
+- consensus
+- storage
+- transport
+- operator experience
 
-## Current Status: v11.2.4 (Tracker) / v0.4.0 (Java Supernode)
+## Current Release Train
+- **Current Version**: `11.6.0`
+- **Primary Runtime Targets**:
+  - `lattice-go` — block lattice consensus node
+  - `supernode-go` — torrent seeding, market polling, TUI operations
+  - `dht-proxy` — privacy-preserving peer discovery utility
+  - `storage.wasm` — browser-side Go storage kernel
 
-### ✅ Completed Features (v0.1.0 to v0.2.0)
-- Core Node.js Tracker implementation with UDP/HTTP/WebSocket.
-- Extracted and validated `manifest.js` logic with deterministic JSON serialization and Ed25519 signatures.
-- Storage layer with streaming, caching, chunking strategies.
-- Multi-transport support (Clearnet, Tor, I2P, IPFS, Hyphanet, Zeronet).
-- Erasure coding (4+2 configuration, moving to 6+2) and AES-GCM encryption.
-- Event-driven architecture with comprehensive health monitoring.
-- Filecoin blockchain integration via BobcoinBridge.
-- Predictive JVM resource allocation.
+## ✅ Completed Through v11.6.0
 
-### ✅ Current Short Term Focus (v11.5.0) — COMPLETED
-- [x] **Go Block Lattice Node**:
-  - Ported the entire asynchronous block lattice consensus from Node.js to Go.
-  - Implemented demurrage (currency decay), chain validation, and O(1) block lookup.
-  - Developed HTTP API for block processing, balance querying, and market monitoring.
-- [x] **Supernode Terminal UI (TUI)**:
-  - Developed a real-time dashboard using `github.com/charmbracelet/bubbletea` and `lipgloss`.
-  - Implemented live lattice bid monitoring and account balance tracking.
-- [x] **Unified Multi-Binary Go Port**:
-  - Structured the Go port into multiple specialized binaries: `dht-proxy`, `supernode-go`, and `lattice-go`.
-  - Updated `build.bat` to compile the entire ecosystem.
-- [x] **Node CLI and Diagnostics Tools**: 
-  - Implementation of a terminal UI/CLI for node configuration, manifest inspection, and real-time swarm diagnostic monitoring.
-- [x] **Distributed Manifest Synchronization**:
-  - Kademlia DHT broadcast mechanisms to sync manifests across global clusters autonomously.
-- [x] **Storage Quotas Enforcement**:
-  - `maxStorageBytes` configurable limit with quota check in ingest pipeline.
-- [x] **Streaming Reed-Solomon Parity Repair**:
-  - On-the-fly re-encoding and persistence of missing shards during retrieval.
-- [x] **WebTransport Integration**:
-  - QUIC-based HTTP/3 transport for the Node.js tracker with graceful fallback.
+### 1. Go Consensus Node
+- Ported the Bobcoin asynchronous block lattice to Go.
+- Implemented chain validation, frontier tracking, rolling state hashing, and in-memory state indexes.
+- Added block categories for:
+  - `open`
+  - `send` / `receive`
+  - `market_bid` / `accept_bid`
+  - `proposal` / `vote`
+  - `mint_nft` / `transfer_nft`
+  - `stake` / `unstake`
+  - `initiate_swap` / `claim_swap` / `refund_swap`
+- Added peer registration and HTTP-based P2P block broadcast between lattice nodes.
 
-### ✅ Medium Term (v0.4.0) — COMPLETED
-- [x] **Enhanced Transport Protocol Implementations**
-  - Tor v3: MultiplexedCircuitPool with round-robin, failover, per-circuit rotation.
-  - IPFS: CARExtractor for CAR v1 archive parsing and block extraction.
-  - Hyphanet: SplitfileRecoveryOptions with retry escalation and priority boosting.
-- [x] **Consensus-Verified Tracker Ledger**
-  - TrackerLedger records peer violations as Solana memo txns; consensus-based bad actor banning.
+### 2. Frontend Compatibility Layer
+- The Go lattice now accepts both raw block payloads and wrapped payloads in the shape `{ "block": ... }`.
+- Added compatibility endpoints expected by the existing bobcoin frontend:
+  - `/pending/:account`
+  - `/proposals`
+  - `/chain/:account` returning both `chain` and `blocks`
+  - WebSocket upgrade on `/` in addition to `/ws`
+- Added a temporary compatibility shim for legacy frontend blocks that omit `height` and `staked_balance`.
 
-### ✅ Advanced Features (v0.5.0) — COMPLETED
-- [x] **Proof-of-Seeding Verifier**
-  - Cryptographic challenge-response with Merkle proofs, seeder reliability scoring, on-chain submission.
-- [x] **Multi-Swarm Peer Coordinator**
-  - O(1) swarm lookup, cross-swarm peer sharing, priority bandwidth allocation for 1000+ concurrent swarms.
+### 3. Real-Time Eventing
+- Added a WebSocket broadcast hub for live lattice block feed updates.
+- Emitted compatibility-friendly websocket events using both `type` and `event` fields.
+- Connected the Go supernode to the lattice feed for real-time TUI updates.
 
-### 🚀 Next (v0.6.0) — COMPLETED
-- [x] **Embedded Game Asset Streaming**
-  - Real-time game asset delivery via P2P with prioritized chunk fetching and LOD support.
-- [x] **Bobzilla Client Protocol**
-  - Native Bobzilla wire protocol for cross-client interoperability, capability negotiation, and CRC-32 integrity.
+### 4. Go Supernode UX
+- Upgraded the Bubble Tea terminal UI with:
+  - live market bid table
+  - live block feed
+  - network statistics
+  - balance/status bar
+- Connected the supernode to:
+  - the tracker
+  - the DHT node
+  - the lattice market poller
+  - the lattice websocket feed
+- Added simulated Filecoin archival during autonomous bid acceptance.
 
-### 🌍 Long Term (v1.0.0 "Universal Mesh")
-- [ ] **1000+ Concurrent Multi-Swarm Peer Handling**
-- [ ] **Full Game Engine Integration**
-- [ ] **Global Decentralized Storage Network Launch**
+### 5. Storage Kernel + WASM
+- Implemented Go-native encrypted storage with ChaCha20-Poly1305.
+- Implemented Reed-Solomon erasure coding and reconstruction.
+- Exported the storage kernel to WebAssembly.
+- Added a reusable browser-side loader at `web/storage-wasm-loader.js`.
+- Added build pipeline packaging for `storage.wasm` and `wasm_exec.js`.
+
+### 6. Build + Toolchain Hardening
+- Fixed third-party API drift in `anacrolix/dht` and `reedsolomon` integrations.
+- Added `-buildvcs=false` to local build flows to avoid repo/submodule VCS stamping failures.
+- Verified:
+  - `go build -buildvcs=false ./...`
+  - native binary builds
+  - `GOOS=js GOARCH=wasm go build -buildvcs=false -o build/storage.wasm cmd/wasm/main.go`
+
+## 🚧 Active Near-Term Focus
+
+### A. Real Frontend Integration
+- Wire `web/storage-wasm-loader.js` into `bobcoin/frontend`.
+- Replace JS-side file preprocessing with Go WASM storage functions.
+- Add a real upload flow that produces shard metadata manifests.
+
+### B. Persistent Consensus State
+- Move lattice state from in-memory maps to durable storage.
+- Add snapshotting / replay support.
+- Support crash recovery and cold restart sync.
+
+### C. Multi-Node Consensus Networking
+- Upgrade the current HTTP fan-out into more robust peer synchronization.
+- Add peer gossip / bootstrap / duplicate suppression improvements.
+- Introduce state sync and catch-up for late-joining nodes.
+
+### D. Real Filecoin Ingestion
+- Replace the simulated Filecoin bridge with Lotus RPC or equivalent.
+- Persist returned deal IDs alongside Bobtorrent manifest metadata.
+
+## 🌍 Longer-Term Direction
+- Full browser-integrated zero-trust storage uploads
+- Production-grade Go tracker / DHT / supernode bundle
+- Durable decentralized storage market
+- Cross-chain storage archival and payout routing
+- Native game engine ingestion for Bobcoin asset streaming
