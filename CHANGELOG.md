@@ -1,3 +1,9 @@
+## [11.11.0] - 2026-04-03
+### Go Port: Vault Archive Surface for Manifest Anchors
+- **Bobcoin Surface Integration**: Updated the `bobcoin` submodule to `v8.11.0`, rebuilding the Vault page into a dedicated Go-lattice archive browser for manifest anchors.
+- **Archive UX**: The Bobcoin Vault now exposes personal and network anchor views plus the embedded storage workbench, making manifest provenance a first-class archive experience instead of a hidden workflow.
+- **Validation**: Re-validated the Bobcoin frontend production build after the Vault archive integration and synchronized the root workspace to the new submodule pointer.
+
 ## [11.10.0] - 2026-04-03
 ### Go Port: On-Chain Manifest Anchoring & Provenance
 - **Consensus Anchors**: Added `publish_manifest` and `data_anchor` support to the Go lattice, including durable in-memory anchor indexing and `/anchors` query endpoints for all anchors or owner-filtered views.

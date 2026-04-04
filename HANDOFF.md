@@ -1,86 +1,53 @@
-# Bobtorrent Omni-Workspace Handoff (v11.10.0)
+# Bobtorrent Omni-Workspace Handoff (v11.11.0)
 
 ## Session Objective
-Advance beyond plain supernode publication and browser restore by anchoring published manifest IDs on the Go lattice itself, binding storage publications to wallet identity and signed metadata, then sync the root repo to the new Bobcoin submodule state.
+Push the new manifest-anchor model out of the storage workbench and into a broader Bobcoin product surface by rebuilding the Vault page into a Go-lattice archive browser, then sync the root repo to the new submodule state.
 
 ## What Was Implemented
 
-### 1. Go Lattice Manifest Anchors
-Root files changed:
-- `internal/consensus/lattice.go`
-- `internal/consensus/server.go`
-- `internal/consensus/lattice_test.go`
-
-Added consensus support for:
-- `publish_manifest`
-- `data_anchor`
-
-New behavior:
-- `publish_manifest` creates a zero-balance-change on-chain anchor for a published manifest
-- `data_anchor` preserves compatibility with the older Bobcoin Vault-style anchored storage flow
-- anchors are indexed in a dedicated in-memory map
-- `publicationProof` signatures are verified against the submitting wallet account when provided
-
-New query surface:
-- `GET /anchors`
-- `GET /anchors/:owner`
-
-This means storage publications now have an attributable on-chain reference layer in the Go lattice.
-
-### 2. Bobcoin Frontend: Signed Lattice Anchoring
+### 1. Bobcoin Vault Archive Surface
 Bobcoin submodule latest pushed commit this session:
-- `1d1a6cd` — `feat(frontend): anchor published manifests on go lattice (v8.10.0)`
+- `ba13a9f` — `feat(vault): surface go-lattice manifest archive in vault ui (v8.11.0)`
 
-Updated frontend behavior:
-- after supernode publication, the workbench can submit a signed `publish_manifest` block to the Go lattice
-- the payload includes explicit publication proof metadata
-- the UI now shows:
-  - anchor submission progress
-  - resulting anchor block hash
-  - recent wallet-owned manifest anchors from the Go lattice
+Changes inside `bobcoin/frontend`:
+- `pages/Vault.jsx`
+  - rebuilt the page around Go-lattice manifest anchors rather than the older broken one-off upload flow
+  - loads wallet balance from the Go lattice
+  - loads personal manifest anchors
+  - loads recent network anchors
+  - embeds the `StorageWasmWorkbench` directly into the archive surface
+- `pages/Vault.css`
+  - updated layout for archive statistics, owned/network anchor cards, and embedded archive workflow
 
-This extends the previous round-trip pipeline into provenance-aware, wallet-attributed storage publication.
+Net result:
+- manifest anchors are now visible in a dedicated archive surface
+- publication/retrieval/provenance are no longer confined to a specialized workbench panel
 
-### 3. Validation
+### 2. Validation
 Executed successfully:
-- `go test ./internal/consensus ./internal/publish -buildvcs=false`
-- `go build -buildvcs=false ./...`
 - `cd bobcoin/frontend && npm run build`
+- result: ✅ production frontend build succeeds after the Vault archive integration
 
-Result:
-- ✅ root Go workspace stable
-- ✅ consensus anchor tests pass
-- ✅ Bobcoin frontend production build passes
+### 3. Root Sync
+The root repo is being updated to:
+- point at Bobcoin `v8.11.0`
+- update the docs/version line to `v11.11.0`
+- reflect that Vault/archive integration is complete and the next remaining broader reuse targets are storage-market + NFT surfaces
 
 ## Strategic State After This Session
-The storage stack now supports:
-1. browser-side preprocess
-2. shard upload
-3. manifest publication
-4. browser-side retrieval and restore
-5. signed on-chain anchoring of manifest metadata
+Storage/anchor lifecycle now spans:
+- browser preprocess
+- shard upload
+- manifest publication
+- browser restore
+- signed lattice anchor
+- dedicated archive browsing surface
 
-The next real frontier is not basic storage mechanics anymore.
-It is:
-- integrating anchors into broader product surfaces
-- richer identity / provenance models
-- durable consensus persistence
+The next most valuable steps are now:
+1. reuse anchors inside storage-market payloads
+2. reuse anchors inside NFT metadata flows
+3. expand provenance/reputation semantics
 
-## Recommended Next Steps
-1. **Reuse manifest anchors across the product**
-   - storage-market payloads
-   - NFT metadata
-   - vault/archive browsing
-2. **Expand provenance**
-   - richer signed metadata
-   - uploader reputation / profile overlays
-3. **Improve degraded recovery**
-   - partial shard recovery UX
-   - stronger diagnostics for missing shard sets
-4. **Persist consensus state durably**
-   - move beyond in-memory state in the main root Go lattice path
-
-## Notes for the Next Agent
-- Do not remove the new `publish_manifest` anchor path; it is now part of the intended Go storage lifecycle.
-- The Bobcoin submodule has already been pushed with the UI half of this feature.
-- The root repo still needs its final commit/push for the updated submodule pointer and docs/version sync in this session.
+## Guidance for the Next Agent
+- Do not revert Vault to the legacy `/upload` + `data_anchor`-only flow; it has been upgraded to the Go-lattice archive model.
+- The next meaningful product integration is **storage-market + NFT reuse**, not more isolated archive UI.
