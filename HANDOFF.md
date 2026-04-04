@@ -1,17 +1,34 @@
-# Bobtorrent Omni-Workspace Handoff (v11.23.0)
+# Bobtorrent Omni-Workspace Handoff (v11.24.0)
 
 ## Session Objective
-Synchronize the root workspace to the latest Bobcoin archive-operations state after portable preset sharing and batch archive actions landed in the Vault workflow.
+Upgrade the archive diagnostics from per-restore incident evidence into cross-session host/source reliability summaries, then sync the root workspace to the new Bobcoin submodule state.
 
-## What Was Synced
-- Bobcoin submodule updated to the latest archive-workflow state (`v8.31.0+` lineage after rebase/merge with upstream replay hardening)
-- Root docs/version bumped to `v11.23.0`
-- Workspace narrative updated to reflect that Vault now supports:
-  - saved presets
-  - preset import/export
-  - bulk archive export/copy actions
+## What Was Implemented
 
-## Strategic State
+### 1. Bobcoin Source Reliability Dashboard
+Bobcoin submodule latest pushed commit this session:
+- `d08b57b` — merged source reliability snapshot on top of upstream replay-order hardening
+
+New Vault analytics:
+- host-level failure totals
+- successful recovery counts
+- per-category failure rollups
+- latest-seen timestamps
+
+These summaries are derived from persisted recovery reports accumulated across restore sessions.
+
+### 2. Validation
+Executed successfully:
+- `cd bobcoin/frontend && npm run build`
+- result: ✅ production frontend build succeeds after source reliability summary integration
+
+### 3. Root Sync
+The root repo is being updated to:
+- point at the latest Bobcoin archive-analytics state
+- update docs/versioning to `v11.24.0`
+- reflect that the next frontier is deeper publisher attestation semantics plus longer-horizon source reliability analytics
+
+## Strategic State After This Session
 The archive stack now supports:
 - publication
 - restoration
@@ -21,15 +38,21 @@ The archive stack now supports:
 - signed publisher metadata
 - degraded recovery diagnostics
 - exportable recovery reports
-- saved/grouped archive workflows
-- portable preset sharing
-- batch export/copy actions
+- source failure attribution
+- host-level reliability summaries
+- saved/grouped portable operator workflows
 
 ## Recommended Next Steps
 1. Deepen publisher identity semantics
-2. Expand source reliability analysis
-3. Add even stronger batch/archive actions beyond export/copy
+   - richer linked proof typing
+   - external attestation integrations
+2. Expand source reliability analysis further
+   - longer-horizon trend visibility
+   - stronger comparative host diagnostics
+3. Add richer batch/archive workspace actions
+   - batch manifest operations
+   - preset template libraries
 
 ## Notes for the Next Agent
-- The next meaningful feature step is likely richer attestation semantics or host/source reliability analysis.
-- `qbittorrent` remains the only visible root-level unresolved external issue.
+- The archive now supports both single-incident recovery evidence and aggregated source reliability summaries.
+- The strongest next move is likely attestation depth or longer-horizon source reliability analytics.

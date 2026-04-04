@@ -4,6 +4,12 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.24.0] - 2026-04-04
+### Go Port: Source Reliability Dashboard Sync
+- **Bobcoin Reliability Analytics**: Updated the `bobcoin` submodule to its latest archive-analytics state, adding a first-pass source reliability dashboard derived from persisted recovery reports.
+- **Operator Visibility**: Vault can now summarize flaky shard sources across sessions using failure totals, success counts, and category rollups instead of only showing one-off restore diagnostics.
+- **Validation**: Re-validated the Bobcoin frontend production build after source reliability dashboard integration and synchronized the root workspace to the new submodule pointer.
+
 ## [11.23.0] - 2026-04-04
 ### Go Port: Portable Archive Workspace Sync
 - **Bobcoin Workspace Actions**: Updated the `bobcoin` submodule to its latest archive-operations state, preserving newer upstream replay/parity work while adding preset export/import and batch archive actions in Vault.
