@@ -1,34 +1,17 @@
-# Bobtorrent Omni-Workspace Handoff (v11.22.0)
+# Bobtorrent Omni-Workspace Handoff (v11.23.0)
 
 ## Session Objective
-Push the Vault beyond saved local state into a more portable operator workspace by adding preset export/import and batch actions over visible archive results, then sync the root workspace to the new Bobcoin submodule state.
+Synchronize the root workspace to the latest Bobcoin archive-operations state after portable preset sharing and batch archive actions landed in the Vault workflow.
 
-## What Was Implemented
+## What Was Synced
+- Bobcoin submodule updated to the latest archive-workflow state (`v8.31.0+` lineage after rebase/merge with upstream replay hardening)
+- Root docs/version bumped to `v11.23.0`
+- Workspace narrative updated to reflect that Vault now supports:
+  - saved presets
+  - preset import/export
+  - bulk archive export/copy actions
 
-### 1. Bobcoin Portable Presets + Batch Archive Actions
-Bobcoin submodule latest pushed commit this session:
-- `7c33d8a` — merged preset export/import and batch archive actions on top of newer upstream durable recovery replay coverage
-
-New Vault operator actions:
-- export saved presets to JSON
-- import presets from JSON
-- export the currently visible archive result set
-- bulk copy visible locators
-
-This turns the archive surface into a more portable and actionable workspace.
-
-### 2. Validation
-Executed successfully:
-- `cd bobcoin/frontend && npm run build`
-- result: ✅ production frontend build succeeds after preset-sharing and batch-action integration
-
-### 3. Root Sync
-The root repo is being updated to:
-- point at the latest Bobcoin archive-workspace state
-- update docs/versioning to `v11.22.0`
-- reflect that the next frontier is deeper publisher attestation semantics plus longer-horizon source reliability analysis
-
-## Strategic State After This Session
+## Strategic State
 The archive stack now supports:
 - publication
 - restoration
@@ -44,15 +27,9 @@ The archive stack now supports:
 
 ## Recommended Next Steps
 1. Deepen publisher identity semantics
-   - richer linked proof typing
-   - external attestation integrations
 2. Expand source reliability analysis
-   - source trend visibility
-   - stronger host-level diagnostics over time
-3. Add stronger batch/archive actions
-   - batch manifest operations
-   - preset template libraries
+3. Add even stronger batch/archive actions beyond export/copy
 
 ## Notes for the Next Agent
-- Vault is now both searchable and portable as an operator workspace.
-- The best next move is likely deeper attestation semantics or source reliability analytics.
+- The next meaningful feature step is likely richer attestation semantics or host/source reliability analysis.
+- `qbittorrent` remains the only visible root-level unresolved external issue.
