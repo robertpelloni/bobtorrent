@@ -4,6 +4,12 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.16.0] - 2026-04-04
+### Go Port: Signed Publisher Provenance Metadata
+- **Publisher Provenance**: Updated the `bobcoin` submodule to `v8.17.0`, enabling manifest anchors to carry signed publisher alias, website, and statement metadata.
+- **Vault Identity Surfacing**: Bobcoin Vault now displays and searches publisher identity metadata in addition to heuristic trust overlays, making archive provenance more attributable and human-readable.
+- **Validation**: Re-validated the Go consensus test suite and Bobcoin frontend production build after publisher-provenance integration and synchronized the root workspace to the new submodule pointer.
+
 ## [11.14.0] - 2026-04-04
 ### Go Port: Archive Trust & Reputation Overlay
 - **Bobcoin Archive Intelligence**: Updated the `bobcoin` submodule to the latest merged archive-intelligence state, adding owner trust scores, trust tiers, sorting modes, and a sovereign publisher leaderboard to the Vault surface.

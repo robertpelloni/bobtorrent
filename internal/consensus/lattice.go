@@ -201,20 +201,23 @@ type NFT struct {
 // lattice. The referenced manifest itself may live on a supernode registry,
 // but this anchor proves which account attached it to the sovereign network.
 type ManifestAnchor struct {
-	ID             string `json:"id"`
-	BlockHash      string `json:"blockHash"`
-	Owner          string `json:"owner"`
-	Type           string `json:"type"`
-	ManifestID     string `json:"manifestId,omitempty"`
-	Locator        string `json:"locator,omitempty"`
-	ManifestURL    string `json:"manifestUrl,omitempty"`
-	Name           string `json:"name,omitempty"`
-	Size           int64  `json:"size,omitempty"`
-	CiphertextHash string `json:"ciphertextHash,omitempty"`
-	ProofHash      string `json:"proofHash,omitempty"`
-	ProofSignature string `json:"proofSignature,omitempty"`
-	Magnet         string `json:"magnet,omitempty"`
-	Timestamp      int64  `json:"timestamp"`
+	ID                string `json:"id"`
+	BlockHash         string `json:"blockHash"`
+	Owner             string `json:"owner"`
+	Type              string `json:"type"`
+	ManifestID        string `json:"manifestId,omitempty"`
+	Locator           string `json:"locator,omitempty"`
+	ManifestURL       string `json:"manifestUrl,omitempty"`
+	Name              string `json:"name,omitempty"`
+	Size              int64  `json:"size,omitempty"`
+	CiphertextHash    string `json:"ciphertextHash,omitempty"`
+	ProofHash         string `json:"proofHash,omitempty"`
+	ProofSignature    string `json:"proofSignature,omitempty"`
+	PublisherAlias    string `json:"publisherAlias,omitempty"`
+	PublisherWebsite  string `json:"publisherWebsite,omitempty"`
+	PublisherStatement string `json:"publisherStatement,omitempty"`
+	Magnet            string `json:"magnet,omitempty"`
+	Timestamp         int64  `json:"timestamp"`
 }
 
 // StakeInfo tracks an account's active staking position.
@@ -974,6 +977,14 @@ func (l *Lattice) processPublishManifest(b *torrent.Block, prevBalance int64) er
 	manifestURL, _ := payload["manifestUrl"].(string)
 	name, _ := payload["name"].(string)
 	ciphertextHash, _ := payload["ciphertextHash"].(string)
+	publisherAlias := ""
+	publisherWebsite := ""
+	publisherStatement := ""
+	if publisher, ok := payload["publisher"].(map[string]interface{}); ok {
+		publisherAlias, _ = publisher["alias"].(string)
+		publisherWebsite, _ = publisher["website"].(string)
+		publisherStatement, _ = publisher["statement"].(string)
+	}
 	size := int64(0)
 	if s, ok := payload["size"].(float64); ok {
 		size = int64(s)
@@ -1003,19 +1014,22 @@ func (l *Lattice) processPublishManifest(b *torrent.Block, prevBalance int64) er
 	}
 
 	l.anchors[b.Hash] = &ManifestAnchor{
-		ID:             manifestID,
-		BlockHash:      b.Hash,
-		Owner:          b.Account,
-		Type:           "publish_manifest",
-		ManifestID:     manifestID,
-		Locator:        locator,
-		ManifestURL:    manifestURL,
-		Name:           name,
-		Size:           size,
-		CiphertextHash: ciphertextHash,
-		ProofHash:      proofHash,
-		ProofSignature: proofSignature,
-		Timestamp:      b.Timestamp,
+		ID:                 manifestID,
+		BlockHash:          b.Hash,
+		Owner:              b.Account,
+		Type:               "publish_manifest",
+		ManifestID:         manifestID,
+		Locator:            locator,
+		ManifestURL:        manifestURL,
+		Name:               name,
+		Size:               size,
+		CiphertextHash:     ciphertextHash,
+		ProofHash:          proofHash,
+		ProofSignature:     proofSignature,
+		PublisherAlias:     publisherAlias,
+		PublisherWebsite:   publisherWebsite,
+		PublisherStatement: publisherStatement,
+		Timestamp:          b.Timestamp,
 	}
 	return nil
 }

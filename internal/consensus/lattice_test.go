@@ -34,6 +34,11 @@ func TestProcessPublishManifestAnchorsWalletAttributedManifest(t *testing.T) {
 		"name":           "demo.bin",
 		"size":           float64(512),
 		"ciphertextHash": "cipher-hash-123",
+		"publisher": map[string]interface{}{
+			"alias":     "CipherArchivist",
+			"website":   "https://bob.example",
+			"statement": "Preserving sovereign knowledge across the lattice.",
+		},
 		"publicationProof": map[string]interface{}{
 			"messageHash": proofHash,
 			"signature":   proofSignature,
@@ -58,5 +63,11 @@ func TestProcessPublishManifestAnchorsWalletAttributedManifest(t *testing.T) {
 	}
 	if stored.ManifestID != "manifest-123" {
 		t.Fatalf("unexpected manifest id: %s", stored.ManifestID)
+	}
+	if stored.PublisherAlias != "CipherArchivist" {
+		t.Fatalf("unexpected publisher alias: %s", stored.PublisherAlias)
+	}
+	if stored.PublisherWebsite != "https://bob.example" {
+		t.Fatalf("unexpected publisher website: %s", stored.PublisherWebsite)
 	}
 }
