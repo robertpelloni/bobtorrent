@@ -1,3 +1,10 @@
+## [11.10.0] - 2026-04-03
+### Go Port: On-Chain Manifest Anchoring & Provenance
+- **Consensus Anchors**: Added `publish_manifest` and `data_anchor` support to the Go lattice, including durable in-memory anchor indexing and `/anchors` query endpoints for all anchors or owner-filtered views.
+- **Publication Provenance**: `publish_manifest` blocks can now carry an explicit signed `publicationProof`, verified against the submitting wallet account in the Go consensus engine.
+- **Bobcoin Integration**: Updated the `bobcoin` submodule to `v8.10.0`, enabling the storage workbench to submit signed manifest-anchor blocks to the Go lattice and display recent wallet-owned anchors.
+- **Validation**: Verified `go test ./internal/consensus ./internal/publish -buildvcs=false`, `go build -buildvcs=false ./...`, and a successful Bobcoin frontend production build after manifest-anchoring integration.
+
 ## [11.9.0] - 2026-04-03
 ### Go Port: Browser Round-Trip Retrieval & Reconstruction
 - **Bobcoin Retrieval UX**: Updated the `bobcoin` submodule to `v8.9.0`, adding manifest loading by locator/ID/URL plus in-browser shard download, hash verification, Reed-Solomon reconstruction, Go WASM decryption, and restored-file download.

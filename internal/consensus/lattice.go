@@ -56,6 +56,11 @@ const (
 	// This small friction prevents wash-trading and funds network maintenance.
 	NFTTransferFee = 1
 
+	// DataAnchorCost is the burn fee for the legacy `data_anchor` flow used by
+	// the Bobcoin Vault page. `publish_manifest` anchors are informational and
+	// currently zero-cost to make the new Go storage round-trip easy to adopt.
+	DataAnchorCost = 10
+
 	// StakingYieldRatePerMS is the per-millisecond yield rate for staked tokens.
 	// Stakers earn approximately 5% APY, paid continuously.
 	StakingYieldRatePerMS = 0.05 / (365.25 * 24 * 60 * 60 * 1000)
@@ -103,6 +108,11 @@ type Lattice struct {
 
 	// nfts stores all minted NFTs indexed by NFT ID (block hash).
 	nfts map[string]*NFT
+
+	// anchors stores on-chain manifest/data anchors. These provide a bridge
+	// between off-chain published storage artifacts and wallet-attributed
+	// lattice records, enabling provenance, discovery, and later retrieval.
+	anchors map[string]*ManifestAnchor
 
 	// stakeInfo tracks per-account staking metadata (amount, start time).
 	stakeInfo map[string]*StakeInfo
@@ -187,6 +197,26 @@ type NFT struct {
 	Timestamp   int64  `json:"timestamp"`   // Unix ms when the NFT was minted
 }
 
+// ManifestAnchor records a wallet-attributed publication reference on the
+// lattice. The referenced manifest itself may live on a supernode registry,
+// but this anchor proves which account attached it to the sovereign network.
+type ManifestAnchor struct {
+	ID             string `json:"id"`
+	BlockHash      string `json:"blockHash"`
+	Owner          string `json:"owner"`
+	Type           string `json:"type"`
+	ManifestID     string `json:"manifestId,omitempty"`
+	Locator        string `json:"locator,omitempty"`
+	ManifestURL    string `json:"manifestUrl,omitempty"`
+	Name           string `json:"name,omitempty"`
+	Size           int64  `json:"size,omitempty"`
+	CiphertextHash string `json:"ciphertextHash,omitempty"`
+	ProofHash      string `json:"proofHash,omitempty"`
+	ProofSignature string `json:"proofSignature,omitempty"`
+	Magnet         string `json:"magnet,omitempty"`
+	Timestamp      int64  `json:"timestamp"`
+}
+
 // StakeInfo tracks an account's active staking position.
 type StakeInfo struct {
 	Amount    int64 `json:"amount"`    // Number of tokens staked
@@ -209,6 +239,7 @@ func NewLattice() *Lattice {
 		marketBids: make(map[string]*MarketBid),
 		swaps:      make(map[string]*Swap),
 		nfts:       make(map[string]*NFT),
+		anchors:    make(map[string]*ManifestAnchor),
 		stakeInfo:  make(map[string]*StakeInfo),
 		stateHash:  strings.Repeat("0", 64),
 		peers:      make(map[string]bool),
@@ -458,6 +489,16 @@ func (l *Lattice) ProcessBlock(b *torrent.Block) error {
 
 	case "refund_swap":
 		if err := l.processRefundSwap(b, prevBalance); err != nil {
+			return err
+		}
+
+	case "publish_manifest":
+		if err := l.processPublishManifest(b, prevBalance); err != nil {
+			return err
+		}
+
+	case "data_anchor":
+		if err := l.processDataAnchor(b, prevBalance); err != nil {
 			return err
 		}
 
@@ -912,6 +953,107 @@ func (l *Lattice) processRefundSwap(b *torrent.Block, prevBalance int64) error {
 	}
 
 	swap.Status = "REFUNDED"
+	return nil
+}
+
+// processPublishManifest anchors a previously published off-chain manifest on
+// the lattice without mutating account balance. This is the primary bridge
+// between the Go supernode publication registry and Bobcoin wallet identity.
+func (l *Lattice) processPublishManifest(b *torrent.Block, prevBalance int64) error {
+	if b.Balance != prevBalance {
+		return fmt.Errorf("publish_manifest must not change balance")
+	}
+
+	payload, ok := b.Payload.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("publish_manifest payload required")
+	}
+
+	manifestID, _ := payload["manifestId"].(string)
+	locator, _ := payload["locator"].(string)
+	manifestURL, _ := payload["manifestUrl"].(string)
+	name, _ := payload["name"].(string)
+	ciphertextHash, _ := payload["ciphertextHash"].(string)
+	size := int64(0)
+	if s, ok := payload["size"].(float64); ok {
+		size = int64(s)
+	}
+
+	if manifestID == "" {
+		return fmt.Errorf("publish_manifest requires manifestId")
+	}
+	if locator == "" {
+		locator = fmt.Sprintf("bobtorrent://manifest/%s", manifestID)
+	}
+
+	proofHash := ""
+	proofSignature := ""
+	if proof, ok := payload["publicationProof"].(map[string]interface{}); ok {
+		proofHash, _ = proof["messageHash"].(string)
+		proofSignature, _ = proof["signature"].(string)
+		proofPub, _ := proof["publicKey"].(string)
+		if proofHash != "" && proofSignature != "" {
+			if proofPub != b.Account {
+				return fmt.Errorf("publication proof public key must match block account")
+			}
+			if !torrent.Verify(proofHash, proofSignature, proofPub) {
+				return fmt.Errorf("invalid publication proof signature")
+			}
+		}
+	}
+
+	l.anchors[b.Hash] = &ManifestAnchor{
+		ID:             manifestID,
+		BlockHash:      b.Hash,
+		Owner:          b.Account,
+		Type:           "publish_manifest",
+		ManifestID:     manifestID,
+		Locator:        locator,
+		ManifestURL:    manifestURL,
+		Name:           name,
+		Size:           size,
+		CiphertextHash: ciphertextHash,
+		ProofHash:      proofHash,
+		ProofSignature: proofSignature,
+		Timestamp:      b.Timestamp,
+	}
+	return nil
+}
+
+// processDataAnchor preserves compatibility with the older Bobcoin Vault flow
+// that burns 10 BOB to anchor a magnet-backed permanent storage reference.
+func (l *Lattice) processDataAnchor(b *torrent.Block, prevBalance int64) error {
+	expectedBalance := prevBalance - int64(DataAnchorCost)
+	if b.Balance != expectedBalance {
+		return fmt.Errorf("data_anchor balance mismatch: expected %d, got %d", expectedBalance, b.Balance)
+	}
+
+	payload, ok := b.Payload.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("data_anchor payload required")
+	}
+
+	name, _ := payload["name"].(string)
+	magnet, _ := payload["magnet"].(string)
+	size := int64(0)
+	if s, ok := payload["size"].(float64); ok {
+		size = int64(s)
+	}
+	if magnet == "" {
+		return fmt.Errorf("data_anchor requires magnet payload")
+	}
+
+	l.anchors[b.Hash] = &ManifestAnchor{
+		ID:        b.Hash,
+		BlockHash: b.Hash,
+		Owner:     b.Account,
+		Type:      "data_anchor",
+		Locator:   magnet,
+		Magnet:    magnet,
+		Name:      name,
+		Size:      size,
+		Timestamp: b.Timestamp,
+	}
 	return nil
 }
 

@@ -1,84 +1,86 @@
-# Bobtorrent Omni-Workspace Handoff (v11.9.0)
+# Bobtorrent Omni-Workspace Handoff (v11.10.0)
 
 ## Session Objective
-Push the storage workflow beyond publication into a true browser round-trip: retrieval, reconstruction, decryption, and restored-file download via the Bobcoin frontend, then sync the root repo to the new submodule state and update the docs/versioning accordingly.
+Advance beyond plain supernode publication and browser restore by anchoring published manifest IDs on the Go lattice itself, binding storage publications to wallet identity and signed metadata, then sync the root repo to the new Bobcoin submodule state.
 
 ## What Was Implemented
 
-### 1. Bobcoin Retrieval / Reconstruction / Decryption Flow
-Submodule: `bobcoin`
-Latest pushed submodule commit this session:
-- `76613be` — `feat(frontend): restore published storage in browser via go wasm (v8.9.0)`
+### 1. Go Lattice Manifest Anchors
+Root files changed:
+- `internal/consensus/lattice.go`
+- `internal/consensus/server.go`
+- `internal/consensus/lattice_test.go`
 
-Added inside `bobcoin/frontend`:
-- `getPublishedManifest()`
-- `getPublishedShard()`
-- manifest reference resolution supporting:
-  - `bobtorrent://manifest/<id>`
-  - direct manifest IDs
-  - full manifest URLs
-- browser-side restore flow in `StorageWasmWorkbench.jsx` that:
-  1. loads a published manifest
-  2. fetches all referenced shards
-  3. verifies every shard hash client-side
-  4. reconstructs ciphertext via Go WASM Reed-Solomon
-  5. decrypts plaintext via Go WASM ChaCha20-Poly1305
-  6. downloads the restored file locally
-  7. reports restored file SHA-256 / size back to the operator
+Added consensus support for:
+- `publish_manifest`
+- `data_anchor`
 
-This is the first full **browser round-trip** milestone for the Go storage kernel:
-- prepare
-- publish
-- retrieve
-- reconstruct
-- decrypt
-- download
+New behavior:
+- `publish_manifest` creates a zero-balance-change on-chain anchor for a published manifest
+- `data_anchor` preserves compatibility with the older Bobcoin Vault-style anchored storage flow
+- anchors are indexed in a dedicated in-memory map
+- `publicationProof` signatures are verified against the submitting wallet account when provided
 
-### 2. Validation
+New query surface:
+- `GET /anchors`
+- `GET /anchors/:owner`
+
+This means storage publications now have an attributable on-chain reference layer in the Go lattice.
+
+### 2. Bobcoin Frontend: Signed Lattice Anchoring
+Bobcoin submodule latest pushed commit this session:
+- `1d1a6cd` — `feat(frontend): anchor published manifests on go lattice (v8.10.0)`
+
+Updated frontend behavior:
+- after supernode publication, the workbench can submit a signed `publish_manifest` block to the Go lattice
+- the payload includes explicit publication proof metadata
+- the UI now shows:
+  - anchor submission progress
+  - resulting anchor block hash
+  - recent wallet-owned manifest anchors from the Go lattice
+
+This extends the previous round-trip pipeline into provenance-aware, wallet-attributed storage publication.
+
+### 3. Validation
 Executed successfully:
+- `go test ./internal/consensus ./internal/publish -buildvcs=false`
+- `go build -buildvcs=false ./...`
 - `cd bobcoin/frontend && npm run build`
-- result: ✅ build succeeds after retrieval-flow integration
 
-Warnings remain about:
-- chunk size
-- browser externalization of some dependency modules
+Result:
+- ✅ root Go workspace stable
+- ✅ consensus anchor tests pass
+- ✅ Bobcoin frontend production build passes
 
-But the build is successful and usable.
+## Strategic State After This Session
+The storage stack now supports:
+1. browser-side preprocess
+2. shard upload
+3. manifest publication
+4. browser-side retrieval and restore
+5. signed on-chain anchoring of manifest metadata
 
-### 3. Root Repo Sync
-The root repo is being updated to point at the new Bobcoin submodule commit and to document that retrieval UX is no longer future work.
-
-Updated root version target:
-- `11.9.0`
-
-## What This Changes Strategically
-Previous state:
-- browser preprocessing worked
-- publication to the Go supernode worked
-- retrieval was still backlog
-
-Current state:
-- the Bobcoin frontend can now round-trip a published asset entirely through the Go storage path
-
-This means the next real strategic milestone is no longer UX plumbing. It is now:
-1. lattice anchoring
-2. identity binding / signing
-3. richer degraded-shard recovery options
+The next real frontier is not basic storage mechanics anymore.
+It is:
+- integrating anchors into broader product surfaces
+- richer identity / provenance models
+- durable consensus persistence
 
 ## Recommended Next Steps
-1. **Anchor manifest IDs on the lattice**
-   - storage-market block payloads
-   - NFT payloads
-   - or dedicated manifest block types
-2. **Bind publications to Bobcoin identities**
-   - signed publication metadata
-   - uploader provenance
-3. **Add degraded recovery UX**
-   - partial shard availability handling
-   - more explicit recovery diagnostics
-4. **Persist consensus state more durably in the root Go path**
+1. **Reuse manifest anchors across the product**
+   - storage-market payloads
+   - NFT metadata
+   - vault/archive browsing
+2. **Expand provenance**
+   - richer signed metadata
+   - uploader reputation / profile overlays
+3. **Improve degraded recovery**
+   - partial shard recovery UX
+   - stronger diagnostics for missing shard sets
+4. **Persist consensus state durably**
+   - move beyond in-memory state in the main root Go lattice path
 
 ## Notes for the Next Agent
-- Do not revert the retrieval flow; it is validated and pushed.
-- The storage stack is now at an important threshold: it finally has a real end-user round-trip.
-- The best next move is to connect that storage lifecycle to on-chain records rather than building more local-only UI.
+- Do not remove the new `publish_manifest` anchor path; it is now part of the intended Go storage lifecycle.
+- The Bobcoin submodule has already been pushed with the UI half of this feature.
+- The root repo still needs its final commit/push for the updated submodule pointer and docs/version sync in this session.

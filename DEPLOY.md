@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.9.0`
+- **Version**: `11.10.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -31,7 +31,7 @@ Default port: `4000`
 Provides:
 - HTTP consensus endpoints
 - websocket live block feed
-- market / NFT / proposal / swap query endpoints
+- market / NFT / proposal / swap / manifest-anchor query endpoints
 
 ## 3. Run the Go Supernode
 ```bash

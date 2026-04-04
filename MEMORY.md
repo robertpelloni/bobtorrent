@@ -4,7 +4,7 @@
 - The Bobtorrent Go port is now a real multi-binary platform rather than a thin prototype.
 - The Go lattice has moved beyond a minimal proof-of-concept and now includes governance, NFT, staking, swap, market, websocket, and peer-broadcast capabilities.
 - The storage layer exists in both native Go and WebAssembly form, which is strategically important because it reduces frontend/backend crypto drift.
-- Bobcoin frontend integration is now partially live: the React app contains a browser-side Go WASM workbench for storage preprocessing, publication, and retrieval, and the Go supernode can serve the required WASM runtime artifacts directly.
+- Bobcoin frontend integration is now partially live: the React app contains a browser-side Go WASM workbench for storage preprocessing, publication, retrieval, and signed manifest anchoring, and the Go supernode can serve the required WASM runtime artifacts directly.
 
 ## Compatibility Findings
 - The existing bobcoin frontend still speaks a partially older lattice dialect.
@@ -30,6 +30,6 @@
 ## Technical Debt / Roadblocks
 - Lattice state is still in-memory only.
 - Filecoin archival is simulated rather than backed by Lotus or real RPC infrastructure.
-- The Bobcoin WASM workbench can now publish to the Go supernode registry and restore published files in-browser, but publication is not yet anchored on the lattice and identity/signing is still missing.
+- The Bobcoin WASM workbench can now publish to the Go supernode registry, restore published files in-browser, and anchor manifests on the Go lattice. The next gap is broader cross-feature reuse of those anchors rather than the basic anchoring mechanism itself.
 - `qbittorrent` remote remains unreachable.
 - Nested `bobcoin/research/*` submodule metadata still needs cleanup.

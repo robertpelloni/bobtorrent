@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 
 	"bobtorrent/pkg/torrent"
@@ -61,6 +62,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc("/governance/proposals", s.handleProposals)
 	mux.HandleFunc("/nfts", s.handleNFTs)
 	mux.HandleFunc("/nfts/", s.handleNFTsByOwner)
+	mux.HandleFunc("/anchors", s.handleAnchors)
+	mux.HandleFunc("/anchors/", s.handleAnchorsByOwner)
 	mux.HandleFunc("/swaps", s.handleSwaps)
 	mux.HandleFunc("/peers", s.handlePeers)
 	mux.HandleFunc("/ws", s.handleWebSocket)
@@ -100,6 +103,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"nfts":        len(s.lattice.nfts),
 		"marketBids":  len(s.lattice.marketBids),
 		"activeSwaps": len(s.lattice.swaps),
+		"anchors":     len(s.lattice.anchors),
 	})
 }
 
@@ -323,6 +327,44 @@ func (s *Server) handleNFTsByOwner(w http.ResponseWriter, r *http.Request) {
 		"owner": owner,
 		"nfts":  nfts,
 	})
+}
+
+func (s *Server) handleAnchors(w http.ResponseWriter, r *http.Request) {
+	s.lattice.mu.RLock()
+	defer s.lattice.mu.RUnlock()
+
+	anchors := make([]*ManifestAnchor, 0, len(s.lattice.anchors))
+	for _, anchor := range s.lattice.anchors {
+		anchors = append(anchors, anchor)
+	}
+	sort.Slice(anchors, func(i, j int) bool {
+		return anchors[i].Timestamp > anchors[j].Timestamp
+	})
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"anchors": anchors})
+}
+
+func (s *Server) handleAnchorsByOwner(w http.ResponseWriter, r *http.Request) {
+	owner := strings.TrimPrefix(r.URL.Path, "/anchors/")
+	if owner == "" {
+		http.Error(w, "owner required", http.StatusBadRequest)
+		return
+	}
+
+	s.lattice.mu.RLock()
+	defer s.lattice.mu.RUnlock()
+
+	var anchors []*ManifestAnchor
+	for _, anchor := range s.lattice.anchors {
+		if anchor.Owner == owner {
+			anchors = append(anchors, anchor)
+		}
+	}
+	sort.Slice(anchors, func(i, j int) bool {
+		return anchors[i].Timestamp > anchors[j].Timestamp
+	})
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"owner": owner, "anchors": anchors})
 }
 
 func (s *Server) handleSwaps(w http.ResponseWriter, r *http.Request) {

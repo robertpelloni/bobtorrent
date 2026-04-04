@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.9.0
+## ✅ Completed Through v11.10.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -12,6 +12,7 @@
 - Bobcoin frontend Go WASM workbench for browser-side encryption + erasure preprocessing
 - Bobcoin frontend upload/publish flow for WASM-prepared shards and manifests
 - Bobcoin frontend retrieval/reconstruction/decryption flow for published manifests
+- Bobcoin frontend signed manifest anchoring on the Go lattice
 - Frontend compatibility endpoints for existing bobcoin pages
 - Go supernode compatibility endpoints for Bobcoin UI (`/stats`, `/add-torrent`, `/remove-torrent`)
 - Go supernode static serving for `storage.wasm` and `wasm_exec.js`
@@ -20,13 +21,12 @@
 - Full repository compile validation with `go build -buildvcs=false ./...`
 
 ## Highest Priority Next Steps
-- [ ] **Anchor published manifests on the lattice**
-  - emit manifest IDs into storage-market / NFT / dedicated manifest blocks
-  - bind publication metadata to Bobcoin identities
-  - preserve locator → lattice reference mapping
-- [ ] **Add publication identity/signing**
-  - tie uploads/manifests to Bobcoin wallet identity
-  - optionally sign manifests before publication
+- [ ] **Integrate manifest anchors into broader app flows**
+  - reuse manifest IDs in storage-market / NFT / vault/archive surfaces
+  - preserve locator → lattice reference mapping across UI surfaces
+- [ ] **Expand publication provenance**
+  - richer signed metadata
+  - optional uploader profile / reputation layer
 - [ ] **Persist lattice state**
   - durable storage for chains, blocks, pending txs, NFTs, proposals, swaps
   - startup replay / restore path
