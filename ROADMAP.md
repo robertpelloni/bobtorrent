@@ -8,14 +8,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - operator experience
 
 ## Current Release Train
-- **Current Version**: `11.12.0`
+- **Current Version**: `11.13.0`
 - **Primary Runtime Targets**:
   - `lattice-go` — block lattice consensus node
   - `supernode-go` — torrent seeding, market polling, TUI operations
   - `dht-proxy` — privacy-preserving peer discovery utility
   - `storage.wasm` — browser-side Go storage kernel
 
-## ✅ Completed Through v11.12.0
+## ✅ Completed Through v11.13.0
 
 ### 1. Go Consensus Node
 - Ported the Bobcoin asynchronous block lattice to Go.
@@ -88,10 +88,10 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 
 ## 🚧 Active Near-Term Focus
 
-### A. Richer Provenance + Discovery
+### A. Richer Provenance + Recovery Ergonomics
 - Expand provenance beyond current proof payloads into richer identity/reputation layers.
-- Improve search/discovery across archive-backed product surfaces.
-- Support richer recovery modes for partial or degraded shard sets.
+- Improve degraded recovery diagnostics and partial-shard recovery flows.
+- Add stronger saved filters/grouping/search ergonomics across archive-backed product surfaces.
 
 ### B. Persistent Consensus State
 - Move lattice state from in-memory maps to durable storage.

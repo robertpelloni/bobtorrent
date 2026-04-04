@@ -1,3 +1,9 @@
+## [11.13.0] - 2026-04-04
+### Go Port: Archive Discovery & Provenance Surfacing
+- **Bobcoin Archive Intelligence**: Updated the `bobcoin` submodule to `v8.14.0`, upgrading Vault into a searchable, filterable, provenance-aware archive surface with signed/unsigned and cloaked metadata cues.
+- **Discovery UX**: Bobcoin Vault now supports search/filtering across anchor name, owner, locator, manifest ID, ciphertext hash, proof hash, and type, plus a searchable network archive stream.
+- **Validation**: Re-validated the Bobcoin frontend production build after discovery/provenance integration and synchronized the root workspace to the new submodule pointer.
+
 ## [11.12.0] - 2026-04-04
 ### Go Port: Cross-Surface Archive Reuse in Bobcoin UI
 - **Bobcoin Surface Expansion**: Updated the `bobcoin` submodule to its latest archive-reuse state, allowing anchored manifests to be selected directly from the Go-lattice archive inside both Storage Market and Gallery flows.
