@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -10,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -40,6 +43,7 @@ var (
 	publishRegistry *publish.Registry
 	economyDB       *economy.Database
 	startedAt       = time.Now()
+	fheOracleRunner = computeFHEOracleCiphertext
 )
 
 // main boots the Go supernode stack:
@@ -85,6 +89,7 @@ func startTrackerServices() {
 	mux.HandleFunc("/transactions", withCORS(handleTransactions))
 	mux.HandleFunc("/mint", withCORS(handleMint))
 	mux.HandleFunc("/burn", withCORS(handleBurn))
+	mux.HandleFunc("/fhe-oracle", withCORS(handleFHEOracle))
 	mux.HandleFunc("/submit-proof", withCORS(handleSubmitProof))
 	mux.HandleFunc("/add-torrent", withCORS(handleAddTorrent))
 	mux.HandleFunc("/remove-torrent", withCORS(handleRemoveTorrent))
@@ -617,6 +622,94 @@ func handleMint(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"tx":      txID,
 		"hash":    hash,
+	})
+}
+
+func computeFHEOracleCiphertext(parent context.Context, cipherText string) (string, error) {
+	helperPath := os.Getenv("BOBTORRENT_FHE_ORACLE_HELPER")
+	if helperPath == "" {
+		helperPath = filepath.Join("cmd", "supernode-go", "fhe_oracle_helper.mjs")
+	}
+	nodeBin := os.Getenv("BOBTORRENT_NODE_BIN")
+	if nodeBin == "" {
+		nodeBin = "node"
+	}
+
+	payload, err := json.Marshal(map[string]interface{}{
+		"cipherText": cipherText,
+		"multiply":   2,
+		"add":        500,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to encode fhe helper payload: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, nodeBin, helperPath)
+	cmd.Stdin = strings.NewReader(string(payload))
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("fhe helper timed out")
+		}
+		return "", fmt.Errorf("fhe helper execution failed: %w (%s)", err, strings.TrimSpace(stderr.String()))
+	}
+
+	var response struct {
+		Success      bool   `json:"success"`
+		ResultCipher string `json:"resultCipher"`
+		Error        string `json:"error"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &response); err != nil {
+		return "", fmt.Errorf("failed to decode fhe helper response: %w", err)
+	}
+	if !response.Success {
+		if response.Error == "" {
+			response.Error = "unknown helper failure"
+		}
+		return "", fmt.Errorf("%s", response.Error)
+	}
+	if response.ResultCipher == "" {
+		return "", fmt.Errorf("fhe helper returned empty ciphertext")
+	}
+	return response.ResultCipher, nil
+}
+
+func handleFHEOracle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		CipherText string `json:"cipherText"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.CipherText) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Encrypted payload missing",
+		})
+		return
+	}
+
+	resultCipher, err := fheOracleRunner(r.Context(), req.CipherText)
+	if err != nil {
+		log.Printf("fhe oracle compatibility error: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error":   "Homomorphic computation failed.",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":      true,
+		"resultCipher": resultCipher,
 	})
 }
 

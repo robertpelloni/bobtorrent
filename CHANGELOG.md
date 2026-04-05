@@ -4,6 +4,21 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.36.0] - 2026-04-05
+### Go Port: Bobcoin Go-First HTTP Routing Sync
+- **Bobcoin Runtime Alignment**: Updated the `bobcoin` submodule to `v8.65.0`, where the frontend now defaults migrated compatibility HTTP calls toward the Go supernode while keeping WebRTC signaling on a dedicated configurable legacy path.
+- **Go Port Activation**: This makes the already-ported Go service endpoints more likely to be used by default instead of remaining available only behind manual environment retargeting.
+- **Mixed Runtime Observability**: Bobcoin System Status now distinguishes the active HTTP compatibility target from the signaling WebSocket path, making the remaining Node-specific surface easier to reason about during migration.
+- **Validation**: Re-validated `go test ./cmd/supernode-go ./internal/... -buildvcs=false`, `go build -buildvcs=false ./...`, and `cd bobcoin/frontend && npm run build` across the integrated workspace state.
+
+## [11.35.0] - 2026-04-05
+### Go Port: FHE Oracle Compatibility Bridge
+- **Go FHE Oracle Endpoint**: Added `POST /fhe-oracle` to `supernode-go`, moving the frontend-facing homomorphic oracle HTTP surface into Go.
+- **Specialized Oracle Helper Isolation**: The Go endpoint now orchestrates the server-side FHE compatibility flow and delegates the specialized SEAL arithmetic to an isolated helper bridge, preserving feature behavior without pretending a native Go BFV stack already exists in the workspace.
+- **Validation Coverage**: Added targeted handler tests for missing ciphertext, successful ciphertext transformation, and oracle-failure behavior in `cmd/supernode-go/main_test.go`.
+- **Frontend Routing Alignment**: Updated Bobcoin so migrated HTTP compatibility calls default toward the Go supernode while keeping WebRTC signaling on its own configurable legacy path.
+- **Validation**: Re-validated `go test ./cmd/supernode-go ./internal/... -buildvcs=false`, `go build -buildvcs=false ./...`, and `cd bobcoin/frontend && npm run build` after the new oracle bridge and frontend routing split.
+
 ## [11.34.0] - 2026-04-05
 ### Go Port: Proof Submission Compatibility Endpoints
 - **Go Proof Submission Path**: Ported the lightweight game-server `POST /submit-proof` compatibility behavior into `supernode-go`, including proof payload validation, deterministic mock verification, reward mint orchestration, and durable transaction recording.
