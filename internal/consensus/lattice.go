@@ -432,6 +432,34 @@ func (l *Lattice) RestorePersistenceBackup(sourcePath, targetPath string) (*Latt
 	return RestoreBackupToPath(sourcePath, targetPath)
 }
 
+// CreateSignedEncryptedBackupBundle packages a verified SQLite backup copy into
+// an encrypted operator bundle. This intentionally layers cryptographic
+// portability on top of the existing safe backup flow rather than mutating the
+// running node's active persistence store.
+func (l *Lattice) CreateSignedEncryptedBackupBundle(targetPath, passphrase, signingPrivateKey string) (*LatticeSecureBackupResult, error) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if l.store == nil {
+		return nil, fmt.Errorf("persistence is not enabled")
+	}
+	return l.store.CreateSignedEncryptedBackupBundle(targetPath, passphrase, signingPrivateKey)
+}
+
+// RestoreSignedEncryptedBackupBundle decrypts an operator backup bundle into a
+// fresh verified lattice database for the next boot or manual recovery. Like
+// the other restore paths, it never hot-swaps the running node's live store.
+func (l *Lattice) RestoreSignedEncryptedBackupBundle(sourcePath, passphrase, targetPath string, requireSignature bool) (*LatticeSecureRestoreResult, error) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if l.store == nil {
+		return nil, fmt.Errorf("persistence is not enabled")
+	}
+	if targetPath == "" {
+		targetPath = defaultRestoreTarget(l.store.Path(), "restored-secure-backup")
+	}
+	return RestoreSignedEncryptedBackupBundleToPath(sourcePath, passphrase, targetPath, requireSignature)
+}
+
 type latticeSnapshot struct {
 	chains     map[string][]*torrent.Block
 	blocks     map[string]*torrent.Block

@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.38.0`
+- **Version**: `11.40.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -41,8 +41,10 @@ Provides:
 - persistence repair endpoint: `POST /persistence/repair`
 - persistence export endpoint: `GET /persistence/export`
 - persistence backup endpoint: `POST /persistence/backup`
+- persistence secure backup bundle endpoint: `POST /persistence/backup-bundle`
 - persistence import endpoint: `POST /persistence/import`
 - persistence restore endpoint: `POST /persistence/restore`
+- persistence secure restore bundle endpoint: `POST /persistence/restore-bundle`
 
 ## 3. Run the Go Supernode
 ```bash
@@ -135,4 +137,4 @@ Frontend runtime targeting notes:
 ## Known Deployment Caveats
 - `go build ./...` may fail in this repo without `-buildvcs=false` due to VCS/submodule state, so keep the flag in local build commands.
 - qBittorrent remote sync is still broken upstream.
-- Lattice persistence is not yet durable across restarts.
+- Secure backup bundle restore still follows the project safety boundary: it creates a fresh verified database for the next boot/manual recovery rather than mutating the running node’s active persistence store.

@@ -91,8 +91,10 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc("/persistence/repair", s.handlePersistenceRepair)
 	mux.HandleFunc("/persistence/export", s.handlePersistenceExport)
 	mux.HandleFunc("/persistence/backup", s.handlePersistenceBackup)
+	mux.HandleFunc("/persistence/backup-bundle", s.handlePersistenceBackupBundle)
 	mux.HandleFunc("/persistence/import", s.handlePersistenceImport)
 	mux.HandleFunc("/persistence/restore", s.handlePersistenceRestore)
+	mux.HandleFunc("/persistence/restore-bundle", s.handlePersistenceRestoreBundle)
 	mux.HandleFunc("/ws", s.handleWebSocket)
 
 	return mux
@@ -247,6 +249,34 @@ func (s *Server) handlePersistenceBackup(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+func (s *Server) handlePersistenceBackupBundle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body struct {
+		Path              string `json:"path"`
+		Passphrase        string `json:"passphrase"`
+		SigningPrivateKey string `json:"signingPrivateKey"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, fmt.Sprintf("invalid backup bundle payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	result, err := s.lattice.CreateSignedEncryptedBackupBundle(body.Path, body.Passphrase, body.SigningPrivateKey)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("persistence backup bundle failed: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"bundle":  result,
+	})
+}
+
 func (s *Server) handlePersistenceImport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)
@@ -292,6 +322,35 @@ func (s *Server) handlePersistenceRestore(w http.ResponseWriter, r *http.Request
 	result, err := s.lattice.RestorePersistenceBackup(body.SourcePath, body.TargetPath)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("persistence restore failed: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"restore": result,
+	})
+}
+
+func (s *Server) handlePersistenceRestoreBundle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body struct {
+		SourcePath       string `json:"sourcePath"`
+		Passphrase       string `json:"passphrase"`
+		TargetPath       string `json:"targetPath"`
+		RequireSignature bool   `json:"requireSignature"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, fmt.Sprintf("invalid restore bundle payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	result, err := s.lattice.RestoreSignedEncryptedBackupBundle(body.SourcePath, body.Passphrase, body.TargetPath, body.RequireSignature)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("persistence restore bundle failed: %v", err), http.StatusBadRequest)
 		return
 	}
 

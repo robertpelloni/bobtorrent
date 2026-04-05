@@ -1,52 +1,88 @@
-# Bobtorrent Omni-Workspace Handoff (v11.39.0)
+# Bobtorrent Omni-Workspace Handoff (v11.40.0)
 
 ## Session Objective
-Continue the operator-facing diagnostics push by making the existing long-horizon source reliability system exportable rather than only viewable in-browser.
+Continue the operator-facing hardening work by adding signed/encrypted backup bundle support on top of the existing safe persistence export/backup/import/restore workflow.
 
 ## What Was Implemented
 
-### 1. Exportable comparative source diagnostics in Bobcoin Vault
+### 1. Secure operator backup bundle format
 Files:
-- `bobcoin/frontend/src/pages/Vault.jsx`
-- `bobcoin/frontend/src/pages/Vault.css`
+- `internal/consensus/store.go`
+- `internal/consensus/lattice.go`
+- `internal/consensus/server.go`
 
-Vault now exports `vault-source-comparative-diagnostics.json` built from the same retained recovery-report evidence already used by the reliability UI.
+Added a new encrypted bundle format:
+- `bobtorrent-secure-backup-bundle-v1`
 
-The export bundle includes:
-- retention summary for locally retained recovery reports
-- overview metrics (successful restores, parity recoveries, recent 7-day successes/failures, distinct observed sources)
-- compact healthiest / at-risk / improving / degrading source summaries
-- reliability-ranked source leaderboard
-- attention-ranked source leaderboard
-- trend buckets (`degrading`, `improving`, `stable`, `new`, `quiet`)
-- per-source compact counters, time windows, and failure category breakdowns
+Design:
+- start from the existing safe SQLite backup copy flow
+- read the verified portable backup artifact
+- derive a symmetric key from an operator passphrase using `scrypt`
+- encrypt the backup bytes with `ChaCha20-Poly1305`
+- optionally sign deterministic bundle metadata via Ed25519
+- persist the result as a JSON bundle file
 
-### 2. UX integration
-The long-horizon source reliability section in Vault now includes a dedicated export action so operators can carry source comparisons out of the browser for offline review, incident handoff, or external analysis.
+This intentionally wraps the safe side-channel backup path rather than touching the live DB.
 
-### 3. Bobcoin submodule sync
-Bobcoin was updated and pushed as:
-- `v8.67.0`
-- commit: `d2c0c00`
+### 2. Safe secure-bundle restore path
+Files:
+- `internal/consensus/store.go`
+- `internal/consensus/lattice.go`
+
+Added restore support that:
+- loads the encrypted bundle from disk
+- verifies optional signature metadata (or requires it when configured)
+- derives the symmetric key from the supplied passphrase
+- decrypts the packaged backup bytes
+- verifies plaintext/ciphertext hashes and expected plaintext size
+- materializes a temporary decrypted backup artifact
+- restores into a fresh verified lattice database through the existing safe restore flow
+
+This preserves the project’s safety boundary: no hot-swapping of the live store.
+
+### 3. Operator endpoints
+File:
+- `internal/consensus/server.go`
+
+Added:
+- `POST /persistence/backup-bundle`
+- `POST /persistence/restore-bundle`
+
+These sit alongside the existing verify/repair/export/backup/import/restore controls.
+
+### 4. Regression coverage
+File:
+- `internal/consensus/lattice_test.go`
+
+Added tests proving:
+- secure bundle creation and restore produce a verified portable lattice database
+- tampered secure bundle signatures are rejected
 
 ## Validation
 Executed successfully:
-- `cd bobcoin/frontend && npm run build`
+- `go test ./internal/consensus ./cmd/supernode-go ./internal/... -buildvcs=false`
+- `go build -buildvcs=false ./...`
 
 ## Strategic State After This Session
-The source reliability system has progressed from:
-- in-browser trend visualization only
+The persistence layer now supports:
+- verify
+- repair
+- export
+- backup
+- import
+- restore
+- signed/encrypted operator backup bundles
+- safe secure-bundle restore
 
-to:
-- in-browser visualization plus portable exportable diagnostics
-
-That is a meaningful step toward more operator-friendly analytics and future signed/shareable diagnostic packaging.
+This is a meaningful operator-hardening milestone because portable persistence artifacts can now be encrypted at rest and optionally authenticated without violating the no-live-hot-swap recovery model.
 
 ## Recommended Next Steps
-1. Add signed/encrypted operator backup bundles
-2. Continue replacing simulation layers (especially Filecoin bridge) with real integrations where reasonable
-3. Consider signed/shareable diagnostics packaging beyond the current plain JSON export
+1. Continue replacing simulation layers (especially Filecoin bridge) with real integrations where reasonable
+2. Consider signed/shareable diagnostics packaging beyond the new comparative JSON export
+3. Expand persistence-aware consensus coverage further
+4. Add operator-tunable snapshot cadence/retention controls
 
 ## Notes for the Next Agent
 - No running processes were terminated in this session.
-- The new export path intentionally reuses the existing retained recovery-report model rather than inventing a separate analytics source of truth.
+- The secure backup bundle layer intentionally wraps the existing portable SQLite backup flow instead of replacing it.
+- Secure bundle restore still creates a fresh verified database for next boot/manual recovery rather than mutating the running node’s active persistence store.

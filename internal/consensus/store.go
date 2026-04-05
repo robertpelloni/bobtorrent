@@ -1,7 +1,9 @@
 package consensus
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +14,9 @@ import (
 
 	"bobtorrent/pkg/torrent"
 
+	"github.com/mr-tron/base58/base58"
+	"golang.org/x/crypto/chacha20poly1305"
+	"golang.org/x/crypto/scrypt"
 	_ "modernc.org/sqlite"
 )
 
@@ -31,6 +36,20 @@ const (
 	// around so operators retain rollback/inspection room without unbounded
 	// growth. The confirmed block log remains the durable source of truth.
 	defaultLatticeSnapshotRetention = 3
+
+	// secureBackupBundleFormatVersion identifies the operator-facing encrypted
+	// backup package format introduced on top of the existing portable SQLite
+	// backup flow. This is intentionally a side-channel artifact wrapper rather
+	// than a replacement for the plain backup/restore primitives.
+	secureBackupBundleFormatVersion = "bobtorrent-secure-backup-bundle-v1"
+
+	// Scrypt parameters are deliberately moderate: expensive enough to make
+	// casual offline guessing more annoying, but still practical for operators on
+	// modest hardware and CI test environments.
+	secureBackupScryptN       = 1 << 15
+	secureBackupScryptR       = 8
+	secureBackupScryptP       = 1
+	secureBackupDerivedKeyLen = chacha20poly1305.KeySize
 )
 
 // LatticeStore provides durable persistence for confirmed lattice blocks.
@@ -115,6 +134,78 @@ type LatticeRestoreResult struct {
 	SnapshotCount  int64                   `json:"snapshotCount"`
 	LatestSequence int64                   `json:"latestSequence"`
 	Integrity      *LatticeIntegrityReport `json:"integrity,omitempty"`
+}
+
+// SecureBundleKDF captures how the operator backup bundle derived its symmetric
+// encryption key from the supplied passphrase. The values are persisted so the
+// restore side can deterministically re-derive the same key.
+type SecureBundleKDF struct {
+	Name   string `json:"name"`
+	Salt   string `json:"salt"`
+	N      int    `json:"n"`
+	R      int    `json:"r"`
+	P      int    `json:"p"`
+	KeyLen int    `json:"keyLen"`
+}
+
+// SecureBundleSignature records optional Ed25519 metadata for operator bundle
+// authenticity. The signature is over a deterministic hash of the bundle's
+// critical metadata and ciphertext hashes so tampering can be detected before
+// restore.
+type SecureBundleSignature struct {
+	PublicKey   string `json:"publicKey"`
+	MessageHash string `json:"messageHash"`
+	Signature   string `json:"signature"`
+}
+
+// SecureLatticeBackupBundle is a portable encrypted wrapper around a verified
+// SQLite backup copy. It deliberately packages a side-channel backup artifact so
+// the live node still follows the conservative no-hot-swap durability model.
+type SecureLatticeBackupBundle struct {
+	Format         string                 `json:"format"`
+	CreatedAt      int64                  `json:"createdAt"`
+	SourcePath     string                 `json:"sourcePath"`
+	ArtifactType   string                 `json:"artifactType"`
+	Cipher         string                 `json:"cipher"`
+	KDF            SecureBundleKDF        `json:"kdf"`
+	Nonce          string                 `json:"nonce"`
+	Ciphertext     string                 `json:"ciphertext"`
+	PlaintextHash  string                 `json:"plaintextHash"`
+	CiphertextHash string                 `json:"ciphertextHash"`
+	PlaintextSize  int64                  `json:"plaintextSize"`
+	Backup         *LatticeBackupResult   `json:"backup,omitempty"`
+	Signature      *SecureBundleSignature `json:"signature,omitempty"`
+}
+
+// LatticeSecureBackupResult describes the newly created encrypted bundle plus
+// whether it was signed. The actual bundle payload is persisted to disk rather
+// than returned inline over every API path, but callers still receive the core
+// metadata for logging and operator UX.
+type LatticeSecureBackupResult struct {
+	BundlePath     string                 `json:"bundlePath"`
+	CreatedAt      int64                  `json:"createdAt"`
+	SourcePath     string                 `json:"sourcePath"`
+	ArtifactType   string                 `json:"artifactType"`
+	PlaintextSize  int64                  `json:"plaintextSize"`
+	PlaintextHash  string                 `json:"plaintextHash"`
+	CiphertextHash string                 `json:"ciphertextHash"`
+	Signed         bool                   `json:"signed"`
+	Signature      *SecureBundleSignature `json:"signature,omitempty"`
+	Backup         *LatticeBackupResult   `json:"backup,omitempty"`
+}
+
+// LatticeSecureRestoreResult describes the safe restore path from an encrypted
+// operator bundle into a fresh verified lattice database.
+type LatticeSecureRestoreResult struct {
+	BundlePath         string                `json:"bundlePath"`
+	TargetPath         string                `json:"targetPath"`
+	CreatedAt          int64                 `json:"createdAt"`
+	ArtifactType       string                `json:"artifactType"`
+	PlaintextHash      string                `json:"plaintextHash"`
+	CiphertextHash     string                `json:"ciphertextHash"`
+	SignatureVerified  bool                  `json:"signatureVerified"`
+	SignaturePublicKey string                `json:"signaturePublicKey,omitempty"`
+	Restore            *LatticeRestoreResult `json:"restore"`
 }
 
 func NewLatticeStore(path string) (*LatticeStore, error) {
@@ -569,6 +660,278 @@ func (s *LatticeStore) CreateBackup(targetPath string) (*LatticeBackupResult, er
 		BlockCount:    blockCount,
 		SnapshotCount: snapshotCount,
 	}, nil
+}
+
+func randomBase64(size int) (string, error) {
+	buf := make([]byte, size)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(buf), nil
+}
+
+func deriveSecureBundleKey(passphrase string, kdf SecureBundleKDF) ([]byte, error) {
+	if strings.TrimSpace(passphrase) == "" {
+		return nil, fmt.Errorf("bundle passphrase required")
+	}
+	salt, err := base64.StdEncoding.DecodeString(kdf.Salt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode bundle salt: %w", err)
+	}
+	return scrypt.Key([]byte(passphrase), salt, kdf.N, kdf.R, kdf.P, kdf.KeyLen)
+}
+
+func secureBundleSigningMessage(bundle *SecureLatticeBackupBundle) string {
+	if bundle == nil {
+		return ""
+	}
+	message := strings.Join([]string{
+		bundle.Format,
+		bundle.ArtifactType,
+		fmt.Sprintf("%d", bundle.CreatedAt),
+		bundle.SourcePath,
+		bundle.Cipher,
+		bundle.PlaintextHash,
+		bundle.CiphertextHash,
+		fmt.Sprintf("%d", bundle.PlaintextSize),
+		bundle.KDF.Name,
+		bundle.KDF.Salt,
+		fmt.Sprintf("%d", bundle.KDF.N),
+		fmt.Sprintf("%d", bundle.KDF.R),
+		fmt.Sprintf("%d", bundle.KDF.P),
+		fmt.Sprintf("%d", bundle.KDF.KeyLen),
+		bundle.Nonce,
+	}, "|")
+	return torrent.HashSHA256(message)
+}
+
+func signerPublicKeyFromPrivateKey(privateKeyBase58 string) (string, error) {
+	keypairBytes, err := base58Decode(privateKeyBase58)
+	if err != nil {
+		return "", err
+	}
+	if len(keypairBytes) != 64 {
+		return "", fmt.Errorf("invalid operator signing private key size: %d", len(keypairBytes))
+	}
+	return base58Encode(keypairBytes[32:]), nil
+}
+
+func base58Decode(value string) ([]byte, error) {
+	return base58.Decode(value)
+}
+
+func base58Encode(value []byte) string {
+	return base58.Encode(value)
+}
+
+func buildSecureBackupBundle(sourcePath string, backup *LatticeBackupResult, backupBytes []byte, passphrase, signingPrivateKey string) (*SecureLatticeBackupBundle, error) {
+	salt, err := randomBase64(16)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate bundle salt: %w", err)
+	}
+	nonceValue, err := randomBase64(chacha20poly1305.NonceSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate bundle nonce: %w", err)
+	}
+	kdf := SecureBundleKDF{
+		Name:   "scrypt",
+		Salt:   salt,
+		N:      secureBackupScryptN,
+		R:      secureBackupScryptR,
+		P:      secureBackupScryptP,
+		KeyLen: secureBackupDerivedKeyLen,
+	}
+	key, err := deriveSecureBundleKey(passphrase, kdf)
+	if err != nil {
+		return nil, err
+	}
+	aead, err := chacha20poly1305.New(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize bundle cipher: %w", err)
+	}
+	nonce, err := base64.StdEncoding.DecodeString(nonceValue)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode generated nonce: %w", err)
+	}
+	ciphertext := aead.Seal(nil, nonce, backupBytes, nil)
+	bundle := &SecureLatticeBackupBundle{
+		Format:         secureBackupBundleFormatVersion,
+		CreatedAt:      time.Now().UnixMilli(),
+		SourcePath:     sourcePath,
+		ArtifactType:   "sqlite-backup",
+		Cipher:         "chacha20poly1305",
+		KDF:            kdf,
+		Nonce:          nonceValue,
+		Ciphertext:     base64.StdEncoding.EncodeToString(ciphertext),
+		PlaintextHash:  torrent.HashSHA256(string(backupBytes)),
+		CiphertextHash: torrent.HashSHA256(string(ciphertext)),
+		PlaintextSize:  int64(len(backupBytes)),
+		Backup:         backup,
+	}
+	if strings.TrimSpace(signingPrivateKey) != "" {
+		messageHash := secureBundleSigningMessage(bundle)
+		signature, err := torrent.Sign(messageHash, signingPrivateKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign secure backup bundle: %w", err)
+		}
+		publicKey, err := signerPublicKeyFromPrivateKey(signingPrivateKey)
+		if err != nil {
+			return nil, err
+		}
+		bundle.Signature = &SecureBundleSignature{
+			PublicKey:   publicKey,
+			MessageHash: messageHash,
+			Signature:   signature,
+		}
+	}
+	return bundle, nil
+}
+
+func writeSecureBackupBundle(path string, bundle *SecureLatticeBackupBundle) error {
+	if path == "" {
+		return fmt.Errorf("secure bundle target path required")
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("failed to create secure bundle directory: %w", err)
+	}
+	if _, err := os.Stat(path); err == nil {
+		return fmt.Errorf("secure bundle target already exists: %s", path)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to inspect secure bundle target %s: %w", path, err)
+	}
+	encoded, err := json.MarshalIndent(bundle, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to encode secure backup bundle: %w", err)
+	}
+	if err := os.WriteFile(path, encoded, 0600); err != nil {
+		return fmt.Errorf("failed to write secure backup bundle %s: %w", path, err)
+	}
+	return nil
+}
+
+func (s *LatticeStore) CreateSignedEncryptedBackupBundle(targetPath, passphrase, signingPrivateKey string) (*LatticeSecureBackupResult, error) {
+	tempBackupPath := filepath.Join(os.TempDir(), fmt.Sprintf("bobtorrent-secure-backup-%d.db", time.Now().UnixNano()))
+	backup, err := s.CreateBackup(tempBackupPath)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = os.Remove(tempBackupPath)
+	}()
+	backupBytes, err := os.ReadFile(tempBackupPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read temporary lattice backup: %w", err)
+	}
+	bundle, err := buildSecureBackupBundle(s.path, backup, backupBytes, passphrase, signingPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	if targetPath == "" {
+		bundleDir := filepath.Join(filepath.Dir(s.path), "backups")
+		targetPath = filepath.Join(bundleDir, fmt.Sprintf("lattice-%s.secure-backup.json", time.Now().UTC().Format("20060102-150405")))
+	}
+	if err := writeSecureBackupBundle(targetPath, bundle); err != nil {
+		return nil, err
+	}
+	return &LatticeSecureBackupResult{
+		BundlePath:     targetPath,
+		CreatedAt:      bundle.CreatedAt,
+		SourcePath:     s.path,
+		ArtifactType:   bundle.ArtifactType,
+		PlaintextSize:  bundle.PlaintextSize,
+		PlaintextHash:  bundle.PlaintextHash,
+		CiphertextHash: bundle.CiphertextHash,
+		Signed:         bundle.Signature != nil,
+		Signature:      bundle.Signature,
+		Backup:         backup,
+	}, nil
+}
+
+func RestoreSignedEncryptedBackupBundleToPath(bundlePath, passphrase, targetPath string, requireSignature bool) (*LatticeSecureRestoreResult, error) {
+	if strings.TrimSpace(bundlePath) == "" {
+		return nil, fmt.Errorf("secure bundle source path required")
+	}
+	raw, err := os.ReadFile(bundlePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read secure backup bundle %s: %w", bundlePath, err)
+	}
+	var bundle SecureLatticeBackupBundle
+	if err := json.Unmarshal(raw, &bundle); err != nil {
+		return nil, fmt.Errorf("failed to decode secure backup bundle: %w", err)
+	}
+	if bundle.Format != secureBackupBundleFormatVersion {
+		return nil, fmt.Errorf("unsupported secure bundle format: %s", bundle.Format)
+	}
+	if bundle.ArtifactType != "sqlite-backup" {
+		return nil, fmt.Errorf("unsupported secure bundle artifact type: %s", bundle.ArtifactType)
+	}
+	signatureVerified := false
+	if bundle.Signature != nil {
+		expected := secureBundleSigningMessage(&bundle)
+		if bundle.Signature.MessageHash != expected {
+			return nil, fmt.Errorf("secure bundle signature metadata mismatch")
+		}
+		if !torrent.Verify(bundle.Signature.MessageHash, bundle.Signature.Signature, bundle.Signature.PublicKey) {
+			return nil, fmt.Errorf("secure bundle signature verification failed")
+		}
+		signatureVerified = true
+	} else if requireSignature {
+		return nil, fmt.Errorf("secure bundle signature required but missing")
+	}
+	key, err := deriveSecureBundleKey(passphrase, bundle.KDF)
+	if err != nil {
+		return nil, err
+	}
+	aead, err := chacha20poly1305.New(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize secure bundle cipher: %w", err)
+	}
+	nonce, err := base64.StdEncoding.DecodeString(bundle.Nonce)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode secure bundle nonce: %w", err)
+	}
+	ciphertext, err := base64.StdEncoding.DecodeString(bundle.Ciphertext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode secure bundle ciphertext: %w", err)
+	}
+	if torrent.HashSHA256(string(ciphertext)) != bundle.CiphertextHash {
+		return nil, fmt.Errorf("secure bundle ciphertext hash mismatch")
+	}
+	plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt secure backup bundle: %w", err)
+	}
+	if int64(len(plaintext)) != bundle.PlaintextSize {
+		return nil, fmt.Errorf("secure bundle plaintext size mismatch: expected %d, got %d", bundle.PlaintextSize, len(plaintext))
+	}
+	if torrent.HashSHA256(string(plaintext)) != bundle.PlaintextHash {
+		return nil, fmt.Errorf("secure bundle plaintext hash mismatch")
+	}
+	tempSourcePath := filepath.Join(os.TempDir(), fmt.Sprintf("bobtorrent-decrypted-backup-%d.db", time.Now().UnixNano()))
+	if err := os.WriteFile(tempSourcePath, plaintext, 0600); err != nil {
+		return nil, fmt.Errorf("failed to materialize decrypted backup: %w", err)
+	}
+	defer func() {
+		_ = os.Remove(tempSourcePath)
+	}()
+	restore, err := RestoreBackupToPath(tempSourcePath, targetPath)
+	if err != nil {
+		return nil, err
+	}
+	result := &LatticeSecureRestoreResult{
+		BundlePath:        bundlePath,
+		TargetPath:        restore.TargetPath,
+		CreatedAt:         time.Now().UnixMilli(),
+		ArtifactType:      bundle.ArtifactType,
+		PlaintextHash:     bundle.PlaintextHash,
+		CiphertextHash:    bundle.CiphertextHash,
+		SignatureVerified: signatureVerified,
+		Restore:           restore,
+	}
+	if bundle.Signature != nil {
+		result.SignaturePublicKey = bundle.Signature.PublicKey
+	}
+	return result, nil
 }
 
 func defaultRestoreTarget(basePath, prefix string) string {

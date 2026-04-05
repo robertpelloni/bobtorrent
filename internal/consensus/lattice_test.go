@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -562,5 +563,167 @@ func TestRestoreBackupToPathCreatesVerifiedPortableDatabase(t *testing.T) {
 	}()
 	if reloaded.GetFrontier(wallet.PublicKey) == nil {
 		t.Fatal("expected restored lattice frontier to exist")
+	}
+}
+
+func TestCreateSignedEncryptedBackupBundleRestoresVerifiedPortableDatabase(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+	defer func() {
+		if err := lattice.Close(); err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	}()
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+	operator, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("Generate operator keypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	bundlePath := filepath.Join(t.TempDir(), "bundles", "portable.secure-backup.json")
+	bundle, err := lattice.CreateSignedEncryptedBackupBundle(bundlePath, "correct horse battery staple", operator.PrivateKey)
+	if err != nil {
+		t.Fatalf("CreateSignedEncryptedBackupBundle failed: %v", err)
+	}
+	if !bundle.Signed || bundle.Signature == nil {
+		t.Fatalf("expected signed secure backup bundle, got %#v", bundle)
+	}
+	if bundle.Signature.PublicKey != operator.PublicKey {
+		t.Fatalf("unexpected operator signing public key: %s", bundle.Signature.PublicKey)
+	}
+	if _, err := os.Stat(bundlePath); err != nil {
+		t.Fatalf("expected secure bundle file to exist: %v", err)
+	}
+
+	restorePath := filepath.Join(t.TempDir(), "restored", "secure-restore.db")
+	restored, err := lattice.RestoreSignedEncryptedBackupBundle(bundle.BundlePath, "correct horse battery staple", restorePath, true)
+	if err != nil {
+		t.Fatalf("RestoreSignedEncryptedBackupBundle failed: %v", err)
+	}
+	if !restored.SignatureVerified {
+		t.Fatalf("expected restore to verify signature, got %#v", restored)
+	}
+	if restored.Restore.TargetPath != restorePath {
+		t.Fatalf("unexpected secure restore target path: %s", restored.Restore.TargetPath)
+	}
+
+	reloaded, err := NewPersistentLattice(restorePath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice from secure restore failed: %v", err)
+	}
+	defer func() {
+		if err := reloaded.Close(); err != nil {
+			t.Fatalf("Close secure restored lattice failed: %v", err)
+		}
+	}()
+	if reloaded.GetFrontier(wallet.PublicKey) == nil {
+		t.Fatal("expected secure restored lattice frontier to exist")
+	}
+}
+
+func TestRestoreSignedEncryptedBackupBundleRejectsTamperedSignature(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+	defer func() {
+		if err := lattice.Close(); err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	}()
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+	operator, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("Generate operator keypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	bundlePath := filepath.Join(t.TempDir(), "bundles", "tampered.secure-backup.json")
+	bundle, err := lattice.CreateSignedEncryptedBackupBundle(bundlePath, "bundle-passphrase", operator.PrivateKey)
+	if err != nil {
+		t.Fatalf("CreateSignedEncryptedBackupBundle failed: %v", err)
+	}
+
+	raw, err := os.ReadFile(bundle.BundlePath)
+	if err != nil {
+		t.Fatalf("Read secure bundle failed: %v", err)
+	}
+	var parsed SecureLatticeBackupBundle
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		t.Fatalf("Decode secure bundle failed: %v", err)
+	}
+	parsed.Signature.Signature = strings.Repeat("x", len(parsed.Signature.Signature))
+	mutated, err := json.MarshalIndent(parsed, "", "  ")
+	if err != nil {
+		t.Fatalf("Re-encode tampered bundle failed: %v", err)
+	}
+	if err := os.WriteFile(bundle.BundlePath, mutated, 0600); err != nil {
+		t.Fatalf("Write tampered bundle failed: %v", err)
+	}
+
+	if _, err := lattice.RestoreSignedEncryptedBackupBundle(bundle.BundlePath, "bundle-passphrase", filepath.Join(t.TempDir(), "restored", "should-fail.db"), true); err == nil || !strings.Contains(err.Error(), "signature") {
+		t.Fatalf("expected signature verification failure, got %v", err)
+	}
+}
+
+func TestRestoreSignedEncryptedBackupBundleRejectsWrongPassphrase(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+	defer func() {
+		if err := lattice.Close(); err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	}()
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	bundlePath := filepath.Join(t.TempDir(), "bundles", "wrong-passphrase.secure-backup.json")
+	if _, err := lattice.CreateSignedEncryptedBackupBundle(bundlePath, "correct-passphrase", ""); err != nil {
+		t.Fatalf("CreateSignedEncryptedBackupBundle failed: %v", err)
+	}
+
+	if _, err := lattice.RestoreSignedEncryptedBackupBundle(bundlePath, "incorrect-passphrase", filepath.Join(t.TempDir(), "restored", "wrong-passphrase.db"), false); err == nil || !strings.Contains(err.Error(), "decrypt") {
+		t.Fatalf("expected decryption failure for wrong passphrase, got %v", err)
 	}
 }

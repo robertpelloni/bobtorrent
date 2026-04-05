@@ -4,6 +4,15 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.40.0] - 2026-04-05
+### Go Port: Signed/Encrypted Operator Backup Bundles
+- **Secure Persistence Bundles**: Added encrypted/signed operator backup bundle support on top of the existing safe SQLite backup flow, packaging portable persistence artifacts into `bobtorrent-secure-backup-bundle-v1` JSON envelopes.
+- **Cryptographic Packaging**: Secure bundles now derive a symmetric key from an operator passphrase via `scrypt`, encrypt the portable backup using `ChaCha20-Poly1305`, and can optionally carry an Ed25519 signature over deterministic bundle metadata.
+- **Safe Restore Workflow**: Added bundle restore support that verifies signature metadata, decrypts into a temporary side-channel backup artifact, and restores into a fresh verified lattice database rather than touching the running node’s live store.
+- **Operator Endpoints**: Added `POST /persistence/backup-bundle` and `POST /persistence/restore-bundle`.
+- **Regression Coverage**: Added consensus tests proving secure bundle creation/restore works and that tampered bundle signatures are rejected.
+- **Validation**: Re-validated `go test ./internal/consensus ./cmd/supernode-go ./internal/... -buildvcs=false` and `go build -buildvcs=false ./...` after the secure bundle integration.
+
 ## [11.39.0] - 2026-04-05
 ### Go Port: Comparative Source Diagnostics Sync
 - **Bobcoin Diagnostics Export**: Updated the `bobcoin` submodule to `v8.67.0`, where Vault can now export comparative source diagnostics derived from retained recovery reports as portable JSON.
