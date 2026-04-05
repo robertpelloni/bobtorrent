@@ -313,6 +313,8 @@ func startTrackerServices() {
 	mux.HandleFunc("/spora/", withCORS(handleSpora))
 	mux.HandleFunc("/status", withCORS(handleServiceStatus))
 	mux.HandleFunc("/stats", withCORS(handleStats))
+	mux.HandleFunc("/filecoin/status", withCORS(handleFilecoinStatus))
+	mux.HandleFunc("/filecoin/deals", withCORS(handleFilecoinDeals))
 	mux.HandleFunc("/bankroll", withCORS(handleBankroll))
 	mux.HandleFunc("/transactions", withCORS(handleTransactions))
 	mux.HandleFunc("/mint", withCORS(handleMint))
@@ -783,11 +785,22 @@ func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleServiceStatus(w http.ResponseWriter, r *http.Request) {
+	filecoinStatus := map[string]interface{}{
+		"enabled": false,
+		"mode":    "disabled",
+	}
+	if fcBridge != nil {
+		filecoinStatus = map[string]interface{}{
+			"enabled": true,
+			"bridge":  fcBridge.Status(),
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":    "online",
 		"service":   "Go Supernode orchestrator",
-		"version":   "11.37.0",
+		"version":   "11.40.0",
 		"signaling": signalingMatchmaker.snapshot(),
+		"filecoin":  filecoinStatus,
 	})
 }
 
@@ -800,6 +813,12 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 	peerCount := 0
 	if dhtNode != nil {
 		peerCount = dhtNode.Stats().GoodNodes
+	}
+	filecoinStatus := map[string]interface{}{}
+	if fcBridge != nil {
+		filecoinStatus = map[string]interface{}{
+			"bridge": fcBridge.Status(),
+		}
 	}
 
 	torrents := torrentClient.Torrents()
@@ -838,6 +857,7 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		"status":    "online",
 		"uptime":    int64(uptimeSeconds),
 		"signaling": signalingMatchmaker.snapshot(),
+		"filecoin":  filecoinStatus,
 		"network": map[string]interface{}{
 			"peers":         peerCount,
 			"downloadSpeed": int64(float64(totalDownloadBytes) / uptimeSeconds),
@@ -847,6 +867,29 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 			"totalSize": totalSize,
 			"torrents":  storageEntries,
 		},
+	})
+}
+
+func handleFilecoinStatus(w http.ResponseWriter, r *http.Request) {
+	if fcBridge == nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"enabled": false,
+			"mode":    "disabled",
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, fcBridge.Status())
+}
+
+func handleFilecoinDeals(w http.ResponseWriter, r *http.Request) {
+	if fcBridge == nil {
+		writeJSON(w, http.StatusOK, []bridges.FilecoinDealRecord{})
+		return
+	}
+	deals := fcBridge.ListDeals()
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"deals": deals,
+		"count": len(deals),
 	})
 }
 

@@ -4,6 +4,14 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.41.0] - 2026-04-05
+### Go Port: Lotus Filecoin Bridge Integration
+- **Real Filecoin RPC Path**: Replaced the fully simulated `internal/bridges/filecoin.go` behavior with a Lotus JSON-RPC integration path for deal publication and storage verification when operators configure Filecoin RPC credentials.
+- **Safe Fallback Preservation**: When Lotus is not configured, the bridge now records a clearly labeled simulated archival intent instead of pretending a real network submission occurred silently.
+- **Durable Deal Records**: The Filecoin bridge now persists deal records to disk, tracks verification state, and exposes bridge/deal visibility through `GET /filecoin/status` and `GET /filecoin/deals` on `supernode-go`.
+- **Validation Coverage**: Added bridge tests covering Lotus publication/verification via mocked JSON-RPC plus fallback persistence behavior.
+- **Validation**: Re-validated `go test ./internal/bridges ./cmd/supernode-go ./internal/... -buildvcs=false` and `go build -buildvcs=false ./...` after the Lotus bridge integration.
+
 ## [11.40.0] - 2026-04-05
 ### Go Port: Signed/Encrypted Operator Backup Bundles
 - **Secure Persistence Bundles**: Added encrypted/signed operator backup bundle support on top of the existing safe SQLite backup flow, packaging portable persistence artifacts into `bobtorrent-secure-backup-bundle-v1` JSON envelopes.

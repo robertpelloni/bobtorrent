@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.40.0`
+- **Version**: `11.41.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -62,9 +62,18 @@ Optional FHE helper configuration:
 - `BOBTORRENT_NODE_BIN=node` to override the Node binary used for the specialized SEAL helper
 - `BOBTORRENT_FHE_ORACLE_HELPER=cmd/supernode-go/fhe_oracle_helper.mjs` to override the helper script path
 
+Optional Filecoin/Lotus bridge configuration:
+- `BOBTORRENT_FILECOIN_RPC_URL=http://127.0.0.1:1234/rpc/v0`
+- `BOBTORRENT_FILECOIN_AUTH_TOKEN=...`
+- `BOBTORRENT_FILECOIN_WALLET=f1...`
+- `BOBTORRENT_FILECOIN_MINER=f0...`
+- `BOBTORRENT_FILECOIN_RECORDS=data/filecoin/deals.json`
+
 Additional frontend-facing endpoints now provided by `supernode-go`:
-- `GET /status` (now includes signaling telemetry)
-- `GET /stats` (now includes signaling telemetry)
+- `GET /status` (now includes signaling + Filecoin bridge telemetry)
+- `GET /stats` (now includes signaling + Filecoin bridge telemetry)
+- `GET /filecoin/status`
+- `GET /filecoin/deals`
 - `GET /bankroll`
 - `GET /transactions`
 - `POST /mint`
