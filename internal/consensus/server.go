@@ -89,6 +89,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc("/peers", s.handlePeers)
 	mux.HandleFunc("/persistence/verify", s.handlePersistenceVerify)
 	mux.HandleFunc("/persistence/repair", s.handlePersistenceRepair)
+	mux.HandleFunc("/persistence/export", s.handlePersistenceExport)
+	mux.HandleFunc("/persistence/backup", s.handlePersistenceBackup)
 	mux.HandleFunc("/ws", s.handleWebSocket)
 
 	return mux
@@ -200,6 +202,46 @@ func (s *Server) handlePersistenceRepair(w http.ResponseWriter, r *http.Request)
 		"success": true,
 		"before":  before,
 		"after":   after,
+	})
+}
+
+func (s *Server) handlePersistenceExport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	bundle, err := s.lattice.ExportPersistence()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("persistence export unavailable: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, bundle)
+}
+
+func (s *Server) handlePersistenceBackup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body struct {
+		Path string `json:"path"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+	}
+
+	result, err := s.lattice.BackupPersistence(body.Path)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("persistence backup failed: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"backup":  result,
 	})
 }
 

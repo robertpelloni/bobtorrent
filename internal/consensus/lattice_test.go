@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -328,5 +329,113 @@ func TestPersistentLatticeVerifyAndRepairRebuildsSnapshotLayer(t *testing.T) {
 	}
 	if lattice.snapshotSequence != lattice.persistedSequence {
 		t.Fatalf("expected snapshot sequence %d to match persisted sequence after repair, got %d", lattice.persistedSequence, lattice.snapshotSequence)
+	}
+}
+
+func TestPersistentLatticeExportIncludesDurableHistory(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+	defer func() {
+		if err := lattice.Close(); err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	}()
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	for i := 0; i < int(defaultLatticeSnapshotInterval)-1; i++ {
+		frontier := lattice.GetFrontier(wallet.PublicKey)
+		block := torrent.NewBlock("achievement_unlock", wallet.PublicKey, &frontier.Hash, frontier.Balance, frontier.StakedBalance, frontier.Height+1, fmt.Sprintf("export-%d", i), nil, map[string]interface{}{"achievement": fmt.Sprintf("E-%d", i)})
+		if err := block.Sign(wallet.PrivateKey); err != nil {
+			t.Fatalf("Sign achievement block %d failed: %v", i, err)
+		}
+		if err := lattice.ProcessBlock(block); err != nil {
+			t.Fatalf("ProcessBlock achievement block %d failed: %v", i, err)
+		}
+	}
+
+	bundle, err := lattice.ExportPersistence()
+	if err != nil {
+		t.Fatalf("ExportPersistence failed: %v", err)
+	}
+	if bundle.Integrity == nil || !bundle.Integrity.Healthy {
+		t.Fatalf("expected healthy export integrity report, got %#v", bundle.Integrity)
+	}
+	if len(bundle.ConfirmedBlocks) != int(defaultLatticeSnapshotInterval) {
+		t.Fatalf("expected %d confirmed blocks in export, got %d", defaultLatticeSnapshotInterval, len(bundle.ConfirmedBlocks))
+	}
+	if bundle.LatestSnapshot == nil {
+		t.Fatal("expected export bundle to include latest snapshot")
+	}
+	if bundle.LatestSnapshot.LastSequence != defaultLatticeSnapshotInterval {
+		t.Fatalf("expected exported snapshot sequence %d, got %d", defaultLatticeSnapshotInterval, bundle.LatestSnapshot.LastSequence)
+	}
+}
+
+func TestPersistentLatticeBackupCreatesPortableSQLiteCopy(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+	defer func() {
+		if err := lattice.Close(); err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	}()
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	backupPath := filepath.Join(t.TempDir(), "backup", "portable-lattice.db")
+	backup, err := lattice.BackupPersistence(backupPath)
+	if err != nil {
+		t.Fatalf("BackupPersistence failed: %v", err)
+	}
+	if backup.BackupPath != backupPath {
+		t.Fatalf("unexpected backup path: %s", backup.BackupPath)
+	}
+	if _, err := os.Stat(backupPath); err != nil {
+		t.Fatalf("expected backup file to exist: %v", err)
+	}
+
+	reloaded, err := NewPersistentLattice(backupPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice from backup failed: %v", err)
+	}
+	defer func() {
+		if err := reloaded.Close(); err != nil {
+			t.Fatalf("Close reloaded backup failed: %v", err)
+		}
+	}()
+	if len(reloaded.blocks) != 1 {
+		t.Fatalf("expected backup reload to contain 1 block, got %d", len(reloaded.blocks))
+	}
+	if reloaded.GetFrontier(wallet.PublicKey) == nil {
+		t.Fatal("expected backup reload frontier to exist")
 	}
 }

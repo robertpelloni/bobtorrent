@@ -376,6 +376,30 @@ func (l *Lattice) RepairPersistence() (*LatticeIntegrityReport, error) {
 	return l.store.VerifyIntegrity()
 }
 
+// ExportPersistence bundles the durable block log, integrity metadata, and the
+// newest usable snapshot into a portable JSON-friendly structure for operator
+// inspection, migration, or manual archival.
+func (l *Lattice) ExportPersistence() (*LatticeExportBundle, error) {
+	l.mu.RLock()
+	store := l.store
+	l.mu.RUnlock()
+	if store == nil {
+		return nil, fmt.Errorf("persistence is not enabled")
+	}
+	return store.ExportBundle()
+}
+
+// BackupPersistence creates a consistent SQLite backup copy of the live lattice
+// store without mutating the confirmed block log or shutting down the node.
+func (l *Lattice) BackupPersistence(targetPath string) (*LatticeBackupResult, error) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if l.store == nil {
+		return nil, fmt.Errorf("persistence is not enabled")
+	}
+	return l.store.CreateBackup(targetPath)
+}
+
 type latticeSnapshot struct {
 	chains     map[string][]*torrent.Block
 	blocks     map[string]*torrent.Block

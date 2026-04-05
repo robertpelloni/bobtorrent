@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"bobtorrent/pkg/torrent"
@@ -78,6 +79,30 @@ type LatticeIntegrityReport struct {
 	InvalidSnapshotSequences  []int64  `json:"invalidSnapshotSequences,omitempty"`
 	OrphanedSnapshotSequences []int64  `json:"orphanedSnapshotSequences,omitempty"`
 	Notes                     []string `json:"notes,omitempty"`
+}
+
+type ExportedConfirmedBlock struct {
+	Sequence int64          `json:"sequence"`
+	Block    *torrent.Block `json:"block"`
+}
+
+type LatticeExportBundle struct {
+	Path                   string                    `json:"path"`
+	ExportedAt             int64                     `json:"exportedAt"`
+	SnapshotInterval       int64                     `json:"snapshotInterval"`
+	Integrity              *LatticeIntegrityReport   `json:"integrity,omitempty"`
+	LatestSnapshot         *persistedLatticeSnapshot `json:"latestSnapshot,omitempty"`
+	ConfirmedBlocks        []ExportedConfirmedBlock  `json:"confirmedBlocks"`
+	LatestBlockSequence    int64                     `json:"latestBlockSequence"`
+	LatestSnapshotSequence int64                     `json:"latestSnapshotSequence"`
+}
+
+type LatticeBackupResult struct {
+	SourcePath    string `json:"sourcePath"`
+	BackupPath    string `json:"backupPath"`
+	CreatedAt     int64  `json:"createdAt"`
+	BlockCount    int64  `json:"blockCount"`
+	SnapshotCount int64  `json:"snapshotCount"`
 }
 
 func NewLatticeStore(path string) (*LatticeStore, error) {
@@ -454,6 +479,84 @@ func (s *LatticeStore) ReplaceSnapshots(snapshot *persistedLatticeSnapshot) erro
 		return fmt.Errorf("failed to commit snapshot repair transaction: %w", err)
 	}
 	return nil
+}
+
+func (s *LatticeStore) ExportBundle() (*LatticeExportBundle, error) {
+	integrity, err := s.VerifyIntegrity()
+	if err != nil {
+		return nil, err
+	}
+
+	storedBlocks, err := s.LoadBlocks()
+	if err != nil {
+		return nil, err
+	}
+	confirmedBlocks := make([]ExportedConfirmedBlock, 0, len(storedBlocks))
+	for _, entry := range storedBlocks {
+		confirmedBlocks = append(confirmedBlocks, ExportedConfirmedBlock{
+			Sequence: entry.Sequence,
+			Block:    entry.Block,
+		})
+	}
+
+	var latestSnapshot *persistedLatticeSnapshot
+	if integrity.QuickCheckOK && len(integrity.InvalidSnapshotSequences) == 0 {
+		if storedSnapshot, err := s.LoadLatestSnapshot(); err == nil && storedSnapshot != nil {
+			latestSnapshot = storedSnapshot.Snapshot
+		}
+	}
+
+	return &LatticeExportBundle{
+		Path:                   s.path,
+		ExportedAt:             time.Now().UnixMilli(),
+		SnapshotInterval:       s.snapshotInterval,
+		Integrity:              integrity,
+		LatestSnapshot:         latestSnapshot,
+		ConfirmedBlocks:        confirmedBlocks,
+		LatestBlockSequence:    integrity.LatestBlockSequence,
+		LatestSnapshotSequence: integrity.LatestSnapshotSequence,
+	}, nil
+}
+
+func (s *LatticeStore) CreateBackup(targetPath string) (*LatticeBackupResult, error) {
+	if targetPath == "" {
+		backupDir := filepath.Join(filepath.Dir(s.path), "backups")
+		targetPath = filepath.Join(backupDir, fmt.Sprintf("lattice-%s.db", time.Now().UTC().Format("20060102-150405")))
+	}
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create lattice backup directory: %w", err)
+	}
+	if _, err := os.Stat(targetPath); err == nil {
+		return nil, fmt.Errorf("backup path already exists: %s", targetPath)
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to inspect backup path %s: %w", targetPath, err)
+	}
+
+	if _, err := s.db.Exec(`PRAGMA wal_checkpoint(FULL)`); err != nil {
+		return nil, fmt.Errorf("failed to checkpoint WAL before backup: %w", err)
+	}
+
+	quotedPath := strings.ReplaceAll(targetPath, "'", "''")
+	if _, err := s.db.Exec(fmt.Sprintf("VACUUM INTO '%s'", quotedPath)); err != nil {
+		return nil, fmt.Errorf("failed to create SQLite backup at %s: %w", targetPath, err)
+	}
+
+	blockCount, err := s.CountBlocks()
+	if err != nil {
+		return nil, err
+	}
+	snapshotCount, err := s.CountSnapshots()
+	if err != nil {
+		return nil, err
+	}
+
+	return &LatticeBackupResult{
+		SourcePath:    s.path,
+		BackupPath:    targetPath,
+		CreatedAt:     time.Now().UnixMilli(),
+		BlockCount:    blockCount,
+		SnapshotCount: snapshotCount,
+	}, nil
 }
 
 func (s *LatticeStore) Path() string {

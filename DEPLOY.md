@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.29.0`
+- **Version**: `11.30.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -39,6 +39,8 @@ Provides:
 - market / NFT / proposal / swap / manifest-anchor query endpoints
 - persistence verification endpoint: `GET /persistence/verify`
 - persistence repair endpoint: `POST /persistence/repair`
+- persistence export endpoint: `GET /persistence/export`
+- persistence backup endpoint: `POST /persistence/backup`
 
 ## 3. Run the Go Supernode
 ```bash
