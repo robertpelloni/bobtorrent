@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.41.0`
+- **Root Version**: `11.42.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -47,7 +47,7 @@ bobtorrent/
 | Service | Artifact | Status | Purpose |
 |---|---|---:|---|
 | DHT Proxy | `build/dht-proxy` | Buildable | Privacy-preserving peer discovery with GeoIP sorting |
-| Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, materialized snapshots, persistence verification/repair endpoints, backup/export controls, import/restore controls, and signed/encrypted operator backup bundle workflows |
+| Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, materialized snapshots, persistence verification/repair endpoints, backup/export controls, import/restore controls, signed/encrypted operator backup bundle workflows, and broader mixed-transition replay regression coverage |
 | Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, websocket matchmaking/signaling with liveness telemetry, Lotus Filecoin bridge status/deal endpoints, WASM artifact serving, manifest/shard publication registry, and durable local transaction logging |
 | Storage WASM | `build/storage.wasm` | Buildable | Browser-side Go storage kernel |
 | Go WASM Runtime | `build/wasm_exec.js` | Packaged | Required runtime bridge for browser execution |

@@ -1,65 +1,52 @@
-# Bobtorrent Omni-Workspace Handoff (v11.41.0)
+# Bobtorrent Omni-Workspace Handoff (v11.42.0)
 
 ## Session Objective
-Continue replacing simulation layers with real integrations by upgrading the Filecoin bridge from a fully simulated stub into a real Lotus JSON-RPC integration path while preserving safe fallback behavior.
+Continue hardening the replay-backed persistence layer by expanding persistence-aware consensus coverage beyond export/restore mechanics into richer mixed transition replay across snapshot-tail restart.
 
 ## What Was Implemented
 
-### 1. Real Lotus-backed Filecoin bridge path
-Files:
-- `internal/bridges/filecoin.go`
-- `internal/bridges/filecoin_test.go`
-
-Replaced the previous fully simulated bridge with a more honest implementation that:
-- uses Lotus JSON-RPC when operators configure Filecoin credentials
-- attempts deal publication through `Filecoin.ClientStartDeal`
-- verifies storage through `Filecoin.StateMarketStorageDeal`
-- persists deal records locally so operators can inspect bridge history
-
-### 2. Safe fallback behavior retained
-When Lotus is not configured, the bridge now:
-- records a clearly labeled simulated archival intent
-- persists that record locally
-- continues allowing the autonomous supernode flow to proceed without pretending a real Lotus submission silently happened
-
-This preserves operational continuity while still making the bridge’s realism honest and inspectable.
-
-### 3. Supernode operator visibility
+### 1. Mixed transition replay regression for persistent restart
 File:
-- `cmd/supernode-go/main.go`
+- `internal/consensus/lattice_test.go`
 
-Added:
-- `GET /filecoin/status`
-- `GET /filecoin/deals`
+Added `TestPersistentLatticeRestoresMixedConsensusTransitionsAfterSnapshotTailReplay`.
 
-Also surfaced Filecoin bridge status through `/status` and `/stats` so the supernode now reports bridge mode and recent deal metadata alongside the broader service telemetry.
+This test now proves that a persistent lattice can:
+- restore from a materialized snapshot boundary
+- replay a mixed tail of real consensus transitions
+- reconstruct the expected post-restart state across multiple accounts and feature domains
 
-### 4. Regression coverage
-File:
-- `internal/bridges/filecoin_test.go`
+Transitions covered in one durable replay scenario:
+- send -> open
+- send -> receive
+- governance proposal -> vote
+- NFT mint -> transfer
+- stake -> unstake
+- HTLC initiate -> claim
 
-Added tests covering:
-- fallback/simulated record persistence when Lotus is unconfigured
-- real Lotus JSON-RPC publication + verification through a mocked RPC server
+### 2. Why this matters
+Prior persistence coverage was already strong for:
+- anchor replay
+- snapshot restore mechanics
+- export/import/restore workflows
+- secure backup bundle workflows
+
+But this new test increases confidence that replay correctness also holds for a richer mixed consensus tail rather than mainly persistence-control-plane mechanics.
 
 ## Validation
 Executed successfully:
-- `go test ./internal/bridges ./cmd/supernode-go ./internal/... -buildvcs=false`
+- `go test ./internal/consensus ./cmd/supernode-go ./internal/... -buildvcs=false`
 - `go build -buildvcs=false ./...`
 
 ## Strategic State After This Session
-The Filecoin bridge is no longer just a time-sleeping stub. The project now has:
-- a real Lotus JSON-RPC path
-- durable local deal records
-- supernode endpoints exposing deal/bridge state
-- explicit fallback semantics when operators do not provide Lotus configuration
+The lattice persistence layer now has stronger evidence that snapshot-tail recovery restores not just storage-anchor state but also a broader cross-section of live economic/governance/NFT/swap state transitions.
 
 ## Recommended Next Steps
-1. Deepen the Filecoin ingestion path beyond the current CID/deal orchestration into richer CAR/import workflows where operators have fuller Lotus pipelines
-2. Expand persistence-aware consensus coverage further
+1. Continue expanding persistence-aware replay coverage toward even larger multi-account mixed webs
+2. Add operator-tunable snapshot cadence/retention controls
 3. Consider signed/shareable diagnostics packaging beyond the current plain JSON export
-4. Add operator-tunable snapshot cadence/retention controls
+4. Continue evaluating which remaining specialized Node surfaces are still worth porting further
 
 ## Notes for the Next Agent
 - No running processes were terminated in this session.
-- The Filecoin bridge now has a real RPC path, but it still intentionally preserves safe fallback behavior when Lotus is unconfigured so the supernode does not become unusable in dev/operator environments without Filecoin infrastructure.
+- The new regression intentionally follows real lattice semantics for account opening: only the first account uses `SYSTEM_GENESIS`, while later accounts open by consuming a pending send.

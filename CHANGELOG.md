@@ -4,6 +4,12 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.42.0] - 2026-04-05
+### Go Port: Persistence-Aware Mixed Transition Replay Coverage
+- **Durable Mixed Replay Test**: Added a new persistence-aware consensus regression test proving snapshot-tail replay restores a mixed ledger containing send/open/receive, governance proposal+vote, NFT mint+transfer, stake+unstake, and HTLC swap claim transitions after restart.
+- **Broader Cold-Boot Confidence**: This extends persistence coverage from primarily anchor/export/restore mechanics into richer real-state replay scenarios spanning multiple accounts and consensus subsystems.
+- **Validation**: Re-validated `go test ./internal/consensus ./cmd/supernode-go ./internal/... -buildvcs=false` and `go build -buildvcs=false ./...` after the mixed transition replay coverage expansion.
+
 ## [11.41.0] - 2026-04-05
 ### Go Port: Lotus Filecoin Bridge Integration
 - **Real Filecoin RPC Path**: Replaced the fully simulated `internal/bridges/filecoin.go` behavior with a Lotus JSON-RPC integration path for deal publication and storage verification when operators configure Filecoin RPC credentials.

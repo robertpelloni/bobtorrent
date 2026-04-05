@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"bobtorrent/pkg/torrent"
 )
@@ -342,6 +343,150 @@ func TestPersistentLatticeVerifyAndRepairRebuildsSnapshotLayer(t *testing.T) {
 	}
 	if lattice.snapshotSequence != lattice.persistedSequence {
 		t.Fatalf("expected snapshot sequence %d to match persisted sequence after repair, got %d", lattice.persistedSequence, lattice.snapshotSequence)
+	}
+}
+
+func TestPersistentLatticeRestoresMixedConsensusTransitionsAfterSnapshotTailReplay(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+	defer func() {
+		if lattice != nil {
+			if err := lattice.Close(); err != nil {
+				t.Fatalf("Close failed: %v", err)
+			}
+		}
+	}()
+
+	alice, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("Generate alice keypair failed: %v", err)
+	}
+	bob, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("Generate bob keypair failed: %v", err)
+	}
+
+	process := func(block *torrent.Block, privateKey string, label string) {
+		if err := block.Sign(privateKey); err != nil {
+			t.Fatalf("Sign %s failed: %v", label, err)
+		}
+		if err := lattice.ProcessBlock(block); err != nil {
+			t.Fatalf("ProcessBlock %s failed: %v", label, err)
+		}
+	}
+
+	aliceOpen := torrent.NewBlock("open", alice.PublicKey, nil, 2500, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	process(aliceOpen, alice.PrivateKey, "alice open")
+
+	for i := 0; i < int(defaultLatticeSnapshotInterval)-1; i++ {
+		frontier := lattice.GetFrontier(alice.PublicKey)
+		block := torrent.NewBlock("achievement_unlock", alice.PublicKey, &frontier.Hash, frontier.Balance, frontier.StakedBalance, frontier.Height+1, fmt.Sprintf("prefill-%d", i), nil, map[string]interface{}{"achievement": fmt.Sprintf("P-%d", i)})
+		process(block, alice.PrivateKey, fmt.Sprintf("prefill-%d", i))
+	}
+
+	if lattice.snapshotSequence != defaultLatticeSnapshotInterval {
+		t.Fatalf("expected snapshot sequence %d before mixed tail, got %d", defaultLatticeSnapshotInterval, lattice.snapshotSequence)
+	}
+
+	aliceFrontier := lattice.GetFrontier(alice.PublicKey)
+	sendOpen := torrent.NewBlock("send", alice.PublicKey, &aliceFrontier.Hash, aliceFrontier.Balance-200, aliceFrontier.StakedBalance, aliceFrontier.Height+1, bob.PublicKey, nil, map[string]interface{}{"reason": "mixed-tail-open"})
+	process(sendOpen, alice.PrivateKey, "send open")
+
+	bobOpen := torrent.NewBlock("open", bob.PublicKey, nil, 200, 0, 0, sendOpen.Hash, nil, nil)
+	process(bobOpen, bob.PrivateKey, "bob open")
+
+	aliceFrontier = lattice.GetFrontier(alice.PublicKey)
+	sendReceive := torrent.NewBlock("send", alice.PublicKey, &aliceFrontier.Hash, aliceFrontier.Balance-150, aliceFrontier.StakedBalance, aliceFrontier.Height+1, bob.PublicKey, nil, map[string]interface{}{"reason": "mixed-tail-receive"})
+	process(sendReceive, alice.PrivateKey, "send receive")
+
+	bobFrontier := lattice.GetFrontier(bob.PublicKey)
+	receive := torrent.NewBlock("receive", bob.PublicKey, &bobFrontier.Hash, bobFrontier.Balance+150, bobFrontier.StakedBalance, bobFrontier.Height+1, sendReceive.Hash, nil, nil)
+	process(receive, bob.PrivateKey, "receive")
+
+	aliceFrontier = lattice.GetFrontier(alice.PublicKey)
+	proposal := torrent.NewBlock("proposal", alice.PublicKey, &aliceFrontier.Hash, aliceFrontier.Balance-int64(ProposalCost), aliceFrontier.StakedBalance, aliceFrontier.Height+1, "", nil, map[string]interface{}{"title": "Durable Replay Proposal", "description": "Ensure replay restores governance state."})
+	process(proposal, alice.PrivateKey, "proposal")
+
+	bobFrontier = lattice.GetFrontier(bob.PublicKey)
+	vote := torrent.NewBlock("vote", bob.PublicKey, &bobFrontier.Hash, bobFrontier.Balance, bobFrontier.StakedBalance, bobFrontier.Height+1, proposal.Hash, nil, map[string]interface{}{"vote": "for"})
+	process(vote, bob.PrivateKey, "vote")
+
+	aliceFrontier = lattice.GetFrontier(alice.PublicKey)
+	mintNFT := torrent.NewBlock("mint_nft", alice.PublicKey, &aliceFrontier.Hash, aliceFrontier.Balance-int64(NFTMintCost), aliceFrontier.StakedBalance, aliceFrontier.Height+1, "", nil, map[string]interface{}{"name": "Persistent Tail NFT", "magnet": "magnet:?xt=urn:btih:persistenttail", "description": "Replay this ownership transition after restart."})
+	process(mintNFT, alice.PrivateKey, "mint nft")
+
+	aliceFrontier = lattice.GetFrontier(alice.PublicKey)
+	transferNFT := torrent.NewBlock("transfer_nft", alice.PublicKey, &aliceFrontier.Hash, aliceFrontier.Balance-int64(NFTTransferFee), aliceFrontier.StakedBalance, aliceFrontier.Height+1, mintNFT.Hash, nil, map[string]interface{}{"newOwner": bob.PublicKey})
+	process(transferNFT, alice.PrivateKey, "transfer nft")
+
+	bobFrontier = lattice.GetFrontier(bob.PublicKey)
+	stake := torrent.NewBlock("stake", bob.PublicKey, &bobFrontier.Hash, bobFrontier.Balance-100, bobFrontier.StakedBalance+100, bobFrontier.Height+1, "", nil, map[string]interface{}{"amount": 100})
+	process(stake, bob.PrivateKey, "stake")
+
+	bobFrontier = lattice.GetFrontier(bob.PublicKey)
+	unstake := torrent.NewBlock("unstake", bob.PublicKey, &bobFrontier.Hash, bobFrontier.Balance+100, 0, bobFrontier.Height+1, "", nil, map[string]interface{}{"amount": 100})
+	process(unstake, bob.PrivateKey, "unstake")
+
+	aliceFrontier = lattice.GetFrontier(alice.PublicKey)
+	secret := "persistent-tail-secret"
+	hashLock := torrent.HashSHA256(secret)
+	initiateSwap := torrent.NewBlock("initiate_swap", alice.PublicKey, &aliceFrontier.Hash, aliceFrontier.Balance-300, aliceFrontier.StakedBalance, aliceFrontier.Height+1, "", nil, map[string]interface{}{"recipient": bob.PublicKey, "hashLock": hashLock, "expiry": float64(time.Now().Add(10 * time.Minute).UnixMilli())})
+	process(initiateSwap, alice.PrivateKey, "initiate swap")
+
+	bobFrontier = lattice.GetFrontier(bob.PublicKey)
+	claimSwap := torrent.NewBlock("claim_swap", bob.PublicKey, &bobFrontier.Hash, bobFrontier.Balance+300, bobFrontier.StakedBalance, bobFrontier.Height+1, initiateSwap.Hash, nil, map[string]interface{}{"secret": secret})
+	process(claimSwap, bob.PrivateKey, "claim swap")
+
+	if err := lattice.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+	lattice = nil
+
+	reloaded, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice reload failed: %v", err)
+	}
+	defer func() {
+		if err := reloaded.Close(); err != nil {
+			t.Fatalf("Close reload failed: %v", err)
+		}
+	}()
+
+	if reloaded.snapshotSequence != defaultLatticeSnapshotInterval {
+		t.Fatalf("expected snapshot sequence %d after reload, got %d", defaultLatticeSnapshotInterval, reloaded.snapshotSequence)
+	}
+	if len(reloaded.blocks) != int(defaultLatticeSnapshotInterval)+12 {
+		t.Fatalf("expected %d total replayed blocks, got %d", defaultLatticeSnapshotInterval+12, len(reloaded.blocks))
+	}
+	if frontier := reloaded.GetFrontier(alice.PublicKey); frontier == nil || frontier.Hash != initiateSwap.Hash {
+		t.Fatalf("expected alice frontier %s after replay, got %#v", initiateSwap.Hash, frontier)
+	}
+	if frontier := reloaded.GetFrontier(bob.PublicKey); frontier == nil || frontier.Hash != claimSwap.Hash {
+		t.Fatalf("expected bob frontier %s after replay, got %#v", claimSwap.Hash, frontier)
+	}
+	if pending := reloaded.pending[bob.PublicKey]; len(pending) != 0 {
+		t.Fatalf("expected bob pending queue to be empty after replayed open/receive flow, got %#v", pending)
+	}
+	storedProposal := reloaded.proposals[proposal.Hash]
+	if storedProposal == nil || storedProposal.Status != "passed" {
+		t.Fatalf("expected replayed proposal to be passed, got %#v", storedProposal)
+	}
+	if voteMap := reloaded.votes[proposal.Hash]; voteMap == nil || voteMap[bob.PublicKey].Type != "for" {
+		t.Fatalf("expected replayed vote map to include bob's vote, got %#v", voteMap)
+	}
+	storedNFT := reloaded.nfts[mintNFT.Hash]
+	if storedNFT == nil || storedNFT.Owner != bob.PublicKey {
+		t.Fatalf("expected replayed nft owner %s, got %#v", bob.PublicKey, storedNFT)
+	}
+	if _, ok := reloaded.stakeInfo[bob.PublicKey]; ok {
+		t.Fatalf("expected bob stake info to be cleared after replayed full unstake, got %#v", reloaded.stakeInfo[bob.PublicKey])
+	}
+	storedSwap := reloaded.swaps[initiateSwap.Hash]
+	if storedSwap == nil || storedSwap.Status != "CLAIMED" || storedSwap.Claimer != bob.PublicKey || storedSwap.Secret != secret {
+		t.Fatalf("expected replayed swap to be claimed by bob with stored secret, got %#v", storedSwap)
 	}
 }
 
