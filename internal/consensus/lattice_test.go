@@ -257,3 +257,76 @@ func TestPersistentLatticeRestoresFromSnapshotAndReplaysTail(t *testing.T) {
 		t.Fatalf("expected frontier hash %s, got %s", anchor.Hash, reloaded.GetFrontier(wallet.PublicKey).Hash)
 	}
 }
+
+func TestPersistentLatticeVerifyAndRepairRebuildsSnapshotLayer(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+	defer func() {
+		if err := lattice.Close(); err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	}()
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	for i := 0; i < int(defaultLatticeSnapshotInterval)-1; i++ {
+		frontier := lattice.GetFrontier(wallet.PublicKey)
+		block := torrent.NewBlock("achievement_unlock", wallet.PublicKey, &frontier.Hash, frontier.Balance, frontier.StakedBalance, frontier.Height+1, fmt.Sprintf("verify-repair-%d", i), nil, map[string]interface{}{"achievement": fmt.Sprintf("R-%d", i)})
+		if err := block.Sign(wallet.PrivateKey); err != nil {
+			t.Fatalf("Sign achievement block %d failed: %v", i, err)
+		}
+		if err := lattice.ProcessBlock(block); err != nil {
+			t.Fatalf("ProcessBlock achievement block %d failed: %v", i, err)
+		}
+	}
+
+	if lattice.snapshotSequence != defaultLatticeSnapshotInterval {
+		t.Fatalf("expected snapshot sequence %d, got %d", defaultLatticeSnapshotInterval, lattice.snapshotSequence)
+	}
+
+	if _, err := lattice.store.db.Exec(`INSERT INTO lattice_snapshots (snapshot_sequence, snapshot_json) VALUES (?, ?)`, 9999, `{not-valid-json}`); err != nil {
+		t.Fatalf("failed to inject corrupt snapshot row: %v", err)
+	}
+
+	report, err := lattice.VerifyPersistence()
+	if err != nil {
+		t.Fatalf("VerifyPersistence failed: %v", err)
+	}
+	if report.Healthy {
+		t.Fatal("expected verification report to be unhealthy after corrupt snapshot injection")
+	}
+	if !report.Repairable {
+		t.Fatal("expected corrupt snapshot layer to remain repairable")
+	}
+	if len(report.InvalidSnapshotSequences) == 0 {
+		t.Fatal("expected corrupt snapshot sequence to be detected")
+	}
+
+	repaired, err := lattice.RepairPersistence()
+	if err != nil {
+		t.Fatalf("RepairPersistence failed: %v", err)
+	}
+	if !repaired.Healthy {
+		t.Fatalf("expected repaired persistence to be healthy, got %#v", repaired)
+	}
+	if repaired.SnapshotCount != 1 {
+		t.Fatalf("expected exactly one rebuilt snapshot, got %d", repaired.SnapshotCount)
+	}
+	if lattice.snapshotSequence != lattice.persistedSequence {
+		t.Fatalf("expected snapshot sequence %d to match persisted sequence after repair, got %d", lattice.persistedSequence, lattice.snapshotSequence)
+	}
+}

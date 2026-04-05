@@ -1,37 +1,48 @@
-# Bobtorrent Omni-Workspace Handoff (v11.28.0)
+# Bobtorrent Omni-Workspace Handoff (v11.29.0)
 
 ## Session Objective
-Continue from the replay-backed lattice persistence milestone by adding snapshot acceleration so cold boot can restore a recent materialized state checkpoint and replay only the newer tail of confirmed blocks.
+Continue from the snapshot-accelerated lattice persistence milestone by adding integrity verification and conservative repair tooling for the durable SQLite persistence layer.
 
 ## What Was Implemented
 
-### 1. Materialized lattice snapshots
+### 1. Persistence verification
 Files:
 - `internal/consensus/store.go`
 - `internal/consensus/lattice.go`
 
-Added a `lattice_snapshots` SQLite table layered on top of the append-only confirmed block log.
+Added a persistence verification pass that now checks:
+- SQLite `PRAGMA quick_check`
+- confirmed block JSON decodeability
+- confirmed block hash integrity (`CalculateHash() == stored hash`)
+- invalid snapshot JSON rows
+- orphaned snapshots whose sequence exceeds the durable confirmed block boundary
 
-Current behavior:
-- confirmed blocks remain the durable source of truth
-- materialized snapshots store recent derived-state checkpoints
-- snapshots are created automatically every **25** persisted blocks
-- the newest **3** snapshots are retained
+The resulting integrity report distinguishes between:
+- healthy persistence state
+- snapshot-layer issues that are safely repairable
+- confirmed-block-log corruption that requires manual recovery
 
-### 2. Tail-replay cold boot
-`NewPersistentLattice` now:
-- loads the newest snapshot if present
-- restores chains / pending / proposals / votes / swaps / NFTs / anchors / stake state from that checkpoint
-- replays only blocks newer than the snapshot sequence
+### 2. Conservative snapshot repair
+Files:
+- `internal/consensus/store.go`
+- `internal/consensus/lattice.go`
 
-This reduces startup replay work on longer histories without rewriting consensus rules into relational SQL tables.
+Added a repair workflow that:
+- deletes the existing snapshot layer
+- rebuilds a fresh snapshot from the live in-memory lattice state
+- preserves the confirmed block log untouched as the correctness-critical source of truth
 
-### 3. Operational visibility
-`/status` persistence metadata now includes:
-- persisted sequence
-- snapshot sequence
-- snapshot count
-- snapshot interval
+This is intentionally conservative: it repairs the acceleration layer without risking mutation of the durable historical log.
+
+### 3. Operator endpoints
+File:
+- `internal/consensus/server.go`
+
+New endpoints:
+- `GET /persistence/verify`
+- `POST /persistence/repair`
+
+These allow operators to inspect and repair the snapshot layer without stopping the node.
 
 ### 4. Validation
 Executed successfully:
@@ -40,29 +51,30 @@ Executed successfully:
 - `cd bobcoin/frontend && npm run build`
 
 Added test coverage proving:
-- snapshot restore + tail replay rebuild the latest frontier correctly
-- a tail manifest anchor survives reload after snapshot restoration
+- corrupt snapshot rows are detected by verification
+- conservative repair rebuilds a healthy snapshot layer
 
 ## Strategic State After This Session
-The lattice persistence layer now has three tiers of credibility:
+The lattice persistence layer now has four meaningful capabilities:
 1. durable confirmed block log
 2. deterministic replay
 3. materialized snapshot acceleration
+4. verification + conservative repair of the snapshot layer
 
-That means the platform is no longer just restart-safe; it is beginning to become restart-efficient.
+This materially improves operator confidence because the node can now inspect and rebuild its acceleration layer without touching the durable block history.
 
 ## Remaining Gaps
-1. Persistence repair / integrity tooling
-2. Broader persistence-aware consensus transition tests
-3. Configurable snapshot cadence / retention controls
+1. Broader persistence-aware consensus transition tests
+2. Configurable snapshot cadence / retention controls
+3. Operator backup/export workflow for durable state
 4. Real Filecoin bridge
 5. Deeper peer sync / catch-up
 
 ## Recommended Next Step
 1. Deepen publisher attestation semantics further
 2. Add exportable comparative source diagnostics
-3. Add repair/integrity tooling for lattice persistence
+3. Add backup/export controls for lattice persistence
 
 ## Notes for the Next Agent
-- Snapshotting is intentionally best-effort and layered on top of the confirmed block log; block durability remains the only correctness-critical persistence step.
-- This design avoids weakening atomic block acceptance while still making long-history cold boots faster.
+- Repair is intentionally limited to the snapshot layer. Confirmed block log corruption is reported as not safely auto-repairable.
+- This keeps the persistence safety model conservative: block history remains authoritative, while snapshots remain an optimization that can be regenerated.

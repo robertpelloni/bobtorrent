@@ -4,6 +4,14 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.29.0] - 2026-04-05
+### Go Port: Persistence Integrity Verification & Repair
+- **Durable Store Verification**: Added SQLite-backed persistence verification that checks `PRAGMA quick_check`, validates confirmed block JSON/hash integrity, and detects invalid or orphaned lattice snapshots.
+- **Conservative Snapshot Repair**: Added a repair workflow that safely rebuilds the snapshot layer from the live in-memory lattice state while leaving the confirmed block log untouched as the correctness-critical source of truth.
+- **Operator Endpoints**: Exposed `GET /persistence/verify` and `POST /persistence/repair` so operators can inspect and repair the snapshot layer without stopping the node.
+- **Validation Coverage**: Added consensus regression coverage proving corrupt snapshot rows are detected and that repair rebuilds a healthy snapshot layer.
+- **Validation**: Re-validated `go test ./internal/consensus -buildvcs=false`, `go build -buildvcs=false ./...`, and `cd bobcoin/frontend && npm run build` after the integrity-tooling integration.
+
 ## [11.28.0] - 2026-04-05
 ### Go Port: Snapshot-Accelerated Lattice Recovery
 - **Materialized Snapshot Layer**: Extended `internal/consensus/store.go` with a snapshot table layered on top of the append-only confirmed block log, allowing the lattice to retain recent materialized state checkpoints in SQLite.

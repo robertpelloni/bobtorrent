@@ -338,6 +338,44 @@ func (l *Lattice) PersistencePath() string {
 	return l.store.Path()
 }
 
+// VerifyPersistence runs a non-mutating integrity verification pass over the
+// durable SQLite store. This validates both the confirmed block log and the
+// snapshot layer, and reports whether any discovered issues are safely repairable.
+func (l *Lattice) VerifyPersistence() (*LatticeIntegrityReport, error) {
+	l.mu.RLock()
+	store := l.store
+	l.mu.RUnlock()
+	if store == nil {
+		return nil, fmt.Errorf("persistence is not enabled")
+	}
+	return store.VerifyIntegrity()
+}
+
+// RepairPersistence conservatively rebuilds the snapshot layer from the current
+// in-memory lattice state. It does not rewrite the confirmed block log because
+// that log remains the correctness-critical source of truth.
+func (l *Lattice) RepairPersistence() (*LatticeIntegrityReport, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.store == nil {
+		return nil, fmt.Errorf("persistence is not enabled")
+	}
+
+	var rebuilt *persistedLatticeSnapshot
+	if l.persistedSequence > 0 {
+		rebuilt = l.persistentSnapshotLocked(l.persistedSequence)
+	}
+	if err := l.store.ReplaceSnapshots(rebuilt); err != nil {
+		return nil, err
+	}
+	if rebuilt != nil {
+		l.snapshotSequence = rebuilt.LastSequence
+	} else {
+		l.snapshotSequence = 0
+	}
+	return l.store.VerifyIntegrity()
+}
+
 type latticeSnapshot struct {
 	chains     map[string][]*torrent.Block
 	blocks     map[string]*torrent.Block

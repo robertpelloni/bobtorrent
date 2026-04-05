@@ -87,6 +87,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc("/anchors/", s.handleAnchorsByOwner)
 	mux.HandleFunc("/swaps", s.handleSwaps)
 	mux.HandleFunc("/peers", s.handlePeers)
+	mux.HandleFunc("/persistence/verify", s.handlePersistenceVerify)
+	mux.HandleFunc("/persistence/repair", s.handlePersistenceRepair)
 	mux.HandleFunc("/ws", s.handleWebSocket)
 
 	return mux
@@ -157,6 +159,50 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 //
 // Supporting both formats keeps the Go node compatible with both the
 // bobcoin frontend and the Go supernode poller.
+func (s *Server) handlePersistenceVerify(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	report, err := s.lattice.VerifyPersistence()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("persistence verification unavailable: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, report)
+}
+
+func (s *Server) handlePersistenceRepair(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	before, err := s.lattice.VerifyPersistence()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("persistence repair unavailable: %v", err), http.StatusBadRequest)
+		return
+	}
+	if !before.Repairable {
+		http.Error(w, "persistence repair refused: confirmed block log corruption requires manual recovery", http.StatusConflict)
+		return
+	}
+
+	after, err := s.lattice.RepairPersistence()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("persistence repair failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"before":  before,
+		"after":   after,
+	})
+}
+
 func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)

@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.28.0`
+- **Version**: `11.29.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -37,6 +37,8 @@ Provides:
 - HTTP consensus endpoints
 - websocket live block feed
 - market / NFT / proposal / swap / manifest-anchor query endpoints
+- persistence verification endpoint: `GET /persistence/verify`
+- persistence repair endpoint: `POST /persistence/repair`
 
 ## 3. Run the Go Supernode
 ```bash

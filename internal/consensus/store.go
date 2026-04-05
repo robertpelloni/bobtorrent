@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"bobtorrent/pkg/torrent"
 
@@ -60,6 +61,23 @@ type storedBlock struct {
 type storedSnapshot struct {
 	LastSequence int64
 	Snapshot     *persistedLatticeSnapshot
+}
+
+type LatticeIntegrityReport struct {
+	Path                      string   `json:"path"`
+	CheckedAt                 int64    `json:"checkedAt"`
+	QuickCheckResult          string   `json:"quickCheckResult"`
+	QuickCheckOK              bool     `json:"quickCheckOk"`
+	Healthy                   bool     `json:"healthy"`
+	Repairable                bool     `json:"repairable"`
+	BlockCount                int64    `json:"blockCount"`
+	LatestBlockSequence       int64    `json:"latestBlockSequence"`
+	SnapshotCount             int64    `json:"snapshotCount"`
+	LatestSnapshotSequence    int64    `json:"latestSnapshotSequence"`
+	InvalidBlockSequences     []int64  `json:"invalidBlockSequences,omitempty"`
+	InvalidSnapshotSequences  []int64  `json:"invalidSnapshotSequences,omitempty"`
+	OrphanedSnapshotSequences []int64  `json:"orphanedSnapshotSequences,omitempty"`
+	Notes                     []string `json:"notes,omitempty"`
 }
 
 func NewLatticeStore(path string) (*LatticeStore, error) {
@@ -322,6 +340,120 @@ func (s *LatticeStore) SnapshotInterval() int64 {
 		return 0
 	}
 	return s.snapshotInterval
+}
+
+func (s *LatticeStore) VerifyIntegrity() (*LatticeIntegrityReport, error) {
+	report := &LatticeIntegrityReport{
+		Path:       s.path,
+		CheckedAt:  time.Now().UnixMilli(),
+		Healthy:    true,
+		Repairable: true,
+	}
+
+	if err := s.db.QueryRow(`PRAGMA quick_check`).Scan(&report.QuickCheckResult); err != nil {
+		return nil, fmt.Errorf("failed to run SQLite quick_check: %w", err)
+	}
+	report.QuickCheckOK = report.QuickCheckResult == "ok"
+	if !report.QuickCheckOK {
+		report.Healthy = false
+		report.Notes = append(report.Notes, fmt.Sprintf("sqlite quick_check returned %q", report.QuickCheckResult))
+	}
+
+	if err := s.db.QueryRow(`SELECT COUNT(*), COALESCE(MAX(sequence), 0) FROM confirmed_blocks`).Scan(&report.BlockCount, &report.LatestBlockSequence); err != nil {
+		return nil, fmt.Errorf("failed to summarize confirmed blocks: %w", err)
+	}
+	if err := s.db.QueryRow(`SELECT COUNT(*), COALESCE(MAX(snapshot_sequence), 0) FROM lattice_snapshots`).Scan(&report.SnapshotCount, &report.LatestSnapshotSequence); err != nil {
+		return nil, fmt.Errorf("failed to summarize lattice snapshots: %w", err)
+	}
+
+	blockRows, err := s.db.Query(`SELECT sequence, block_json FROM confirmed_blocks ORDER BY sequence ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate confirmed blocks for integrity verification: %w", err)
+	}
+	defer blockRows.Close()
+	for blockRows.Next() {
+		var sequence int64
+		var raw string
+		if err := blockRows.Scan(&sequence, &raw); err != nil {
+			return nil, fmt.Errorf("failed to scan confirmed block during integrity verification: %w", err)
+		}
+		var block torrent.Block
+		if err := json.Unmarshal([]byte(raw), &block); err != nil {
+			report.InvalidBlockSequences = append(report.InvalidBlockSequences, sequence)
+			continue
+		}
+		if block.Hash == "" || block.CalculateHash() != block.Hash {
+			report.InvalidBlockSequences = append(report.InvalidBlockSequences, sequence)
+		}
+	}
+	if err := blockRows.Err(); err != nil {
+		return nil, fmt.Errorf("failed while verifying confirmed block integrity: %w", err)
+	}
+
+	rows, err := s.db.Query(`SELECT snapshot_sequence, snapshot_json FROM lattice_snapshots ORDER BY snapshot_sequence ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate lattice snapshots for integrity verification: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var sequence int64
+		var raw string
+		if err := rows.Scan(&sequence, &raw); err != nil {
+			return nil, fmt.Errorf("failed to scan lattice snapshot during integrity verification: %w", err)
+		}
+		var snapshot persistedLatticeSnapshot
+		if err := json.Unmarshal([]byte(raw), &snapshot); err != nil {
+			report.InvalidSnapshotSequences = append(report.InvalidSnapshotSequences, sequence)
+			continue
+		}
+		if snapshot.LastSequence != sequence || sequence > report.LatestBlockSequence {
+			report.OrphanedSnapshotSequences = append(report.OrphanedSnapshotSequences, sequence)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed while verifying lattice snapshots: %w", err)
+	}
+
+	if len(report.InvalidBlockSequences) > 0 {
+		report.Healthy = false
+		report.Repairable = false
+		report.Notes = append(report.Notes, "confirmed block log contains invalid or hash-mismatched rows; manual recovery from the block log is required")
+	}
+	if len(report.InvalidSnapshotSequences) > 0 || len(report.OrphanedSnapshotSequences) > 0 {
+		report.Healthy = false
+		report.Notes = append(report.Notes, "snapshot layer can be safely rebuilt from the confirmed block log")
+	}
+
+	return report, nil
+}
+
+func (s *LatticeStore) ReplaceSnapshots(snapshot *persistedLatticeSnapshot) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin snapshot repair transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	if _, err := tx.Exec(`DELETE FROM lattice_snapshots`); err != nil {
+		return fmt.Errorf("failed to clear lattice snapshots during repair: %w", err)
+	}
+
+	if snapshot != nil && snapshot.LastSequence > 0 {
+		encoded, err := json.Marshal(snapshot)
+		if err != nil {
+			return fmt.Errorf("failed to encode rebuilt snapshot at sequence %d: %w", snapshot.LastSequence, err)
+		}
+		if _, err := tx.Exec(`INSERT INTO lattice_snapshots (snapshot_sequence, snapshot_json) VALUES (?, ?)`, snapshot.LastSequence, string(encoded)); err != nil {
+			return fmt.Errorf("failed to persist rebuilt snapshot at sequence %d: %w", snapshot.LastSequence, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit snapshot repair transaction: %w", err)
+	}
+	return nil
 }
 
 func (s *LatticeStore) Path() string {
