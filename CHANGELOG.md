@@ -4,6 +4,12 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.39.0] - 2026-04-05
+### Go Port: Comparative Source Diagnostics Sync
+- **Bobcoin Diagnostics Export**: Updated the `bobcoin` submodule to `v8.67.0`, where Vault can now export comparative source diagnostics derived from retained recovery reports as portable JSON.
+- **Operator Portability**: The reliability/trend system is now not only visible in-browser, but also exportable for offline review, incident handoff, and external analysis.
+- **Validation**: Re-validated `cd bobcoin/frontend && npm run build` after integrating the comparative diagnostics export workflow.
+
 ## [11.38.0] - 2026-04-05
 ### Go Port: Signaling Session Hardening
 - **Matchmaker Liveness Controls**: Hardened the Go websocket matchmaker with read/write deadlines, periodic ping frames, pong-driven activity refresh, and bounded websocket message size.
