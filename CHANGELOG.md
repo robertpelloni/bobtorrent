@@ -4,6 +4,13 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.37.0] - 2026-04-05
+### Go Port: WebRTC Signaling Matchmaker
+- **Go Matchmaking WebSocket**: Added a native websocket matchmaking/signaling handler to `supernode-go`, compatible with the Bobcoin `FIND_MATCH` / `MATCH_FOUND` / `SIGNAL` / `OPPONENT_DISCONNECTED` contract.
+- **Go Signaling Activation**: Updated the `bobcoin` submodule to `v8.66.0`, where matchmaking signaling now defaults to the Go supernode while preserving explicit overrides for specialized or legacy deployments.
+- **Regression Coverage**: Extended `cmd/supernode-go/main_test.go` with websocket tests covering player pairing, signaling relay, and opponent-disconnect notification.
+- **Validation**: Re-validated `go test ./cmd/supernode-go ./internal/... -buildvcs=false`, `go build -buildvcs=false ./...`, and `cd bobcoin/frontend && npm run build` after the Go signaling migration.
+
 ## [11.36.0] - 2026-04-05
 ### Go Port: Bobcoin Go-First HTTP Routing Sync
 - **Bobcoin Runtime Alignment**: Updated the `bobcoin` submodule to `v8.65.0`, where the frontend now defaults migrated compatibility HTTP calls toward the Go supernode while keeping WebRTC signaling on a dedicated configurable legacy path.

@@ -7,6 +7,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 func TestHandleFHEOracleRequiresCiphertext(t *testing.T) {
@@ -89,5 +92,112 @@ func TestHandleFHEOracleSurfacesComputationFailure(t *testing.T) {
 	}
 	if body["error"] != "Homomorphic computation failed." {
 		t.Fatalf("expected homomorphic failure error, got %#v", body["error"])
+	}
+}
+
+func TestHandleSignalingSocketMatchesPlayersAndRelaysSignals(t *testing.T) {
+	original := signalingMatchmaker
+	signalingMatchmaker = newMatchmaker()
+	defer func() { signalingMatchmaker = original }()
+
+	server := httptest.NewServer(http.HandlerFunc(handleSignalingSocket))
+	defer server.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	connA, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("failed to connect first websocket: %v", err)
+	}
+	defer connA.Close()
+	connB, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("failed to connect second websocket: %v", err)
+	}
+	defer connB.Close()
+
+	deadline := time.Now().Add(3 * time.Second)
+	_ = connA.SetReadDeadline(deadline)
+	_ = connB.SetReadDeadline(deadline)
+
+	if err := connA.WriteJSON(map[string]interface{}{"type": "FIND_MATCH"}); err != nil {
+		t.Fatalf("failed to queue first player: %v", err)
+	}
+	if err := connB.WriteJSON(map[string]interface{}{"type": "FIND_MATCH"}); err != nil {
+		t.Fatalf("failed to queue second player: %v", err)
+	}
+
+	var msgA map[string]interface{}
+	if err := connA.ReadJSON(&msgA); err != nil {
+		t.Fatalf("failed to read first match message: %v", err)
+	}
+	var msgB map[string]interface{}
+	if err := connB.ReadJSON(&msgB); err != nil {
+		t.Fatalf("failed to read second match message: %v", err)
+	}
+
+	if msgA["type"] != "MATCH_FOUND" || msgA["initiator"] != true {
+		t.Fatalf("unexpected first matchmaking payload: %#v", msgA)
+	}
+	if msgB["type"] != "MATCH_FOUND" || msgB["initiator"] != false {
+		t.Fatalf("unexpected second matchmaking payload: %#v", msgB)
+	}
+
+	if err := connA.WriteJSON(map[string]interface{}{"type": "SIGNAL", "signal": map[string]interface{}{"sdp": "offer"}}); err != nil {
+		t.Fatalf("failed to send signaling payload: %v", err)
+	}
+
+	var relayed map[string]interface{}
+	if err := connB.ReadJSON(&relayed); err != nil {
+		t.Fatalf("failed to read relayed signaling payload: %v", err)
+	}
+	if relayed["type"] != "SIGNAL" {
+		t.Fatalf("expected SIGNAL relay, got %#v", relayed)
+	}
+	signal, ok := relayed["signal"].(map[string]interface{})
+	if !ok || signal["sdp"] != "offer" {
+		t.Fatalf("unexpected relayed signal payload: %#v", relayed["signal"])
+	}
+}
+
+func TestHandleSignalingSocketNotifiesOpponentDisconnect(t *testing.T) {
+	original := signalingMatchmaker
+	signalingMatchmaker = newMatchmaker()
+	defer func() { signalingMatchmaker = original }()
+
+	server := httptest.NewServer(http.HandlerFunc(handleSignalingSocket))
+	defer server.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	connA, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("failed to connect first websocket: %v", err)
+	}
+	connB, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("failed to connect second websocket: %v", err)
+	}
+	defer connB.Close()
+
+	deadline := time.Now().Add(3 * time.Second)
+	_ = connA.SetReadDeadline(deadline)
+	_ = connB.SetReadDeadline(deadline)
+
+	_ = connA.WriteJSON(map[string]interface{}{"type": "FIND_MATCH"})
+	_ = connB.WriteJSON(map[string]interface{}{"type": "FIND_MATCH"})
+
+	var discard map[string]interface{}
+	_ = connA.ReadJSON(&discard)
+	_ = connB.ReadJSON(&discard)
+
+	if err := connA.Close(); err != nil {
+		t.Fatalf("failed to close first websocket: %v", err)
+	}
+
+	var msg map[string]interface{}
+	if err := connB.ReadJSON(&msg); err != nil {
+		t.Fatalf("failed to read disconnect notification: %v", err)
+	}
+	if msg["type"] != "OPPONENT_DISCONNECTED" {
+		t.Fatalf("expected opponent disconnect message, got %#v", msg)
 	}
 }

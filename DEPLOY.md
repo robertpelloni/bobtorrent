@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.36.0`
+- **Version**: `11.37.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -129,7 +129,8 @@ npm run dev
 
 Frontend runtime targeting notes:
 - HTTP compatibility traffic defaults to `VITE_GAME_HTTP_URL || VITE_SUPERNODE_URL || http://localhost:8000`
-- WebRTC signaling defaults separately to `VITE_GAME_SIGNALING_URL || VITE_GAME_SERVER_URL || http://localhost:3001`
+- WebRTC signaling defaults to `VITE_GAME_SIGNALING_URL || VITE_SUPERNODE_URL || http://localhost:8000`
+- Operators can still point signaling at a legacy websocket service explicitly via `VITE_GAME_SIGNALING_URL`
 
 ## Known Deployment Caveats
 - `go build ./...` may fail in this repo without `-buildvcs=false` due to VCS/submodule state, so keep the flag in local build commands.

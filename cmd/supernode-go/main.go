@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"bobtorrent/internal/bridges"
@@ -33,18 +34,123 @@ import (
 )
 
 var (
-	nodeWallet      *torrent.Keypair
-	httpClient      = resty.New().SetTimeout(10 * time.Second)
-	latticeURL      = "http://localhost:4000"
-	torrentClient   *anacrolixTorrent.Client
-	uiProgram       *tea.Program
-	fcBridge        *bridges.FilecoinBridge
-	dhtNode         *transport.DHTNode
-	publishRegistry *publish.Registry
-	economyDB       *economy.Database
-	startedAt       = time.Now()
-	fheOracleRunner = computeFHEOracleCiphertext
+	nodeWallet          *torrent.Keypair
+	httpClient          = resty.New().SetTimeout(10 * time.Second)
+	latticeURL          = "http://localhost:4000"
+	torrentClient       *anacrolixTorrent.Client
+	uiProgram           *tea.Program
+	fcBridge            *bridges.FilecoinBridge
+	dhtNode             *transport.DHTNode
+	publishRegistry     *publish.Registry
+	economyDB           *economy.Database
+	startedAt           = time.Now()
+	fheOracleRunner     = computeFHEOracleCiphertext
+	signalingMatchmaker = newMatchmaker()
 )
+
+// matchPlayer tracks one websocket client participating in lightweight
+// matchmaking/signaling. The service intentionally stays small and protocol-
+// compatible with the legacy Node game-server: a single waiting queue, paired
+// opponents, and JSON relay of `SIGNAL` payloads.
+type matchPlayer struct {
+	conn     *websocket.Conn
+	writeMu  sync.Mutex
+	mu       sync.Mutex
+	opponent *matchPlayer
+	closed   bool
+}
+
+// matchmaker coordinates the single-queue WebRTC signaling flow expected by the
+// Bobcoin frontend. This is intentionally minimal because the existing product
+// only needs pairwise matching rather than rooms or persistent lobbies.
+type matchmaker struct {
+	mu       sync.Mutex
+	waiting  *matchPlayer
+	upgrader websocket.Upgrader
+}
+
+func newMatchmaker() *matchmaker {
+	return &matchmaker{
+		upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		},
+	}
+}
+
+func (p *matchPlayer) sendJSON(v interface{}) error {
+	p.writeMu.Lock()
+	defer p.writeMu.Unlock()
+	return p.conn.WriteJSON(v)
+}
+
+func (p *matchPlayer) setOpponent(opponent *matchPlayer) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.opponent = opponent
+}
+
+func (p *matchPlayer) getOpponent() *matchPlayer {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.opponent
+}
+
+func (p *matchPlayer) clearOpponent() *matchPlayer {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	opponent := p.opponent
+	p.opponent = nil
+	return opponent
+}
+
+func (p *matchPlayer) markClosed() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.closed = true
+}
+
+func (p *matchPlayer) isClosed() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.closed
+}
+
+func (m *matchmaker) queueOrMatch(player *matchPlayer) (*matchPlayer, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if player.getOpponent() != nil || player.isClosed() {
+		return nil, false
+	}
+	if m.waiting != nil && (m.waiting.isClosed() || m.waiting == player) {
+		m.waiting = nil
+	}
+	if m.waiting == nil {
+		m.waiting = player
+		return nil, false
+	}
+
+	opponent := m.waiting
+	m.waiting = nil
+	opponent.setOpponent(player)
+	player.setOpponent(opponent)
+	return opponent, true
+}
+
+func (m *matchmaker) disconnect(player *matchPlayer) *matchPlayer {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.waiting == player {
+		m.waiting = nil
+	}
+	opponent := player.clearOpponent()
+	if opponent != nil {
+		opponent.clearOpponent()
+	}
+	return opponent
+}
 
 // main boots the Go supernode stack:
 //  1. Wallet + torrent engine
@@ -82,6 +188,8 @@ func startTrackerServices() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/announce", withCORS(trackerCore.HTTPHandler()))
+	mux.HandleFunc("/", handleSignalingSocket)
+	mux.HandleFunc("/matchmaking", handleSignalingSocket)
 	mux.HandleFunc("/spora/", withCORS(handleSpora))
 	mux.HandleFunc("/status", withCORS(handleServiceStatus))
 	mux.HandleFunc("/stats", withCORS(handleStats))
@@ -471,11 +579,65 @@ func processMintCompatibility(amount float64, reason, address string) (string, s
 	return txID, hash, nil
 }
 
+func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
+	if !websocket.IsWebSocketUpgrade(r) {
+		if r.URL.Path != "/" && r.URL.Path != "/matchmaking" {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"status":      "online",
+			"service":     "Go Supernode signaling",
+			"matchmaking": "websocket_ready",
+		})
+		return
+	}
+
+	conn, err := signalingMatchmaker.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("signaling websocket upgrade failed: %v", err)
+		return
+	}
+	player := &matchPlayer{conn: conn}
+	defer func() {
+		player.markClosed()
+		opponent := signalingMatchmaker.disconnect(player)
+		_ = conn.Close()
+		if opponent != nil && !opponent.isClosed() {
+			_ = opponent.sendJSON(map[string]interface{}{"type": "OPPONENT_DISCONNECTED"})
+		}
+	}()
+
+	for {
+		var msg map[string]interface{}
+		if err := conn.ReadJSON(&msg); err != nil {
+			return
+		}
+
+		msgType, _ := msg["type"].(string)
+		switch msgType {
+		case "FIND_MATCH":
+			opponent, matched := signalingMatchmaker.queueOrMatch(player)
+			if !matched {
+				continue
+			}
+			_ = opponent.sendJSON(map[string]interface{}{"type": "MATCH_FOUND", "initiator": true})
+			_ = player.sendJSON(map[string]interface{}{"type": "MATCH_FOUND", "initiator": false})
+		case "SIGNAL":
+			opponent := player.getOpponent()
+			if opponent == nil || opponent.isClosed() {
+				continue
+			}
+			_ = opponent.sendJSON(map[string]interface{}{"type": "SIGNAL", "signal": msg["signal"]})
+		}
+	}
+}
+
 func handleServiceStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":  "online",
 		"service": "Go Supernode orchestrator",
-		"version": "11.33.0",
+		"version": "11.37.0",
 	})
 }
 
