@@ -4,6 +4,14 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.43.0] - 2026-04-05
+### Go Port: Operator-Tunable Snapshot Controls
+- **Snapshot Configuration Surface**: Added explicit snapshot configuration plumbing with tunable interval and retention settings for the lattice persistence layer.
+- **Operator Env Controls**: `NewPersistentLattice` now honors `BOBTORRENT_LATTICE_SNAPSHOT_INTERVAL` and `BOBTORRENT_LATTICE_SNAPSHOT_RETENTION`, allowing operators to tune or disable automatic snapshot cadence without code changes.
+- **Runtime Visibility**: Lattice status now reports both snapshot interval and snapshot retention so operators can confirm active persistence settings at runtime.
+- **Regression Coverage**: Added a persistence regression proving custom snapshot interval/retention settings change store behavior and export metadata as expected.
+- **Validation**: Re-validated `go test ./internal/consensus ./cmd/supernode-go ./internal/... -buildvcs=false` and `go build -buildvcs=false ./...` after the snapshot control integration.
+
 ## [11.42.0] - 2026-04-05
 ### Go Port: Persistence-Aware Mixed Transition Replay Coverage
 - **Durable Mixed Replay Test**: Added a new persistence-aware consensus regression test proving snapshot-tail replay restores a mixed ledger containing send/open/receive, governance proposal+vote, NFT mint+transfer, stake+unstake, and HTLC swap claim transitions after restart.

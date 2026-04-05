@@ -490,6 +490,68 @@ func TestPersistentLatticeRestoresMixedConsensusTransitionsAfterSnapshotTailRepl
 	}
 }
 
+func TestPersistentLatticeWithCustomSnapshotConfigHonorsIntervalAndRetention(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLatticeWithConfig(dbPath, SnapshotConfig{Interval: 5, Retention: 1})
+	if err != nil {
+		t.Fatalf("NewPersistentLatticeWithConfig failed: %v", err)
+	}
+	defer func() {
+		if err := lattice.Close(); err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	}()
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	for i := 0; i < 9; i++ {
+		frontier := lattice.GetFrontier(wallet.PublicKey)
+		block := torrent.NewBlock("achievement_unlock", wallet.PublicKey, &frontier.Hash, frontier.Balance, frontier.StakedBalance, frontier.Height+1, fmt.Sprintf("custom-snapshot-%d", i), nil, map[string]interface{}{"achievement": fmt.Sprintf("CS-%d", i)})
+		if err := block.Sign(wallet.PrivateKey); err != nil {
+			t.Fatalf("Sign achievement block %d failed: %v", i, err)
+		}
+		if err := lattice.ProcessBlock(block); err != nil {
+			t.Fatalf("ProcessBlock achievement block %d failed: %v", i, err)
+		}
+	}
+
+	if lattice.store.SnapshotInterval() != 5 {
+		t.Fatalf("expected snapshot interval 5, got %d", lattice.store.SnapshotInterval())
+	}
+	if lattice.store.SnapshotRetention() != 1 {
+		t.Fatalf("expected snapshot retention 1, got %d", lattice.store.SnapshotRetention())
+	}
+	if lattice.snapshotSequence != 10 {
+		t.Fatalf("expected latest snapshot sequence 10, got %d", lattice.snapshotSequence)
+	}
+	snapshotCount, err := lattice.store.CountSnapshots()
+	if err != nil {
+		t.Fatalf("CountSnapshots failed: %v", err)
+	}
+	if snapshotCount != 1 {
+		t.Fatalf("expected snapshot retention to keep 1 snapshot, got %d", snapshotCount)
+	}
+
+	bundle, err := lattice.ExportPersistence()
+	if err != nil {
+		t.Fatalf("ExportPersistence failed: %v", err)
+	}
+	if bundle.SnapshotInterval != 5 || bundle.SnapshotRetention != 1 {
+		t.Fatalf("expected export bundle snapshot config 5/1, got %d/%d", bundle.SnapshotInterval, bundle.SnapshotRetention)
+	}
+}
+
 func TestPersistentLatticeExportIncludesDurableHistory(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "lattice.db")
 	lattice, err := NewPersistentLattice(dbPath)

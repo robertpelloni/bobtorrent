@@ -258,9 +258,21 @@ func NewLattice() *Lattice {
 // NewPersistentLattice creates a lattice whose confirmed block stream is
 // persisted to SQLite. On startup, the lattice restores the newest materialized
 // snapshot if one exists, then replays only the confirmed blocks newer than the
-// snapshot boundary.
+// snapshot boundary. Snapshot cadence/retention can be tuned through the
+// lattice snapshot environment variables.
 func NewPersistentLattice(path string) (*Lattice, error) {
-	store, err := NewLatticeStore(path)
+	config, err := SnapshotConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	return NewPersistentLatticeWithConfig(path, config)
+}
+
+// NewPersistentLatticeWithConfig creates a persistent lattice using explicit
+// snapshot configuration. This is primarily useful for tests and operator
+// entrypoints that want deterministic persistence behavior.
+func NewPersistentLatticeWithConfig(path string, config SnapshotConfig) (*Lattice, error) {
+	store, err := NewLatticeStoreWithConfig(path, config)
 	if err != nil {
 		return nil, err
 	}

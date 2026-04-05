@@ -1,37 +1,48 @@
-# Bobtorrent Omni-Workspace Handoff (v11.42.0)
+# Bobtorrent Omni-Workspace Handoff (v11.43.0)
 
 ## Session Objective
-Continue hardening the replay-backed persistence layer by expanding persistence-aware consensus coverage beyond export/restore mechanics into richer mixed transition replay across snapshot-tail restart.
+Continue persistence hardening by making snapshot cadence/retention operator-tunable instead of relying only on hardcoded defaults.
 
 ## What Was Implemented
 
-### 1. Mixed transition replay regression for persistent restart
+### 1. Explicit snapshot config surface
+Files:
+- `internal/consensus/store.go`
+- `internal/consensus/lattice.go`
+- `internal/consensus/server.go`
+
+Added a real snapshot configuration surface:
+- `SnapshotConfig`
+- `DefaultSnapshotConfig()`
+- `NewLatticeStoreWithConfig()`
+- `NewPersistentLatticeWithConfig()`
+- env-driven `SnapshotConfigFromEnv()`
+
+### 2. Operator environment controls
+`NewPersistentLattice()` now honors:
+- `BOBTORRENT_LATTICE_SNAPSHOT_INTERVAL`
+- `BOBTORRENT_LATTICE_SNAPSHOT_RETENTION`
+
+Behavior notes:
+- interval can be set to `0` to disable automatic snapshot creation
+- retention must remain at least `1`
+- defaults still remain `25` / `3`
+
+### 3. Runtime visibility
+Lattice status now reports:
+- `snapshotInterval`
+- `snapshotRetention`
+
+This gives operators a direct way to confirm the active persistence tuning rather than inferring it from defaults or source code.
+
+### 4. Regression coverage
 File:
 - `internal/consensus/lattice_test.go`
 
-Added `TestPersistentLatticeRestoresMixedConsensusTransitionsAfterSnapshotTailReplay`.
-
-This test now proves that a persistent lattice can:
-- restore from a materialized snapshot boundary
-- replay a mixed tail of real consensus transitions
-- reconstruct the expected post-restart state across multiple accounts and feature domains
-
-Transitions covered in one durable replay scenario:
-- send -> open
-- send -> receive
-- governance proposal -> vote
-- NFT mint -> transfer
-- stake -> unstake
-- HTLC initiate -> claim
-
-### 2. Why this matters
-Prior persistence coverage was already strong for:
-- anchor replay
-- snapshot restore mechanics
-- export/import/restore workflows
-- secure backup bundle workflows
-
-But this new test increases confidence that replay correctness also holds for a richer mixed consensus tail rather than mainly persistence-control-plane mechanics.
+Added `TestPersistentLatticeWithCustomSnapshotConfigHonorsIntervalAndRetention`, proving that custom config changes:
+- snapshot cadence behavior
+- retained snapshot count
+- exported persistence metadata
 
 ## Validation
 Executed successfully:
@@ -39,14 +50,21 @@ Executed successfully:
 - `go build -buildvcs=false ./...`
 
 ## Strategic State After This Session
-The lattice persistence layer now has stronger evidence that snapshot-tail recovery restores not just storage-anchor state but also a broader cross-section of live economic/governance/NFT/swap state transitions.
+Persistence hardening now includes:
+- replay-backed block durability
+- snapshots
+- verification/repair
+- export/backup/import/restore
+- secure backup bundles
+- mixed transition replay coverage
+- operator-tunable snapshot cadence/retention
 
 ## Recommended Next Steps
-1. Continue expanding persistence-aware replay coverage toward even larger multi-account mixed webs
-2. Add operator-tunable snapshot cadence/retention controls
+1. Decide whether snapshot controls should remain startup-config-only or gain runtime/API mutability
+2. Continue expanding persistence-aware replay coverage toward even larger mixed multi-account webs
 3. Consider signed/shareable diagnostics packaging beyond the current plain JSON export
-4. Continue evaluating which remaining specialized Node surfaces are still worth porting further
+4. Continue evaluating which specialized Node surfaces are still worth porting further
 
 ## Notes for the Next Agent
 - No running processes were terminated in this session.
-- The new regression intentionally follows real lattice semantics for account opening: only the first account uses `SYSTEM_GENESIS`, while later accounts open by consuming a pending send.
+- Snapshot interval `0` now disables automatic snapshot creation, while retention remains validated as at least `1`.

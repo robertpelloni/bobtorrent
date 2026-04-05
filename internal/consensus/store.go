@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -68,10 +69,16 @@ const (
 //  2. snapshots are best-effort optimizations layered on top of the block log
 //  3. startup restores the newest snapshot if present, then replays newer blocks
 //  4. if block append fails, the in-memory mutation is rolled back
+type SnapshotConfig struct {
+	Interval  int64 `json:"interval"`
+	Retention int   `json:"retention"`
+}
+
 type LatticeStore struct {
-	db               *sql.DB
-	path             string
-	snapshotInterval int64
+	db                *sql.DB
+	path              string
+	snapshotInterval  int64
+	snapshotRetention int
 }
 
 type storedBlock struct {
@@ -110,6 +117,7 @@ type LatticeExportBundle struct {
 	Path                   string                    `json:"path"`
 	ExportedAt             int64                     `json:"exportedAt"`
 	SnapshotInterval       int64                     `json:"snapshotInterval"`
+	SnapshotRetention      int                       `json:"snapshotRetention"`
 	Integrity              *LatticeIntegrityReport   `json:"integrity,omitempty"`
 	LatestSnapshot         *persistedLatticeSnapshot `json:"latestSnapshot,omitempty"`
 	ConfirmedBlocks        []ExportedConfirmedBlock  `json:"confirmedBlocks"`
@@ -208,7 +216,51 @@ type LatticeSecureRestoreResult struct {
 	Restore            *LatticeRestoreResult `json:"restore"`
 }
 
+func DefaultSnapshotConfig() SnapshotConfig {
+	return SnapshotConfig{
+		Interval:  defaultLatticeSnapshotInterval,
+		Retention: defaultLatticeSnapshotRetention,
+	}
+}
+
+func normalizeSnapshotConfig(config SnapshotConfig) (SnapshotConfig, error) {
+	if config.Interval < 0 {
+		return SnapshotConfig{}, fmt.Errorf("snapshot interval cannot be negative")
+	}
+	if config.Retention <= 0 {
+		return SnapshotConfig{}, fmt.Errorf("snapshot retention must be at least 1")
+	}
+	return config, nil
+}
+
+func SnapshotConfigFromEnv() (SnapshotConfig, error) {
+	config := DefaultSnapshotConfig()
+	if raw := strings.TrimSpace(os.Getenv("BOBTORRENT_LATTICE_SNAPSHOT_INTERVAL")); raw != "" {
+		value, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return SnapshotConfig{}, fmt.Errorf("invalid BOBTORRENT_LATTICE_SNAPSHOT_INTERVAL %q: %w", raw, err)
+		}
+		config.Interval = value
+	}
+	if raw := strings.TrimSpace(os.Getenv("BOBTORRENT_LATTICE_SNAPSHOT_RETENTION")); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil {
+			return SnapshotConfig{}, fmt.Errorf("invalid BOBTORRENT_LATTICE_SNAPSHOT_RETENTION %q: %w", raw, err)
+		}
+		config.Retention = value
+	}
+	return normalizeSnapshotConfig(config)
+}
+
 func NewLatticeStore(path string) (*LatticeStore, error) {
+	return NewLatticeStoreWithConfig(path, DefaultSnapshotConfig())
+}
+
+func NewLatticeStoreWithConfig(path string, config SnapshotConfig) (*LatticeStore, error) {
+	config, err := normalizeSnapshotConfig(config)
+	if err != nil {
+		return nil, err
+	}
 	if path == "" {
 		return nil, fmt.Errorf("lattice store path required")
 	}
@@ -228,9 +280,10 @@ func NewLatticeStore(path string) (*LatticeStore, error) {
 	}
 
 	store := &LatticeStore{
-		db:               db,
-		path:             path,
-		snapshotInterval: defaultLatticeSnapshotInterval,
+		db:                db,
+		path:              path,
+		snapshotInterval:  config.Interval,
+		snapshotRetention: config.Retention,
 	}
 	if err := store.init(); err != nil {
 		_ = db.Close()
@@ -393,7 +446,7 @@ func (s *LatticeStore) StoreSnapshot(snapshot *persistedLatticeSnapshot) error {
 		 WHERE snapshot_sequence NOT IN (
 			SELECT snapshot_sequence FROM lattice_snapshots ORDER BY snapshot_sequence DESC LIMIT ?
 		 )`,
-		defaultLatticeSnapshotRetention,
+		s.snapshotRetention,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to trim old lattice snapshots: %w", err)
@@ -468,6 +521,13 @@ func (s *LatticeStore) SnapshotInterval() int64 {
 		return 0
 	}
 	return s.snapshotInterval
+}
+
+func (s *LatticeStore) SnapshotRetention() int {
+	if s == nil {
+		return 0
+	}
+	return s.snapshotRetention
 }
 
 func (s *LatticeStore) VerifyIntegrity() (*LatticeIntegrityReport, error) {
@@ -613,6 +673,7 @@ func (s *LatticeStore) ExportBundle() (*LatticeExportBundle, error) {
 		Path:                   s.path,
 		ExportedAt:             time.Now().UnixMilli(),
 		SnapshotInterval:       s.snapshotInterval,
+		SnapshotRetention:      s.snapshotRetention,
 		Integrity:              integrity,
 		LatestSnapshot:         latestSnapshot,
 		ConfirmedBlocks:        confirmedBlocks,
@@ -987,7 +1048,16 @@ func ImportBundleToPath(targetPath string, bundle *LatticeExportBundle) (*Lattic
 		return nil, fmt.Errorf("failed to inspect import target %s: %w", targetPath, err)
 	}
 
-	store, err := NewLatticeStore(targetPath)
+	config := DefaultSnapshotConfig()
+	if bundle != nil {
+		if bundle.SnapshotInterval >= 0 {
+			config.Interval = bundle.SnapshotInterval
+		}
+		if bundle.SnapshotRetention > 0 {
+			config.Retention = bundle.SnapshotRetention
+		}
+	}
+	store, err := NewLatticeStoreWithConfig(targetPath, config)
 	if err != nil {
 		return nil, err
 	}

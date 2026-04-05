@@ -8,14 +8,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - operator experience
 
 ## Current Release Train
-- **Current Version**: `11.42.0`
+- **Current Version**: `11.43.0`
 - **Primary Runtime Targets**:
   - `lattice-go` — block lattice consensus node
   - `supernode-go` — torrent seeding, market polling, TUI operations
   - `dht-proxy` — privacy-preserving peer discovery utility
   - `storage.wasm` — browser-side Go storage kernel
 
-## ✅ Completed Through v11.42.0
+## ✅ Completed Through v11.43.0
 
 ### 1. Go Consensus Node
 - Ported the Bobcoin asynchronous block lattice to Go.
@@ -118,7 +118,8 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Added portable JSON export, live SQLite backup, bundle import, and backup restore controls for operator-managed recovery workflows.
 - Added signed/encrypted operator backup bundles layered on top of the safe SQLite backup flow, plus secure bundle restore into fresh verified databases.
 - Expanded persistence-aware tests beyond manifest-anchor replay into a richer snapshot-tail mixed transition replay covering send/open/receive, governance, NFT, staking, and swap flows.
-- Consider operator controls for snapshot cadence and retention once the default behavior has proven stable.
+- Added operator-tunable snapshot cadence and retention controls via explicit persistence config and startup environment variables.
+- Consider whether snapshot controls should remain startup-config-only or eventually gain runtime/API mutability.
 
 ### C. Continue Service-Side Go Migration + Multi-Node Networking
 - Continue porting remaining practical Node-side service responsibilities into Go where feasible.

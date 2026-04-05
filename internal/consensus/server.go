@@ -124,12 +124,14 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	snapshotCount := int64(0)
 	snapshotSequence := int64(0)
 	snapshotInterval := int64(0)
+	snapshotRetention := 0
 	if persistenceEnabled {
 		persistencePath = s.lattice.store.Path()
 		persistedBlocks, _ = s.lattice.store.CountBlocks()
 		snapshotCount, _ = s.lattice.store.CountSnapshots()
 		snapshotSequence = s.lattice.snapshotSequence
 		snapshotInterval = s.lattice.store.SnapshotInterval()
+		snapshotRetention = s.lattice.store.SnapshotRetention()
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -155,6 +157,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 			"snapshotCount":     snapshotCount,
 			"snapshotSequence":  snapshotSequence,
 			"snapshotInterval":  snapshotInterval,
+			"snapshotRetention": snapshotRetention,
 		},
 	})
 }

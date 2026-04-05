@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.41.0`
+- **Version**: `11.43.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -31,7 +31,9 @@ Default port: `4000`
 Persistence:
 - default SQLite path: `data/lattice/lattice.db`
 - override with env: `BOBTORRENT_LATTICE_DB=/custom/path/lattice.db`
-- materialized snapshots are created automatically every 25 persisted blocks to accelerate cold boot
+- snapshot cadence env: `BOBTORRENT_LATTICE_SNAPSHOT_INTERVAL=25` (set `0` to disable automatic snapshot creation)
+- snapshot retention env: `BOBTORRENT_LATTICE_SNAPSHOT_RETENTION=3`
+- materialized snapshots are created automatically according to the configured cadence to accelerate cold boot
 
 Provides:
 - HTTP consensus endpoints
