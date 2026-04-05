@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.37.0`
+- **Version**: `11.38.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -61,8 +61,8 @@ Optional FHE helper configuration:
 - `BOBTORRENT_FHE_ORACLE_HELPER=cmd/supernode-go/fhe_oracle_helper.mjs` to override the helper script path
 
 Additional frontend-facing endpoints now provided by `supernode-go`:
-- `GET /status`
-- `GET /stats`
+- `GET /status` (now includes signaling telemetry)
+- `GET /stats` (now includes signaling telemetry)
 - `GET /bankroll`
 - `GET /transactions`
 - `POST /mint`

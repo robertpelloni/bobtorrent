@@ -201,3 +201,53 @@ func TestHandleSignalingSocketNotifiesOpponentDisconnect(t *testing.T) {
 		t.Fatalf("expected opponent disconnect message, got %#v", msg)
 	}
 }
+
+func TestMatchmakerEvictsStaleWaitingPeerBeforeMatching(t *testing.T) {
+	mm := newMatchmaker()
+	stale := &matchPlayer{}
+	stale.setWaitingSince(time.Now().Add(-2 * signalingWaitTimeout))
+	mm.waiting = stale
+
+	fresh := &matchPlayer{}
+	opponent, matched := mm.queueOrMatch(fresh)
+	if matched || opponent != nil {
+		t.Fatalf("expected fresh player to be queued after stale eviction")
+	}
+	snapshot := mm.snapshot()
+	if snapshot.WaitingPlayers != 1 {
+		t.Fatalf("expected one waiting player, got %#v", snapshot)
+	}
+	if snapshot.StaleWaitingEvictions != 1 {
+		t.Fatalf("expected one stale waiting eviction, got %#v", snapshot)
+	}
+}
+
+func TestHandleServiceStatusIncludesSignalingSnapshot(t *testing.T) {
+	original := signalingMatchmaker
+	signalingMatchmaker = newMatchmaker()
+	signalingMatchmaker.activeConnections = 2
+	signalingMatchmaker.activePairs = 1
+	signalingMatchmaker.totalMatches = 3
+	defer func() { signalingMatchmaker = original }()
+
+	req := httptest.NewRequest(http.MethodGet, "/status", nil)
+	rec := httptest.NewRecorder()
+
+	handleServiceStatus(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode status response: %v", err)
+	}
+	signaling, ok := body["signaling"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected signaling snapshot in status response, got %#v", body["signaling"])
+	}
+	if signaling["activeConnections"] != float64(2) || signaling["activePairs"] != float64(1) || signaling["totalMatches"] != float64(3) {
+		t.Fatalf("unexpected signaling snapshot: %#v", signaling)
+	}
+}

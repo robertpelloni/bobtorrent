@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.37.0
+## ✅ Completed Through v11.38.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -55,7 +55,7 @@
 - [ ] **Continue service-side Go migration**
   - identify any remaining practical game-server/supertorrent responsibilities worth moving into Go
   - reduce Node-only orchestration dependencies further
-  - harden the new Go signaling path with richer session/telemetry behavior if multiplayer becomes a first-class runtime surface
+  - extend the hardened Go signaling path with richer session semantics (rooms, richer queue policy, explicit multiplayer diagnostics) if multiplayer becomes a first-class runtime surface
 - [ ] **Real Filecoin bridge**
   - replace mock `internal/bridges/filecoin.go` behavior with Lotus RPC
   - persist and expose deal IDs

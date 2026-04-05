@@ -4,6 +4,14 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.38.0] - 2026-04-05
+### Go Port: Signaling Session Hardening
+- **Matchmaker Liveness Controls**: Hardened the Go websocket matchmaker with read/write deadlines, periodic ping frames, pong-driven activity refresh, and bounded websocket message size.
+- **Stale Queue Eviction**: Added stale waiting-player eviction logic so abandoned matchmaking entries do not sit in the single waiting queue indefinitely.
+- **Operational Telemetry**: `supernode-go` status/signaling surfaces now expose signaling metrics including active connections, active pairs, waiting state, total matches, relayed signals, disconnects, and stale-wait evictions.
+- **Regression Coverage**: Added tests for stale waiting-peer eviction and signaling snapshot exposure alongside the existing websocket pairing/relay/disconnect tests.
+- **Validation**: Re-validated `go test ./cmd/supernode-go ./internal/... -buildvcs=false` and `go build -buildvcs=false ./...` after the signaling hardening pass.
+
 ## [11.37.0] - 2026-04-05
 ### Go Port: WebRTC Signaling Matchmaker
 - **Go Matchmaking WebSocket**: Added a native websocket matchmaking/signaling handler to `supernode-go`, compatible with the Bobcoin `FIND_MATCH` / `MATCH_FOUND` / `SIGNAL` / `OPPONENT_DISCONNECTED` contract.

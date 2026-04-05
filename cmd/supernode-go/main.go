@@ -33,6 +33,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	signalingWriteTimeout   = 5 * time.Second
+	signalingReadTimeout    = 70 * time.Second
+	signalingPingPeriod     = 25 * time.Second
+	signalingWaitTimeout    = 45 * time.Second
+	signalingMaxMessageSize = 1 << 20
+)
+
 var (
 	nodeWallet          *torrent.Keypair
 	httpClient          = resty.New().SetTimeout(10 * time.Second)
@@ -53,20 +61,45 @@ var (
 // compatible with the legacy Node game-server: a single waiting queue, paired
 // opponents, and JSON relay of `SIGNAL` payloads.
 type matchPlayer struct {
-	conn     *websocket.Conn
-	writeMu  sync.Mutex
-	mu       sync.Mutex
-	opponent *matchPlayer
-	closed   bool
+	conn         *websocket.Conn
+	writeMu      sync.Mutex
+	mu           sync.Mutex
+	opponent     *matchPlayer
+	closed       bool
+	connectedAt  time.Time
+	lastSeen     time.Time
+	waitingSince time.Time
 }
 
 // matchmaker coordinates the single-queue WebRTC signaling flow expected by the
 // Bobcoin frontend. This is intentionally minimal because the existing product
 // only needs pairwise matching rather than rooms or persistent lobbies.
 type matchmaker struct {
-	mu       sync.Mutex
-	waiting  *matchPlayer
-	upgrader websocket.Upgrader
+	mu                    sync.Mutex
+	waiting               *matchPlayer
+	activeConnections     int
+	activePairs           int
+	totalConnections      int64
+	totalMatches          int64
+	relayedSignals        int64
+	disconnects           int64
+	staleWaitingEvictions int64
+	upgrader              websocket.Upgrader
+}
+
+// matchmakerSnapshot is a compact operational view of the websocket signaling
+// layer. It is exposed through status/stats responses so operators can observe
+// whether the Go signaling path is active, queued, or churning.
+type matchmakerSnapshot struct {
+	ActiveConnections     int   `json:"activeConnections"`
+	ActivePairs           int   `json:"activePairs"`
+	WaitingPlayers        int   `json:"waitingPlayers"`
+	WaitingSeconds        int64 `json:"waitingSeconds"`
+	TotalConnections      int64 `json:"totalConnections"`
+	TotalMatches          int64 `json:"totalMatches"`
+	RelayedSignals        int64 `json:"relayedSignals"`
+	Disconnects           int64 `json:"disconnects"`
+	StaleWaitingEvictions int64 `json:"staleWaitingEvictions"`
 }
 
 func newMatchmaker() *matchmaker {
@@ -82,7 +115,14 @@ func newMatchmaker() *matchmaker {
 func (p *matchPlayer) sendJSON(v interface{}) error {
 	p.writeMu.Lock()
 	defer p.writeMu.Unlock()
+	_ = p.conn.SetWriteDeadline(time.Now().Add(signalingWriteTimeout))
 	return p.conn.WriteJSON(v)
+}
+
+func (p *matchPlayer) sendControl(messageType int, data []byte) error {
+	p.writeMu.Lock()
+	defer p.writeMu.Unlock()
+	return p.conn.WriteControl(messageType, data, time.Now().Add(signalingWriteTimeout))
 }
 
 func (p *matchPlayer) setOpponent(opponent *matchPlayer) {
@@ -105,6 +145,33 @@ func (p *matchPlayer) clearOpponent() *matchPlayer {
 	return opponent
 }
 
+func (p *matchPlayer) setWaitingSince(ts time.Time) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.waitingSince = ts
+}
+
+func (p *matchPlayer) clearWaitingSince() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.waitingSince = time.Time{}
+}
+
+func (p *matchPlayer) waitingDuration(now time.Time) time.Duration {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.waitingSince.IsZero() {
+		return 0
+	}
+	return now.Sub(p.waitingSince)
+}
+
+func (p *matchPlayer) touch(ts time.Time) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.lastSeen = ts
+}
+
 func (p *matchPlayer) markClosed() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -117,37 +184,90 @@ func (p *matchPlayer) isClosed() bool {
 	return p.closed
 }
 
+func (m *matchmaker) registerConnection(player *matchPlayer) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.activeConnections++
+	m.totalConnections++
+}
+
 func (m *matchmaker) queueOrMatch(player *matchPlayer) (*matchPlayer, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	now := time.Now()
+	player.touch(now)
 	if player.getOpponent() != nil || player.isClosed() {
 		return nil, false
 	}
-	if m.waiting != nil && (m.waiting.isClosed() || m.waiting == player) {
-		m.waiting = nil
+	if m.waiting != nil {
+		staleWaiting := m.waiting.waitingDuration(now) > signalingWaitTimeout
+		if m.waiting.isClosed() || m.waiting == player || staleWaiting {
+			if staleWaiting && !m.waiting.isClosed() && m.waiting != player {
+				m.staleWaitingEvictions++
+				m.waiting.clearWaitingSince()
+			}
+			m.waiting = nil
+		}
 	}
 	if m.waiting == nil {
+		player.setWaitingSince(now)
 		m.waiting = player
 		return nil, false
 	}
 
 	opponent := m.waiting
 	m.waiting = nil
+	opponent.clearWaitingSince()
+	player.clearWaitingSince()
 	opponent.setOpponent(player)
 	player.setOpponent(opponent)
+	m.totalMatches++
+	m.activePairs++
 	return opponent, true
+}
+
+func (m *matchmaker) recordSignalRelay() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.relayedSignals++
+}
+
+func (m *matchmaker) snapshot() matchmakerSnapshot {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	snapshot := matchmakerSnapshot{
+		ActiveConnections:     m.activeConnections,
+		ActivePairs:           m.activePairs,
+		TotalConnections:      m.totalConnections,
+		TotalMatches:          m.totalMatches,
+		RelayedSignals:        m.relayedSignals,
+		Disconnects:           m.disconnects,
+		StaleWaitingEvictions: m.staleWaitingEvictions,
+	}
+	if m.waiting != nil && !m.waiting.isClosed() {
+		snapshot.WaitingPlayers = 1
+		snapshot.WaitingSeconds = int64(m.waiting.waitingDuration(time.Now()).Seconds())
+	}
+	return snapshot
 }
 
 func (m *matchmaker) disconnect(player *matchPlayer) *matchPlayer {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.activeConnections > 0 {
+		m.activeConnections--
+	}
+	m.disconnects++
 	if m.waiting == player {
 		m.waiting = nil
 	}
 	opponent := player.clearOpponent()
 	if opponent != nil {
 		opponent.clearOpponent()
+		if m.activePairs > 0 {
+			m.activePairs--
+		}
 	}
 	return opponent
 }
@@ -589,6 +709,7 @@ func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 			"status":      "online",
 			"service":     "Go Supernode signaling",
 			"matchmaking": "websocket_ready",
+			"signaling":   signalingMatchmaker.snapshot(),
 		})
 		return
 	}
@@ -598,8 +719,33 @@ func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 		log.Printf("signaling websocket upgrade failed: %v", err)
 		return
 	}
-	player := &matchPlayer{conn: conn}
+	player := &matchPlayer{conn: conn, connectedAt: time.Now(), lastSeen: time.Now()}
+	signalingMatchmaker.registerConnection(player)
+	conn.SetReadLimit(signalingMaxMessageSize)
+	_ = conn.SetReadDeadline(time.Now().Add(signalingReadTimeout))
+	conn.SetPongHandler(func(string) error {
+		player.touch(time.Now())
+		return conn.SetReadDeadline(time.Now().Add(signalingReadTimeout))
+	})
+
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(signalingPingPeriod)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				if err := player.sendControl(websocket.PingMessage, []byte("ping")); err != nil {
+					return
+				}
+			}
+		}
+	}()
+
 	defer func() {
+		close(done)
 		player.markClosed()
 		opponent := signalingMatchmaker.disconnect(player)
 		_ = conn.Close()
@@ -613,6 +759,8 @@ func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 		if err := conn.ReadJSON(&msg); err != nil {
 			return
 		}
+		player.touch(time.Now())
+		_ = conn.SetReadDeadline(time.Now().Add(signalingReadTimeout))
 
 		msgType, _ := msg["type"].(string)
 		switch msgType {
@@ -628,6 +776,7 @@ func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 			if opponent == nil || opponent.isClosed() {
 				continue
 			}
+			signalingMatchmaker.recordSignalRelay()
 			_ = opponent.sendJSON(map[string]interface{}{"type": "SIGNAL", "signal": msg["signal"]})
 		}
 	}
@@ -635,9 +784,10 @@ func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 
 func handleServiceStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"status":  "online",
-		"service": "Go Supernode orchestrator",
-		"version": "11.37.0",
+		"status":    "online",
+		"service":   "Go Supernode orchestrator",
+		"version":   "11.37.0",
+		"signaling": signalingMatchmaker.snapshot(),
 	})
 }
 
@@ -683,10 +833,11 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"address": nodeWallet.PublicKey,
-		"service": "Go Supernode",
-		"status":  "online",
-		"uptime":  int64(uptimeSeconds),
+		"address":   nodeWallet.PublicKey,
+		"service":   "Go Supernode",
+		"status":    "online",
+		"uptime":    int64(uptimeSeconds),
+		"signaling": signalingMatchmaker.snapshot(),
 		"network": map[string]interface{}{
 			"peers":         peerCount,
 			"downloadSpeed": int64(float64(totalDownloadBytes) / uptimeSeconds),
