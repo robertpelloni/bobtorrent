@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -167,5 +168,92 @@ func TestPersistentLatticeReplaysConfirmedBlocksOnRestart(t *testing.T) {
 	}
 	if reloaded.stateHash == "" || reloaded.stateHash == strings.Repeat("0", 64) {
 		t.Fatalf("expected replayed state hash to be non-genesis, got %s", reloaded.stateHash)
+	}
+}
+
+func TestPersistentLatticeRestoresFromSnapshotAndReplaysTail(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	frontier := genesis
+	for i := 0; i < int(defaultLatticeSnapshotInterval)-1; i++ {
+		block := torrent.NewBlock("achievement_unlock", wallet.PublicKey, &frontier.Hash, frontier.Balance, frontier.StakedBalance, frontier.Height+1, fmt.Sprintf("achievement-%d", i), nil, map[string]interface{}{"achievement": fmt.Sprintf("A-%d", i)})
+		if err := block.Sign(wallet.PrivateKey); err != nil {
+			t.Fatalf("Sign achievement block %d failed: %v", i, err)
+		}
+		if err := lattice.ProcessBlock(block); err != nil {
+			t.Fatalf("ProcessBlock achievement block %d failed: %v", i, err)
+		}
+		frontier = block
+	}
+
+	if lattice.snapshotSequence != defaultLatticeSnapshotInterval {
+		t.Fatalf("expected snapshot sequence %d, got %d", defaultLatticeSnapshotInterval, lattice.snapshotSequence)
+	}
+
+	anchorPayload := map[string]interface{}{
+		"manifestId":     "snapshot-tail-manifest",
+		"locator":        "bobtorrent://manifest/snapshot-tail-manifest",
+		"manifestUrl":    "http://localhost:8000/manifests/snapshot-tail-manifest",
+		"name":           "tail.bin",
+		"size":           float64(4096),
+		"ciphertextHash": "snapshot-tail-ciphertext",
+	}
+	anchor := torrent.NewBlock("publish_manifest", wallet.PublicKey, &frontier.Hash, frontier.Balance, frontier.StakedBalance, frontier.Height+1, "snapshot-tail-manifest", nil, anchorPayload)
+	if err := anchor.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign tail anchor failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(anchor); err != nil {
+		t.Fatalf("ProcessBlock tail anchor failed: %v", err)
+	}
+
+	if err := lattice.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	reloaded, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice reload failed: %v", err)
+	}
+	defer func() {
+		if err := reloaded.Close(); err != nil {
+			t.Fatalf("Close reload failed: %v", err)
+		}
+	}()
+
+	if reloaded.snapshotSequence != defaultLatticeSnapshotInterval {
+		t.Fatalf("expected reload snapshot sequence %d, got %d", defaultLatticeSnapshotInterval, reloaded.snapshotSequence)
+	}
+	if reloaded.persistedSequence != defaultLatticeSnapshotInterval+1 {
+		t.Fatalf("expected persisted sequence %d, got %d", defaultLatticeSnapshotInterval+1, reloaded.persistedSequence)
+	}
+	if len(reloaded.blocks) != int(defaultLatticeSnapshotInterval)+1 {
+		t.Fatalf("expected %d total replayed blocks, got %d", defaultLatticeSnapshotInterval+1, len(reloaded.blocks))
+	}
+	stored, ok := reloaded.anchors[anchor.Hash]
+	if !ok {
+		t.Fatal("expected tail anchor to be restored after snapshot replay")
+	}
+	if stored.ManifestID != "snapshot-tail-manifest" {
+		t.Fatalf("unexpected tail manifest id: %s", stored.ManifestID)
+	}
+	if reloaded.GetFrontier(wallet.PublicKey).Hash != anchor.Hash {
+		t.Fatalf("expected frontier hash %s, got %s", anchor.Hash, reloaded.GetFrontier(wallet.PublicKey).Hash)
 	}
 }

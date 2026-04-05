@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.27.0`
+- **Root Version**: `11.28.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -47,7 +47,7 @@ bobtorrent/
 | Service | Artifact | Status | Purpose |
 |---|---|---:|---|
 | DHT Proxy | `build/dht-proxy` | Buildable | Privacy-preserving peer discovery with GeoIP sorting |
-| Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence |
+| Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence and materialized snapshots |
 | Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible stats/control endpoints, WASM artifact serving, and manifest/shard publication registry |
 | Storage WASM | `build/storage.wasm` | Buildable | Browser-side Go storage kernel |
 | Go WASM Runtime | `build/wasm_exec.js` | Packaged | Required runtime bridge for browser execution |
@@ -63,6 +63,6 @@ bobtorrent/
 - Browser-consumable storage WASM runtime
 
 ## Current Known Gaps
-- Lattice persistence now exists as a durable confirmed-block log with replay-backed recovery, but periodic materialized snapshots and repair tooling are still missing
+- Lattice persistence now includes a durable confirmed-block log plus materialized snapshot acceleration, but repair tooling and operator-tunable snapshot controls are still missing
 - Filecoin bridge is simulated, not production RPC-backed
 - qBittorrent remote reference remains broken

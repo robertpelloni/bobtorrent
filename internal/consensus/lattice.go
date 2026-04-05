@@ -26,6 +26,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"math"
 	"strings"
 	"sync"
@@ -128,6 +129,15 @@ type Lattice struct {
 	// store optionally persists the confirmed block log to SQLite so the lattice
 	// can recover its full derived state after restart by replaying blocks.
 	store *LatticeStore
+
+	// persistedSequence tracks the latest confirmed-block sequence durably stored
+	// in SQLite. This allows cold boot to replay only blocks newer than the most
+	// recent materialized snapshot rather than always replaying the full history.
+	persistedSequence int64
+
+	// snapshotSequence tracks the latest persisted sequence already captured by a
+	// materialized snapshot. When zero, no snapshot has been materialized yet.
+	snapshotSequence int64
 
 	// mu protects all lattice state from concurrent access.
 	mu sync.RWMutex
@@ -244,8 +254,9 @@ func NewLattice() *Lattice {
 }
 
 // NewPersistentLattice creates a lattice whose confirmed block stream is
-// persisted to SQLite. On startup, every stored block is replayed in commit
-// order to deterministically rebuild the in-memory indexes.
+// persisted to SQLite. On startup, the lattice restores the newest materialized
+// snapshot if one exists, then replays only the confirmed blocks newer than the
+// snapshot boundary.
 func NewPersistentLattice(path string) (*Lattice, error) {
 	store, err := NewLatticeStore(path)
 	if err != nil {
@@ -253,7 +264,18 @@ func NewPersistentLattice(path string) (*Lattice, error) {
 	}
 
 	l := newEmptyLattice(store)
-	storedBlocks, err := store.LoadBlocks()
+	latestSnapshot, err := store.LoadLatestSnapshot()
+	if err != nil {
+		_ = store.Close()
+		return nil, err
+	}
+	if latestSnapshot != nil {
+		l.restorePersistentSnapshotLocked(latestSnapshot.Snapshot)
+		l.persistedSequence = latestSnapshot.LastSequence
+		l.snapshotSequence = latestSnapshot.LastSequence
+	}
+
+	storedBlocks, err := store.LoadBlocksAfter(l.persistedSequence)
 	if err != nil {
 		_ = store.Close()
 		return nil, err
@@ -264,6 +286,7 @@ func NewPersistentLattice(path string) (*Lattice, error) {
 			_ = store.Close()
 			return nil, fmt.Errorf("failed to replay stored block #%d (%s): %w", entry.Sequence, entry.Block.Hash, err)
 		}
+		l.persistedSequence = entry.Sequence
 	}
 
 	return l, nil
@@ -329,6 +352,21 @@ type latticeSnapshot struct {
 	stateHash  string
 }
 
+type persistedLatticeSnapshot struct {
+	LastSequence int64                       `json:"lastSequence"`
+	Chains       map[string][]*torrent.Block `json:"chains"`
+	Blocks       map[string]*torrent.Block   `json:"blocks"`
+	Pending      map[string][]PendingTx      `json:"pending"`
+	Proposals    map[string]*Proposal        `json:"proposals"`
+	Votes        map[string]map[string]Vote  `json:"votes"`
+	MarketBids   map[string]*MarketBid       `json:"marketBids"`
+	Swaps        map[string]*Swap            `json:"swaps"`
+	NFTs         map[string]*NFT             `json:"nfts"`
+	Anchors      map[string]*ManifestAnchor  `json:"anchors"`
+	StakeInfo    map[string]*StakeInfo       `json:"stakeInfo"`
+	StateHash    string                      `json:"stateHash"`
+}
+
 func (l *Lattice) snapshotLocked() *latticeSnapshot {
 	return &latticeSnapshot{
 		chains:     cloneChains(l.chains),
@@ -360,6 +398,42 @@ func (l *Lattice) restoreSnapshotLocked(snapshot *latticeSnapshot) {
 	l.anchors = snapshot.anchors
 	l.stakeInfo = snapshot.stakeInfo
 	l.stateHash = snapshot.stateHash
+}
+
+func (l *Lattice) persistentSnapshotLocked(lastSequence int64) *persistedLatticeSnapshot {
+	return &persistedLatticeSnapshot{
+		LastSequence: lastSequence,
+		Chains:       cloneChains(l.chains),
+		Blocks:       cloneBlocks(l.blocks),
+		Pending:      clonePending(l.pending),
+		Proposals:    cloneProposals(l.proposals),
+		Votes:        cloneVotes(l.votes),
+		MarketBids:   cloneMarketBids(l.marketBids),
+		Swaps:        cloneSwaps(l.swaps),
+		NFTs:         cloneNFTs(l.nfts),
+		Anchors:      cloneAnchors(l.anchors),
+		StakeInfo:    cloneStakeInfo(l.stakeInfo),
+		StateHash:    l.stateHash,
+	}
+}
+
+func (l *Lattice) restorePersistentSnapshotLocked(snapshot *persistedLatticeSnapshot) {
+	if snapshot == nil {
+		return
+	}
+	l.restoreSnapshotLocked(&latticeSnapshot{
+		chains:     cloneChains(snapshot.Chains),
+		blocks:     cloneBlocks(snapshot.Blocks),
+		pending:    clonePending(snapshot.Pending),
+		proposals:  cloneProposals(snapshot.Proposals),
+		votes:      cloneVotes(snapshot.Votes),
+		marketBids: cloneMarketBids(snapshot.MarketBids),
+		swaps:      cloneSwaps(snapshot.Swaps),
+		nfts:       cloneNFTs(snapshot.NFTs),
+		anchors:    cloneAnchors(snapshot.Anchors),
+		stakeInfo:  cloneStakeInfo(snapshot.StakeInfo),
+		stateHash:  snapshot.StateHash,
+	})
 }
 
 func cloneChains(src map[string][]*torrent.Block) map[string][]*torrent.Block {
@@ -733,9 +807,19 @@ func (l *Lattice) processBlockLocked(b *torrent.Block, persist bool) error {
 	l.updateStateHash(b)
 
 	if persist && l.store != nil {
-		if err := l.store.AppendBlock(b); err != nil {
+		sequence, err := l.store.AppendBlock(b)
+		if err != nil {
 			l.restoreSnapshotLocked(snapshot)
 			return fmt.Errorf("failed to persist confirmed block %s: %w", b.Hash, err)
+		}
+		l.persistedSequence = sequence
+
+		if l.store.ShouldSnapshot(sequence, l.snapshotSequence) {
+			if err := l.store.StoreSnapshot(l.persistentSnapshotLocked(sequence)); err != nil {
+				log.Printf("[Lattice] snapshot materialization at sequence %d failed: %v", sequence, err)
+			} else {
+				l.snapshotSequence = sequence
+			}
 		}
 	}
 

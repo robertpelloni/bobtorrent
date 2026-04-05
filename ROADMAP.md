@@ -8,14 +8,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - operator experience
 
 ## Current Release Train
-- **Current Version**: `11.27.0`
+- **Current Version**: `11.28.0`
 - **Primary Runtime Targets**:
   - `lattice-go` — block lattice consensus node
   - `supernode-go` — torrent seeding, market polling, TUI operations
   - `dht-proxy` — privacy-preserving peer discovery utility
   - `storage.wasm` — browser-side Go storage kernel
 
-## ✅ Completed Through v11.27.0
+## ✅ Completed Through v11.28.0
 
 ### 1. Go Consensus Node
 - Ported the Bobcoin asynchronous block lattice to Go.
@@ -81,9 +81,10 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 ### 6. Durable Lattice Persistence
 - Added an optional SQLite-backed confirmed block log for the Go lattice.
 - Added replay-driven cold-boot recovery so restart rebuilds chains, pending transfers, governance state, swaps, NFTs, and anchors from persisted blocks.
+- Added materialized SQLite snapshots so cold boot can restore a recent checkpoint and replay only the newer block tail.
 - Updated `cmd/lattice-go` to boot the lattice in persistent mode by default using `data/lattice/lattice.db` (override with `BOBTORRENT_LATTICE_DB`).
-- Added status reporting for persistence enablement, DB path, and persisted block totals.
-- Added a consensus test proving restart/replay restores anchored manifest state.
+- Added status reporting for persistence enablement, DB path, persisted block totals, snapshot count, and snapshot sequence.
+- Added consensus tests proving restart/replay restores anchored manifest state and that snapshot restore + tail replay rebuild the latest frontier correctly.
 
 ### 7. Build + Toolchain Hardening
 - Fixed third-party API drift in `anacrolix/dht` and `reedsolomon` integrations.
@@ -100,10 +101,10 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Extend the new week-over-week source reliability layer with even stronger comparative diagnostics, exports, and longer retained history.
 - Add stronger batch/archive workspace operations beyond the initial export/copy actions.
 
-### B. Snapshot Acceleration + Persistence Hardening
-- Extend the current replay-backed SQLite durability with periodic materialized snapshots for faster cold boots.
+### B. Persistence Hardening + Repair Tooling
 - Add integrity checks / repair tooling for persistence corruption scenarios.
 - Expand persistence-aware tests beyond manifest-anchor replay into broader consensus transitions.
+- Consider operator controls for snapshot cadence and retention once the default behavior has proven stable.
 
 ### C. Multi-Node Consensus Networking
 - Upgrade the current HTTP fan-out into more robust peer synchronization.

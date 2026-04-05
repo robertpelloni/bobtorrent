@@ -4,6 +4,14 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.28.0] - 2026-04-05
+### Go Port: Snapshot-Accelerated Lattice Recovery
+- **Materialized Snapshot Layer**: Extended `internal/consensus/store.go` with a snapshot table layered on top of the append-only confirmed block log, allowing the lattice to retain recent materialized state checkpoints in SQLite.
+- **Tail-Replay Cold Boot**: `NewPersistentLattice` now restores the newest persisted snapshot first and replays only the newer confirmed blocks, reducing restart work on longer histories without changing the confirmed block log as the source of truth.
+- **Automatic Snapshot Cadence**: The lattice now materializes snapshots automatically every 25 persisted blocks and retains the newest few snapshots for recovery acceleration.
+- **Operational Visibility**: The lattice status endpoint now exposes persisted sequence, snapshot sequence, snapshot count, and snapshot interval so operators can confirm whether acceleration is active.
+- **Validation**: Re-validated `go test ./internal/consensus -buildvcs=false`, `go build -buildvcs=false ./...`, and `cd bobcoin/frontend && npm run build` after snapshot integration.
+
 ## [11.27.0] - 2026-04-05
 ### Go Port: Long-Horizon Source Reliability Sync
 - **Bobcoin Analytics Upgrade**: Updated the `bobcoin` submodule to `v8.43.0`, preserving the latest upstream replay/parity hardening while adding long-horizon source reliability analytics to Vault.

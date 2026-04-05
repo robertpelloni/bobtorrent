@@ -113,9 +113,15 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	persistenceEnabled := s.lattice.store != nil
 	persistencePath := ""
 	persistedBlocks := int64(0)
+	snapshotCount := int64(0)
+	snapshotSequence := int64(0)
+	snapshotInterval := int64(0)
 	if persistenceEnabled {
 		persistencePath = s.lattice.store.Path()
 		persistedBlocks, _ = s.lattice.store.CountBlocks()
+		snapshotCount, _ = s.lattice.store.CountSnapshots()
+		snapshotSequence = s.lattice.snapshotSequence
+		snapshotInterval = s.lattice.store.SnapshotInterval()
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -134,9 +140,13 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"activeSwaps": len(s.lattice.swaps),
 		"anchors":     len(s.lattice.anchors),
 		"persistence": map[string]interface{}{
-			"enabled":         persistenceEnabled,
-			"path":            persistencePath,
-			"persistedBlocks": persistedBlocks,
+			"enabled":           persistenceEnabled,
+			"path":              persistencePath,
+			"persistedBlocks":   persistedBlocks,
+			"persistedSequence": s.lattice.persistedSequence,
+			"snapshotCount":     snapshotCount,
+			"snapshotSequence":  snapshotSequence,
+			"snapshotInterval":  snapshotInterval,
 		},
 	})
 }
