@@ -125,6 +125,10 @@ type Lattice struct {
 	// peers maps registered P2P lattice node addresses for block broadcasting.
 	peers map[string]bool
 
+	// store optionally persists the confirmed block log to SQLite so the lattice
+	// can recover its full derived state after restart by replaying blocks.
+	store *LatticeStore
+
 	// mu protects all lattice state from concurrent access.
 	mu sync.RWMutex
 }
@@ -161,28 +165,28 @@ type Vote struct {
 // Creators post bids with a magnet URI and BOB bounty; supernodes accept
 // bids by downloading the content and proving storage via SPoRA.
 type MarketBid struct {
-	ID         string `json:"id"`                    // Block hash of the market_bid block
-	Creator    string `json:"creator"`               // Account that posted the bid
-	Magnet     string `json:"magnet"`                // Magnet URI of the content to store
-	Amount     int64  `json:"amount"`                // BOB bounty for storage
-	Status     string `json:"status"`                // "OPEN", "ACCEPTED", "EXPIRED"
-	AcceptedBy string `json:"acceptedBy,omitempty"`  // Account that accepted the bid
-	Timestamp  int64  `json:"timestamp"`             // Unix ms when bid was posted
+	ID         string `json:"id"`                   // Block hash of the market_bid block
+	Creator    string `json:"creator"`              // Account that posted the bid
+	Magnet     string `json:"magnet"`               // Magnet URI of the content to store
+	Amount     int64  `json:"amount"`               // BOB bounty for storage
+	Status     string `json:"status"`               // "OPEN", "ACCEPTED", "EXPIRED"
+	AcceptedBy string `json:"acceptedBy,omitempty"` // Account that accepted the bid
+	Timestamp  int64  `json:"timestamp"`            // Unix ms when bid was posted
 }
 
 // Swap represents an HTLC (Hashed Time-Lock Contract) for trustless atomic
 // exchange between two parties. The sender locks tokens; the recipient
 // reveals a secret to claim them before expiry.
 type Swap struct {
-	ID        string `json:"id"`                 // Block hash of the initiate_swap block
-	Sender    string `json:"sender"`             // Account that initiated the swap
-	Recipient string `json:"recipient"`          // Intended recipient of the locked tokens
-	Amount    int64  `json:"amount"`             // Locked token amount
-	HashLock  string `json:"hashLock"`           // SHA-256 hash of the secret
-	Expiry    int64  `json:"expiry"`             // Unix ms deadline for claiming
-	Status    string `json:"status"`             // "LOCKED", "CLAIMED", "REFUNDED"
-	Claimer   string `json:"claimer,omitempty"`  // Account that claimed the swap
-	Secret    string `json:"secret,omitempty"`   // Revealed secret (set on claim)
+	ID        string `json:"id"`                // Block hash of the initiate_swap block
+	Sender    string `json:"sender"`            // Account that initiated the swap
+	Recipient string `json:"recipient"`         // Intended recipient of the locked tokens
+	Amount    int64  `json:"amount"`            // Locked token amount
+	HashLock  string `json:"hashLock"`          // SHA-256 hash of the secret
+	Expiry    int64  `json:"expiry"`            // Unix ms deadline for claiming
+	Status    string `json:"status"`            // "LOCKED", "CLAIMED", "REFUNDED"
+	Claimer   string `json:"claimer,omitempty"` // Account that claimed the swap
+	Secret    string `json:"secret,omitempty"`  // Revealed secret (set on claim)
 }
 
 // NFT represents a non-fungible token minted on the lattice. Each NFT is
@@ -201,26 +205,26 @@ type NFT struct {
 // lattice. The referenced manifest itself may live on a supernode registry,
 // but this anchor proves which account attached it to the sovereign network.
 type ManifestAnchor struct {
-	ID                 string   `json:"id"`
-	BlockHash          string   `json:"blockHash"`
-	Owner              string   `json:"owner"`
-	Type               string   `json:"type"`
-	ManifestID         string   `json:"manifestId,omitempty"`
-	Locator            string   `json:"locator,omitempty"`
-	ManifestURL        string   `json:"manifestUrl,omitempty"`
-	Name               string   `json:"name,omitempty"`
-	Size               int64    `json:"size,omitempty"`
-	CiphertextHash     string   `json:"ciphertextHash,omitempty"`
-	ProofHash          string   `json:"proofHash,omitempty"`
-	ProofSignature     string   `json:"proofSignature,omitempty"`
-	PublisherAlias     string   `json:"publisherAlias,omitempty"`
-	PublisherWebsite   string   `json:"publisherWebsite,omitempty"`
-	PublisherStatement string   `json:"publisherStatement,omitempty"`
-	PublisherAvatar    string   `json:"publisherAvatar,omitempty"`
-	PublisherProofs    []string `json:"publisherProofs,omitempty"`
+	ID                  string   `json:"id"`
+	BlockHash           string   `json:"blockHash"`
+	Owner               string   `json:"owner"`
+	Type                string   `json:"type"`
+	ManifestID          string   `json:"manifestId,omitempty"`
+	Locator             string   `json:"locator,omitempty"`
+	ManifestURL         string   `json:"manifestUrl,omitempty"`
+	Name                string   `json:"name,omitempty"`
+	Size                int64    `json:"size,omitempty"`
+	CiphertextHash      string   `json:"ciphertextHash,omitempty"`
+	ProofHash           string   `json:"proofHash,omitempty"`
+	ProofSignature      string   `json:"proofSignature,omitempty"`
+	PublisherAlias      string   `json:"publisherAlias,omitempty"`
+	PublisherWebsite    string   `json:"publisherWebsite,omitempty"`
+	PublisherStatement  string   `json:"publisherStatement,omitempty"`
+	PublisherAvatar     string   `json:"publisherAvatar,omitempty"`
+	PublisherProofs     []string `json:"publisherProofs,omitempty"`
 	PublisherProofKinds []string `json:"publisherProofKinds,omitempty"`
-	Magnet             string   `json:"magnet,omitempty"`
-	Timestamp          int64    `json:"timestamp"`
+	Magnet              string   `json:"magnet,omitempty"`
+	Timestamp           int64    `json:"timestamp"`
 }
 
 // StakeInfo tracks an account's active staking position.
@@ -236,6 +240,36 @@ type StakeInfo struct {
 // NewLattice creates an empty Lattice with all maps initialized and the
 // state hash set to 64 zero characters (genesis state).
 func NewLattice() *Lattice {
+	return newEmptyLattice(nil)
+}
+
+// NewPersistentLattice creates a lattice whose confirmed block stream is
+// persisted to SQLite. On startup, every stored block is replayed in commit
+// order to deterministically rebuild the in-memory indexes.
+func NewPersistentLattice(path string) (*Lattice, error) {
+	store, err := NewLatticeStore(path)
+	if err != nil {
+		return nil, err
+	}
+
+	l := newEmptyLattice(store)
+	storedBlocks, err := store.LoadBlocks()
+	if err != nil {
+		_ = store.Close()
+		return nil, err
+	}
+
+	for _, entry := range storedBlocks {
+		if err := l.processBlockLocked(entry.Block, false); err != nil {
+			_ = store.Close()
+			return nil, fmt.Errorf("failed to replay stored block #%d (%s): %w", entry.Sequence, entry.Block.Hash, err)
+		}
+	}
+
+	return l, nil
+}
+
+func newEmptyLattice(store *LatticeStore) *Lattice {
 	return &Lattice{
 		chains:     make(map[string][]*torrent.Block),
 		blocks:     make(map[string]*torrent.Block),
@@ -249,7 +283,175 @@ func NewLattice() *Lattice {
 		stakeInfo:  make(map[string]*StakeInfo),
 		stateHash:  strings.Repeat("0", 64),
 		peers:      make(map[string]bool),
+		store:      store,
 	}
+}
+
+// Close releases any optional persistence handle associated with the lattice.
+func (l *Lattice) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.store == nil {
+		return nil
+	}
+	return l.store.Close()
+}
+
+// PersistenceEnabled reports whether this lattice is backed by durable block
+// storage or is running in purely in-memory mode.
+func (l *Lattice) PersistenceEnabled() bool {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.store != nil
+}
+
+// PersistencePath returns the SQLite file path when persistence is enabled.
+func (l *Lattice) PersistencePath() string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if l.store == nil {
+		return ""
+	}
+	return l.store.Path()
+}
+
+type latticeSnapshot struct {
+	chains     map[string][]*torrent.Block
+	blocks     map[string]*torrent.Block
+	pending    map[string][]PendingTx
+	proposals  map[string]*Proposal
+	votes      map[string]map[string]Vote
+	marketBids map[string]*MarketBid
+	swaps      map[string]*Swap
+	nfts       map[string]*NFT
+	anchors    map[string]*ManifestAnchor
+	stakeInfo  map[string]*StakeInfo
+	stateHash  string
+}
+
+func (l *Lattice) snapshotLocked() *latticeSnapshot {
+	return &latticeSnapshot{
+		chains:     cloneChains(l.chains),
+		blocks:     cloneBlocks(l.blocks),
+		pending:    clonePending(l.pending),
+		proposals:  cloneProposals(l.proposals),
+		votes:      cloneVotes(l.votes),
+		marketBids: cloneMarketBids(l.marketBids),
+		swaps:      cloneSwaps(l.swaps),
+		nfts:       cloneNFTs(l.nfts),
+		anchors:    cloneAnchors(l.anchors),
+		stakeInfo:  cloneStakeInfo(l.stakeInfo),
+		stateHash:  l.stateHash,
+	}
+}
+
+func (l *Lattice) restoreSnapshotLocked(snapshot *latticeSnapshot) {
+	if snapshot == nil {
+		return
+	}
+	l.chains = snapshot.chains
+	l.blocks = snapshot.blocks
+	l.pending = snapshot.pending
+	l.proposals = snapshot.proposals
+	l.votes = snapshot.votes
+	l.marketBids = snapshot.marketBids
+	l.swaps = snapshot.swaps
+	l.nfts = snapshot.nfts
+	l.anchors = snapshot.anchors
+	l.stakeInfo = snapshot.stakeInfo
+	l.stateHash = snapshot.stateHash
+}
+
+func cloneChains(src map[string][]*torrent.Block) map[string][]*torrent.Block {
+	out := make(map[string][]*torrent.Block, len(src))
+	for account, chain := range src {
+		out[account] = append([]*torrent.Block(nil), chain...)
+	}
+	return out
+}
+
+func cloneBlocks(src map[string]*torrent.Block) map[string]*torrent.Block {
+	out := make(map[string]*torrent.Block, len(src))
+	for hash, block := range src {
+		out[hash] = block
+	}
+	return out
+}
+
+func clonePending(src map[string][]PendingTx) map[string][]PendingTx {
+	out := make(map[string][]PendingTx, len(src))
+	for account, list := range src {
+		out[account] = append([]PendingTx(nil), list...)
+	}
+	return out
+}
+
+func cloneProposals(src map[string]*Proposal) map[string]*Proposal {
+	out := make(map[string]*Proposal, len(src))
+	for id, proposal := range src {
+		copy := *proposal
+		out[id] = &copy
+	}
+	return out
+}
+
+func cloneVotes(src map[string]map[string]Vote) map[string]map[string]Vote {
+	out := make(map[string]map[string]Vote, len(src))
+	for proposalID, proposalVotes := range src {
+		nested := make(map[string]Vote, len(proposalVotes))
+		for voter, vote := range proposalVotes {
+			nested[voter] = vote
+		}
+		out[proposalID] = nested
+	}
+	return out
+}
+
+func cloneMarketBids(src map[string]*MarketBid) map[string]*MarketBid {
+	out := make(map[string]*MarketBid, len(src))
+	for id, bid := range src {
+		copy := *bid
+		out[id] = &copy
+	}
+	return out
+}
+
+func cloneSwaps(src map[string]*Swap) map[string]*Swap {
+	out := make(map[string]*Swap, len(src))
+	for id, swap := range src {
+		copy := *swap
+		out[id] = &copy
+	}
+	return out
+}
+
+func cloneNFTs(src map[string]*NFT) map[string]*NFT {
+	out := make(map[string]*NFT, len(src))
+	for id, nft := range src {
+		copy := *nft
+		out[id] = &copy
+	}
+	return out
+}
+
+func cloneAnchors(src map[string]*ManifestAnchor) map[string]*ManifestAnchor {
+	out := make(map[string]*ManifestAnchor, len(src))
+	for id, anchor := range src {
+		copy := *anchor
+		copy.PublisherProofs = append([]string(nil), anchor.PublisherProofs...)
+		copy.PublisherProofKinds = append([]string(nil), anchor.PublisherProofKinds...)
+		out[id] = &copy
+	}
+	return out
+}
+
+func cloneStakeInfo(src map[string]*StakeInfo) map[string]*StakeInfo {
+	out := make(map[string]*StakeInfo, len(src))
+	for account, info := range src {
+		copy := *info
+		out[account] = &copy
+	}
+	return out
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -333,8 +535,9 @@ func (l *Lattice) GetQuadraticVotingPower(account string) float64 {
 // by reducing the value of dormant (un-transacted) balances over time.
 //
 // This mirrors the Node.js implementation in Lattice.js:
-//   decay = balance * DemurrageRatePerMS * elapsed_ms
-//   result = balance - decay
+//
+//	decay = balance * DemurrageRatePerMS * elapsed_ms
+//	result = balance - decay
 func (l *Lattice) ApplyDemurrage(balance int64, lastTs, currentTs int64) int64 {
 	if lastTs == 0 || balance <= 0 {
 		return balance
@@ -359,14 +562,22 @@ func (l *Lattice) ApplyDemurrage(balance int64, lastTs, currentTs int64) int64 {
 // critical consensus entry point — every state mutation flows through here.
 //
 // Validation pipeline:
-//   1. Signature verification (Ed25519 via pkg/torrent/crypto.go)
-//   2. Chain integrity (previous hash linkage and height sequencing)
-//   3. Balance validity (demurrage-adjusted arithmetic)
-//   4. Type-specific state transitions (send, receive, governance, NFT, etc.)
-//   5. State hash update (rolling SHA-256 commitment)
+//  1. Signature verification (Ed25519 via pkg/torrent/crypto.go)
+//  2. Chain integrity (previous hash linkage and height sequencing)
+//  3. Balance validity (demurrage-adjusted arithmetic)
+//  4. Type-specific state transitions (send, receive, governance, NFT, etc.)
+//  5. State hash update (rolling SHA-256 commitment)
 func (l *Lattice) ProcessBlock(b *torrent.Block) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	return l.processBlockLocked(b, true)
+}
+
+func (l *Lattice) processBlockLocked(b *torrent.Block, persist bool) error {
+	var snapshot *latticeSnapshot
+	if persist && l.store != nil {
+		snapshot = l.snapshotLocked()
+	}
 
 	// ── 1. Duplicate Detection ──
 	if _, exists := l.blocks[b.Hash]; exists {
@@ -520,6 +731,13 @@ func (l *Lattice) ProcessBlock(b *torrent.Block) error {
 	l.chains[b.Account] = append(l.chains[b.Account], b)
 	l.blocks[b.Hash] = b
 	l.updateStateHash(b)
+
+	if persist && l.store != nil {
+		if err := l.store.AppendBlock(b); err != nil {
+			l.restoreSnapshotLocked(snapshot)
+			return fmt.Errorf("failed to persist confirmed block %s: %w", b.Hash, err)
+		}
+	}
 
 	return nil
 }
@@ -744,9 +962,15 @@ func (l *Lattice) processMintNFT(b *torrent.Block, prevBalance int64) error {
 	magnet := ""
 	description := ""
 	if payload, ok := b.Payload.(map[string]interface{}); ok {
-		if n, ok := payload["name"].(string); ok { name = n }
-		if m, ok := payload["magnet"].(string); ok { magnet = m }
-		if d, ok := payload["description"].(string); ok { description = d }
+		if n, ok := payload["name"].(string); ok {
+			name = n
+		}
+		if m, ok := payload["magnet"].(string); ok {
+			magnet = m
+		}
+		if d, ok := payload["description"].(string); ok {
+			description = d
+		}
 	}
 
 	l.nfts[b.Hash] = &NFT{
@@ -874,9 +1098,15 @@ func (l *Lattice) processInitiateSwap(b *torrent.Block, prevBalance int64) error
 	hashLock := ""
 	expiry := int64(0)
 	if payload, ok := b.Payload.(map[string]interface{}); ok {
-		if r, ok := payload["recipient"].(string); ok { recipient = r }
-		if h, ok := payload["hashLock"].(string); ok { hashLock = h }
-		if e, ok := payload["expiry"].(float64); ok { expiry = int64(e) }
+		if r, ok := payload["recipient"].(string); ok {
+			recipient = r
+		}
+		if h, ok := payload["hashLock"].(string); ok {
+			hashLock = h
+		}
+		if e, ok := payload["expiry"].(float64); ok {
+			expiry = int64(e)
+		}
 	}
 
 	if recipient == "" || hashLock == "" || expiry <= b.Timestamp {
@@ -916,7 +1146,9 @@ func (l *Lattice) processClaimSwap(b *torrent.Block, prevBalance int64) error {
 	// Verify the secret matches the hash lock
 	secret := ""
 	if payload, ok := b.Payload.(map[string]interface{}); ok {
-		if s, ok := payload["secret"].(string); ok { secret = s }
+		if s, ok := payload["secret"].(string); ok {
+			secret = s
+		}
 	}
 
 	secretHash := torrent.HashSHA256(secret)
@@ -1042,25 +1274,25 @@ func (l *Lattice) processPublishManifest(b *torrent.Block, prevBalance int64) er
 	}
 
 	l.anchors[b.Hash] = &ManifestAnchor{
-		ID:                 manifestID,
-		BlockHash:          b.Hash,
-		Owner:              b.Account,
-		Type:               "publish_manifest",
-		ManifestID:         manifestID,
-		Locator:            locator,
-		ManifestURL:        manifestURL,
-		Name:               name,
-		Size:               size,
-		CiphertextHash:     ciphertextHash,
-		ProofHash:          proofHash,
-		ProofSignature:     proofSignature,
-		PublisherAlias:     publisherAlias,
-		PublisherWebsite:   publisherWebsite,
-		PublisherStatement: publisherStatement,
-		PublisherAvatar:    publisherAvatar,
-		PublisherProofs:    publisherProofs,
+		ID:                  manifestID,
+		BlockHash:           b.Hash,
+		Owner:               b.Account,
+		Type:                "publish_manifest",
+		ManifestID:          manifestID,
+		Locator:             locator,
+		ManifestURL:         manifestURL,
+		Name:                name,
+		Size:                size,
+		CiphertextHash:      ciphertextHash,
+		ProofHash:           proofHash,
+		ProofSignature:      proofSignature,
+		PublisherAlias:      publisherAlias,
+		PublisherWebsite:    publisherWebsite,
+		PublisherStatement:  publisherStatement,
+		PublisherAvatar:     publisherAvatar,
+		PublisherProofs:     publisherProofs,
 		PublisherProofKinds: publisherProofKinds,
-		Timestamp:          b.Timestamp,
+		Timestamp:           b.Timestamp,
 	}
 	return nil
 }

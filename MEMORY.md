@@ -2,7 +2,7 @@
 
 ## Core Architectural State
 - The Bobtorrent Go port is now a real multi-binary platform rather than a thin prototype.
-- The Go lattice has moved beyond a minimal proof-of-concept and now includes governance, NFT, staking, swap, market, websocket, and peer-broadcast capabilities.
+- The Go lattice has moved beyond a minimal proof-of-concept and now includes governance, NFT, staking, swap, market, websocket, peer-broadcast capabilities, and replay-backed SQLite durability for confirmed blocks.
 - The storage layer exists in both native Go and WebAssembly form, which is strategically important because it reduces frontend/backend crypto drift.
 - Bobcoin frontend integration is now partially live: the React app contains a browser-side Go WASM workbench for storage preprocessing, publication, retrieval, signed manifest anchoring, searchable trust-aware Vault-based archive browsing, archive reuse inside Market/Gallery flows, owner-level trust/reputation overlays, signed publisher alias/website/statement metadata, degraded recovery diagnostics, saved/grouped archive workflows, publisher avatar/profile/proof overlays, exportable recovery reports, shard failure/source attribution, portable preset/batch archive actions, host-level source reliability summaries, and typed proof semantics, while the Go supernode serves the required WASM runtime artifacts directly.
 
@@ -28,8 +28,8 @@
 - Prefer shipping reusable bridge layers (like `web/storage-wasm-loader.js`) so future UI wiring is fast and low-risk.
 
 ## Technical Debt / Roadblocks
-- Lattice state is still in-memory only.
+- Lattice state is no longer process-ephemeral: confirmed blocks are now durably appended to SQLite and replayed on startup, though periodic materialized snapshots and repair tooling are still outstanding.
 - Filecoin archival is simulated rather than backed by Lotus or real RPC infrastructure.
-- The Bobcoin WASM workbench can now publish to the Go supernode registry, restore published files in-browser, and anchor manifests on the Go lattice. Vault, Storage Market, and Gallery now reuse those anchors; Vault additionally provides searchable discovery, heuristic trust/reputation badging, signed publisher metadata, publisher avatar/profile/proof overlays, typed proof semantics, parity-aware degraded recovery diagnostics, saved/grouped operator workflows, exportable recovery reports, shard failure/source attribution, portable preset/batch actions, and host-level source reliability summaries. The next gap is deeper identity semantics plus richer long-horizon source reliability analysis.
+- The Bobcoin WASM workbench can now publish to the Go supernode registry, restore published files in-browser, and anchor manifests on the Go lattice. Vault, Storage Market, and Gallery now reuse those anchors; Vault additionally provides searchable discovery, heuristic trust/reputation badging, signed publisher metadata, publisher avatar/profile/proof overlays, typed proof semantics, parity-aware degraded recovery diagnostics, saved/grouped operator workflows, exportable recovery reports, shard failure/source attribution, portable preset/batch actions, and host-level source reliability summaries. The next gap is deeper identity semantics, richer long-horizon source reliability analysis, and snapshot acceleration for the new replay-backed lattice persistence.
 - `qbittorrent` remote remains unreachable.
 - Nested `bobcoin/research/*` submodule metadata still needs cleanup.

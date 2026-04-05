@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"bobtorrent/pkg/torrent"
@@ -86,5 +88,84 @@ func TestProcessPublishManifestAnchorsWalletAttributedManifest(t *testing.T) {
 	}
 	if stored.PublisherProofKinds[0] != "github" {
 		t.Fatalf("unexpected first proof kind: %s", stored.PublisherProofKinds[0])
+	}
+}
+
+func TestPersistentLatticeReplaysConfirmedBlocksOnRestart(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	anchorPayload := map[string]interface{}{
+		"manifestId":     "persistent-manifest-1",
+		"locator":        "bobtorrent://manifest/persistent-manifest-1",
+		"manifestUrl":    "http://localhost:8000/manifests/persistent-manifest-1",
+		"name":           "archive.bin",
+		"size":           float64(2048),
+		"ciphertextHash": "cipher-persist-1",
+		"publisher": map[string]interface{}{
+			"alias":   "PersistentArchivist",
+			"website": "https://archive.example",
+			"proofs": []interface{}{
+				map[string]interface{}{"kind": "website", "url": "https://archive.example/about"},
+			},
+		},
+	}
+
+	anchor := torrent.NewBlock("publish_manifest", wallet.PublicKey, &genesis.Hash, genesis.Balance, genesis.StakedBalance, 1, "persistent-manifest-1", nil, anchorPayload)
+	if err := anchor.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign anchor failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(anchor); err != nil {
+		t.Fatalf("ProcessBlock anchor failed: %v", err)
+	}
+
+	if err := lattice.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	reloaded, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice reload failed: %v", err)
+	}
+	defer func() {
+		if err := reloaded.Close(); err != nil {
+			t.Fatalf("Close reload failed: %v", err)
+		}
+	}()
+
+	if len(reloaded.chains[wallet.PublicKey]) != 2 {
+		t.Fatalf("expected 2 replayed blocks, got %d", len(reloaded.chains[wallet.PublicKey]))
+	}
+	if len(reloaded.blocks) != 2 {
+		t.Fatalf("expected 2 replayed blocks in block index, got %d", len(reloaded.blocks))
+	}
+	stored, ok := reloaded.anchors[anchor.Hash]
+	if !ok {
+		t.Fatal("expected replayed anchor to be restored")
+	}
+	if stored.ManifestID != "persistent-manifest-1" {
+		t.Fatalf("unexpected replayed manifest id: %s", stored.ManifestID)
+	}
+	if len(stored.PublisherProofKinds) != 1 || stored.PublisherProofKinds[0] != "website" {
+		t.Fatalf("unexpected replayed proof kinds: %#v", stored.PublisherProofKinds)
+	}
+	if reloaded.stateHash == "" || reloaded.stateHash == strings.Repeat("0", 64) {
+		t.Fatalf("expected replayed state hash to be non-genesis, got %s", reloaded.stateHash)
 	}
 }

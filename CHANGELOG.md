@@ -4,6 +4,14 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.26.0] - 2026-04-05
+### Go Port: Durable Lattice Persistence & Cold-Boot Recovery
+- **SQLite-Backed Consensus Durability**: Added a durable `internal/consensus/store.go` block log using `modernc.org/sqlite`, enabling confirmed lattice blocks to be appended transactionally instead of existing only in process memory.
+- **Replay-Based Recovery**: Added `NewPersistentLattice` / `NewPersistentServer` so the lattice node now replays persisted blocks on startup to rebuild chains, pending transfers, proposals, swaps, NFT ownership, and manifest anchors after restart.
+- **Atomic Persistence Guard**: `ProcessBlock` now snapshots in-memory state before mutating when persistence is enabled and rolls back cleanly if the SQLite append fails, keeping block commits atomic from the API's perspective.
+- **Operational Visibility**: The lattice status endpoint now reports persistence enablement, database path, and persisted block count.
+- **Validation**: Re-validated `go test ./internal/consensus -buildvcs=false`, `go build -buildvcs=false ./...`, and `cd bobcoin/frontend && npm run build` after the persistence integration.
+
 ## [11.25.0] - 2026-04-04
 ### Go Port: Typed Publisher Proof Semantics
 - **Consensus Proof Typing**: Extended Go manifest anchors with `publisherProofKinds` alongside `publisherProofs`, allowing publisher attestations to carry explicit semantic hints instead of undifferentiated URLs.

@@ -29,13 +29,34 @@ type Server struct {
 
 // NewServer creates a lattice server with a fresh in-memory consensus state.
 func NewServer() *Server {
+	return newServerWithLattice(NewLattice())
+}
+
+// NewPersistentServer creates a lattice server backed by durable SQLite block
+// persistence. Confirmed blocks are replayed on startup to restore consensus
+// state after restart.
+func NewPersistentServer(path string) (*Server, error) {
+	lattice, err := NewPersistentLattice(path)
+	if err != nil {
+		return nil, err
+	}
+	return newServerWithLattice(lattice), nil
+}
+
+func newServerWithLattice(lattice *Lattice) *Server {
 	return &Server{
-		lattice: NewLattice(),
+		lattice: lattice,
 		hub:     NewHub(),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
 	}
+}
+
+// Lattice exposes the underlying consensus engine so entrypoints can manage
+// lifecycle concerns such as durable-store shutdown.
+func (s *Server) Lattice() *Lattice {
+	return s.lattice
 }
 
 // HTTPHandler wires all HTTP and WebSocket routes.
@@ -89,6 +110,14 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	s.lattice.mu.RLock()
 	defer s.lattice.mu.RUnlock()
 
+	persistenceEnabled := s.lattice.store != nil
+	persistencePath := ""
+	persistedBlocks := int64(0)
+	if persistenceEnabled {
+		persistencePath = s.lattice.store.Path()
+		persistedBlocks, _ = s.lattice.store.CountBlocks()
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":      "online",
 		"service":     "Go Block Lattice Node",
@@ -104,12 +133,17 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"marketBids":  len(s.lattice.marketBids),
 		"activeSwaps": len(s.lattice.swaps),
 		"anchors":     len(s.lattice.anchors),
+		"persistence": map[string]interface{}{
+			"enabled":         persistenceEnabled,
+			"path":            persistencePath,
+			"persistedBlocks": persistedBlocks,
+		},
 	})
 }
 
 // handleProcess accepts either:
-//   1. a raw block JSON object, or
-//   2. a wrapper object in the shape {"block": {...}}
+//  1. a raw block JSON object, or
+//  2. a wrapper object in the shape {"block": {...}}
 //
 // Supporting both formats keeps the Go node compatible with both the
 // bobcoin frontend and the Go supernode poller.

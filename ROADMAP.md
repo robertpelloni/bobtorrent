@@ -8,14 +8,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - operator experience
 
 ## Current Release Train
-- **Current Version**: `11.25.0`
+- **Current Version**: `11.26.0`
 - **Primary Runtime Targets**:
   - `lattice-go` — block lattice consensus node
   - `supernode-go` — torrent seeding, market polling, TUI operations
   - `dht-proxy` — privacy-preserving peer discovery utility
   - `storage.wasm` — browser-side Go storage kernel
 
-## ✅ Completed Through v11.25.0
+## ✅ Completed Through v11.26.0
 
 ### 1. Go Consensus Node
 - Ported the Bobcoin asynchronous block lattice to Go.
@@ -78,7 +78,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Upgraded the Bobcoin workbench from preprocessing-only to real shard upload + manifest publication.
 - Added Bobcoin browser-side restoration flow from published manifest back to reconstructed/decrypted file.
 
-### 6. Build + Toolchain Hardening
+### 6. Durable Lattice Persistence
+- Added an optional SQLite-backed confirmed block log for the Go lattice.
+- Added replay-driven cold-boot recovery so restart rebuilds chains, pending transfers, governance state, swaps, NFTs, and anchors from persisted blocks.
+- Updated `cmd/lattice-go` to boot the lattice in persistent mode by default using `data/lattice/lattice.db` (override with `BOBTORRENT_LATTICE_DB`).
+- Added status reporting for persistence enablement, DB path, and persisted block totals.
+- Added a consensus test proving restart/replay restores anchored manifest state.
+
+### 7. Build + Toolchain Hardening
 - Fixed third-party API drift in `anacrolix/dht` and `reedsolomon` integrations.
 - Added `-buildvcs=false` to local build flows to avoid repo/submodule VCS stamping failures.
 - Verified:
@@ -93,10 +100,10 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Continue improving per-source reliability analysis over time.
 - Add stronger batch/archive workspace operations beyond the initial export/copy actions.
 
-### B. Persistent Consensus State
-- Move lattice state from in-memory maps to durable storage.
-- Add snapshotting / replay support.
-- Support crash recovery and cold restart sync.
+### B. Snapshot Acceleration + Persistence Hardening
+- Extend the current replay-backed SQLite durability with periodic materialized snapshots for faster cold boots.
+- Add integrity checks / repair tooling for persistence corruption scenarios.
+- Expand persistence-aware tests beyond manifest-anchor replay into broader consensus transitions.
 
 ### C. Multi-Node Consensus Networking
 - Upgrade the current HTTP fan-out into more robust peer synchronization.

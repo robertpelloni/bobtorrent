@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.25.0`
+- **Version**: `11.26.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -27,6 +27,10 @@ Also ensure the Go runtime bridge is present beside the WASM binary:
 ./build/lattice-go
 ```
 Default port: `4000`
+
+Persistence:
+- default SQLite path: `data/lattice/lattice.db`
+- override with env: `BOBTORRENT_LATTICE_DB=/custom/path/lattice.db`
 
 Provides:
 - HTTP consensus endpoints
