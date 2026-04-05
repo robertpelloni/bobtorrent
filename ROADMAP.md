@@ -8,14 +8,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - operator experience
 
 ## Current Release Train
-- **Current Version**: `11.32.0`
+- **Current Version**: `11.33.0`
 - **Primary Runtime Targets**:
   - `lattice-go` — block lattice consensus node
   - `supernode-go` — torrent seeding, market polling, TUI operations
   - `dht-proxy` — privacy-preserving peer discovery utility
   - `storage.wasm` — browser-side Go storage kernel
 
-## ✅ Completed Through v11.32.0
+## ✅ Completed Through v11.33.0
 
 ### 1. Go Consensus Node
 - Ported the Bobcoin asynchronous block lattice to Go.
@@ -46,7 +46,7 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Emitted compatibility-friendly websocket events using both `type` and `event` fields.
 - Connected the Go supernode to the lattice feed for real-time TUI updates.
 
-### 4. Go Supernode UX
+### 4. Go Supernode UX + Service Compatibility
 - Upgraded the Bubble Tea terminal UI with:
   - live market bid table
   - live block feed
@@ -60,8 +60,13 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Added simulated Filecoin archival during autonomous bid acceptance.
 - Added frontend-facing HTTP compatibility endpoints:
   - `/stats`
+  - `/bankroll`
+  - `/transactions`
+  - `/mint`
+  - `/burn`
   - `/add-torrent`
   - `/remove-torrent`
+- Added a durable SQLite-backed economy transaction log for those compatibility endpoints.
 - Added static serving for:
   - `/storage.wasm`
   - `/wasm_exec.js`
@@ -107,7 +112,8 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Expand persistence-aware tests beyond manifest-anchor replay into broader consensus transitions.
 - Consider operator controls for snapshot cadence and retention once the default behavior has proven stable.
 
-### C. Multi-Node Consensus Networking
+### C. Continue Service-Side Go Migration + Multi-Node Networking
+- Continue porting remaining practical Node-side service responsibilities into Go where feasible.
 - Upgrade the current HTTP fan-out into more robust peer synchronization.
 - Add peer gossip / bootstrap / duplicate suppression improvements.
 - Introduce state sync and catch-up for late-joining nodes.

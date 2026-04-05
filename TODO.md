@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.32.0
+## ✅ Completed Through v11.33.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -34,7 +34,8 @@
 - Lattice persistence JSON export and live SQLite backup workflow
 - Lattice persistence bundle import and backup restore workflow
 - Frontend compatibility endpoints for existing bobcoin pages
-- Go supernode compatibility endpoints for Bobcoin UI (`/stats`, `/add-torrent`, `/remove-torrent`)
+- Go supernode compatibility endpoints for Bobcoin UI (`/stats`, `/bankroll`, `/transactions`, `/mint`, `/burn`, `/add-torrent`, `/remove-torrent`)
+- Go-native durable economy transaction log for supernode compatibility flows
 - Go supernode static serving for `storage.wasm` and `wasm_exec.js`
 - Go supernode publication registry for uploaded shards and manifests
 - Build pipeline packaging of `storage.wasm` and `wasm_exec.js`
@@ -51,6 +52,9 @@
   - broader persistence-aware consensus test coverage
   - configurable snapshot cadence / retention controls
   - signed/encrypted operator backup bundles
+- [ ] **Continue service-side Go migration**
+  - identify any remaining practical game-server/supertorrent responsibilities worth moving into Go
+  - reduce Node-only orchestration dependencies further
 - [ ] **Real Filecoin bridge**
   - replace mock `internal/bridges/filecoin.go` behavior with Lotus RPC
   - persist and expose deal IDs

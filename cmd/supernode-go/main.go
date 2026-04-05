@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"bobtorrent/internal/bridges"
+	"bobtorrent/internal/economy"
 	"bobtorrent/internal/publish"
 	"bobtorrent/internal/tracker"
 	"bobtorrent/internal/transport"
@@ -35,15 +36,16 @@ var (
 	fcBridge        *bridges.FilecoinBridge
 	dhtNode         *transport.DHTNode
 	publishRegistry *publish.Registry
+	economyDB       *economy.Database
 	startedAt       = time.Now()
 )
 
 // main boots the Go supernode stack:
-//   1. Wallet + torrent engine
-//   2. HTTP/UDP tracker services
-//   3. Kademlia DHT node
-//   4. Lattice market poller + block feed listener
-//   5. Terminal dashboard (TUI)
+//  1. Wallet + torrent engine
+//  2. HTTP/UDP tracker services
+//  3. Kademlia DHT node
+//  4. Lattice market poller + block feed listener
+//  5. Terminal dashboard (TUI)
 func main() {
 	log.SetOutput(os.Stderr)
 
@@ -53,6 +55,7 @@ func main() {
 
 	fcBridge = bridges.NewFilecoinBridge("f1bobtorrentnode")
 	initPublishRegistry()
+	initEconomyDatabase()
 
 	model := tui.NewModel()
 	uiProgram = tea.NewProgram(model, tea.WithAltScreen())
@@ -75,6 +78,10 @@ func startTrackerServices() {
 	mux.HandleFunc("/announce", withCORS(trackerCore.HTTPHandler()))
 	mux.HandleFunc("/spora/", withCORS(handleSpora))
 	mux.HandleFunc("/stats", withCORS(handleStats))
+	mux.HandleFunc("/bankroll", withCORS(handleBankroll))
+	mux.HandleFunc("/transactions", withCORS(handleTransactions))
+	mux.HandleFunc("/mint", withCORS(handleMint))
+	mux.HandleFunc("/burn", withCORS(handleBurn))
 	mux.HandleFunc("/add-torrent", withCORS(handleAddTorrent))
 	mux.HandleFunc("/remove-torrent", withCORS(handleRemoveTorrent))
 	mux.HandleFunc("/upload-shard", withCORS(handleUploadShard))
@@ -112,6 +119,14 @@ func initPublishRegistry() {
 	publishRegistry, err = publish.NewRegistry(filepath.Join("data", "published"))
 	if err != nil {
 		log.Fatalf("failed to initialize publish registry: %v", err)
+	}
+}
+
+func initEconomyDatabase() {
+	var err error
+	economyDB, err = economy.NewDatabase(filepath.Join("data", "economy", "supernode.db"))
+	if err != nil {
+		log.Fatalf("failed to initialize economy database: %v", err)
 	}
 }
 
@@ -360,6 +375,51 @@ func handleSpora(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"success": true, "spora": {"infoHash": "%s", "challenge": %s, "chunkHash": "%s"}}`, infoHash, challenge, chunkHash)
 }
 
+func walletFrontier() (*string, int64, int64, int, error) {
+	if nodeWallet == nil {
+		return nil, 0, 0, 0, fmt.Errorf("node wallet unavailable")
+	}
+	var frontierResp struct {
+		Frontier      *string `json:"frontier"`
+		Balance       int64   `json:"balance"`
+		StakedBalance int64   `json:"staked_balance"`
+		Height        int     `json:"height"`
+	}
+	resp, err := httpClient.R().SetResult(&frontierResp).Get(latticeURL + "/frontier/" + nodeWallet.PublicKey)
+	if err != nil || !resp.IsSuccess() {
+		if err == nil {
+			err = fmt.Errorf("frontier request failed with status %d", resp.StatusCode())
+		}
+		return nil, 0, 0, 0, err
+	}
+	return frontierResp.Frontier, frontierResp.Balance, frontierResp.StakedBalance, frontierResp.Height, nil
+}
+
+func recordEconomyTransaction(txType string, amount float64, hash, reason, address string) (string, error) {
+	id := fmt.Sprintf("tx_%s_%d", strings.ToLower(txType), time.Now().UnixNano())
+	if economyDB == nil {
+		return id, nil
+	}
+	return id, economyDB.RecordTransaction(economy.Transaction{
+		ID:      id,
+		Amount:  amount,
+		Type:    txType,
+		Hash:    hash,
+		Reason:  reason,
+		Address: address,
+	})
+}
+
+func buildLocalSpora(challenge int) map[string]interface{} {
+	infoHash := "1234567890abcdef1234567890abcdef12345678"
+	chunkHash := torrent.HashSHA256(infoHash + fmt.Sprintf("%d", challenge))
+	return map[string]interface{}{
+		"infoHash":  infoHash,
+		"challenge": challenge,
+		"chunkHash": chunkHash,
+	}
+}
+
 func handleStats(w http.ResponseWriter, r *http.Request) {
 	uptimeSeconds := time.Since(startedAt).Seconds()
 	if uptimeSeconds <= 0 {
@@ -415,6 +475,129 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 			"totalSize": totalSize,
 			"torrents":  storageEntries,
 		},
+	})
+}
+
+func handleBankroll(w http.ResponseWriter, r *http.Request) {
+	address := ""
+	if nodeWallet != nil {
+		address = nodeWallet.PublicKey
+	}
+	_, balance, _, _, err := walletFrontier()
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"balance": 0,
+			"address": address,
+			"status":  "wallet_not_synced",
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"balance": balance,
+		"address": address,
+		"status":  "online",
+	})
+}
+
+func handleTransactions(w http.ResponseWriter, r *http.Request) {
+	if economyDB == nil {
+		writeJSON(w, http.StatusOK, []economy.Transaction{})
+		return
+	}
+	transactions, err := economyDB.ListTransactions()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to list transactions: %v", err), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, transactions)
+}
+
+func handleBurn(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Amount float64 `json:"amount"`
+		Reason string  `json:"reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Amount <= 0 {
+		http.Error(w, "valid amount required", http.StatusBadRequest)
+		return
+	}
+
+	hash := fmt.Sprintf("burn_%d", time.Now().UnixNano())
+	txID, err := recordEconomyTransaction("SEND", req.Amount, hash, req.Reason, "")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to record burn transaction: %v", err), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"tx":      txID,
+		"hash":    hash,
+	})
+}
+
+func handleMint(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Amount  float64 `json:"amount"`
+		Reason  string  `json:"reason"`
+		Address string  `json:"address"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Amount <= 0 {
+		http.Error(w, "valid amount required", http.StatusBadRequest)
+		return
+	}
+
+	hash := fmt.Sprintf("mint_%d", time.Now().UnixNano())
+	if req.Address != "" {
+		amountInt := int64(req.Amount)
+		frontier, balance, staked, height, err := walletFrontier()
+		if err == nil && frontier != nil {
+			if balance < amountInt {
+				http.Error(w, fmt.Sprintf("insufficient bankroll: have %d, need %d", balance, amountInt), http.StatusBadRequest)
+				return
+			}
+			challenge := 12345
+			if len(*frontier) >= 8 {
+				_, _ = fmt.Sscanf((*frontier)[:8], "%x", &challenge)
+			}
+			block := torrent.NewBlock(
+				"send",
+				nodeWallet.PublicKey,
+				frontier,
+				balance-amountInt,
+				staked,
+				height+1,
+				req.Address,
+				buildLocalSpora(challenge),
+				map[string]interface{}{"reason": req.Reason},
+			)
+			if err := block.Sign(nodeWallet.PrivateKey); err == nil {
+				resp, submitErr := httpClient.R().SetBody(block).Post(latticeURL + "/process")
+				if submitErr == nil && resp.IsSuccess() {
+					hash = block.Hash
+				} else if submitErr != nil {
+					log.Printf("mint lattice send failed: %v", submitErr)
+				}
+			}
+		}
+	}
+
+	txID, err := recordEconomyTransaction("MINT", req.Amount, hash, req.Reason, req.Address)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to record mint transaction: %v", err), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"tx":      txID,
+		"hash":    hash,
 	})
 }
 

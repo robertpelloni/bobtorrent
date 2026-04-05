@@ -1,44 +1,55 @@
-# Bobtorrent Omni-Workspace Handoff (v11.32.0)
+# Bobtorrent Omni-Workspace Handoff (v11.33.0)
 
 ## Session Objective
-Continue after the completion of the first full persistence-operations surface by deepening publisher provenance semantics in both the Go lattice and the Bobcoin archive UI.
+Continue the Go-first migration by porting a practical slice of the legacy Node game-server’s economic orchestration surface into `supernode-go`.
 
-## What Was Synced
-- Bobcoin submodule advanced to `v8.53.0`.
-- Root Go consensus now stores richer publisher attestation metadata, including proof labels and issuers in addition to proof kinds and URLs.
-- Root release/docs bumped to `v11.32.0`.
+## What Was Implemented
 
-## Concrete Feature State Reflected Here
-The combined stack now supports:
-- publisher alias / website / statement
-- publisher avatar
-- typed proof/attestation links
-- structured proof labels and issuers
-- richer attestation cards in Vault
-- trust overlays
-- long-horizon source reliability trends
-- replay-backed lattice persistence
-- snapshot acceleration
-- persistence verify / repair / export / backup / import / restore controls
+### 1. Go economic compatibility endpoints
+Files:
+- `cmd/supernode-go/main.go`
+- `internal/economy/database.go`
+- `internal/economy/database_test.go`
 
-## Validation Basis
-- `go test ./internal/consensus -buildvcs=false`
+Ported the practical Node-side economic endpoints into Go:
+- `GET /bankroll`
+- `GET /transactions`
+- `POST /mint`
+- `POST /burn`
+
+These now live beside the existing Go supernode compatibility surface.
+
+### 2. Durable transaction history for Go orchestration
+Added a small SQLite-backed `internal/economy` package that records mint/burn compatibility events durably.
+
+This mirrors the lightweight transaction-history role the legacy Node game-server used for UI visibility, but moves that concern into Go.
+
+### 3. Practical Node→Go migration effect
+This does not fully eliminate the Node game-server yet, but it does remove another real cluster of practical responsibilities from the Node-only side:
+- bankroll visibility
+- transaction visibility
+- compatibility mint orchestration
+- compatibility burn recording
+
+## Validation
+Executed successfully:
+- `go test ./internal/... -buildvcs=false`
 - `go build -buildvcs=false ./...`
 - `cd bobcoin/frontend && npm run build`
 
 ## Strategic State After This Session
-Publisher identity evidence is now more semantically useful:
-- proofs are no longer just typed URLs
-- Go anchors retain richer attestation context
-- Vault renders proof records as more legible identity evidence
+The project is now more Go-first not only in consensus and storage, but also in service orchestration.
 
-This makes the archive product surface stronger while preserving the broader Go-first migration direction.
+The remaining Node footprint is increasingly concentrated in:
+- game-specific logic
+- special cryptographic/experimental flows
+- any still-unported orchestration edges
 
 ## Recommended Next Steps
-1. Continue porting practical service-side responsibilities from Node to Go
+1. Continue porting remaining practical Node service responsibilities into Go
 2. Add exportable comparative source diagnostics
-3. Add signed/encrypted operator backup bundles for persistence
+3. Add signed/encrypted backup bundles for persistence
 
 ## Notes for the Next Agent
-- The most recent work was not just frontend dressing; the Go lattice schema itself now preserves richer attestation metadata.
-- The next major Go-port push should probably focus on remaining service responsibilities rather than only more archive UX refinement.
+- The newly added Go economic endpoints intentionally mirror the lightweight Node behavior rather than inventing a completely new economic service model.
+- This was chosen to reduce Node dependency incrementally while preserving compatibility expectations.
