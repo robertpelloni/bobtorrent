@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.26.0
+## ✅ Completed Through v11.27.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -25,6 +25,7 @@
 - Bobcoin shard failure categorization and source host attribution in restore diagnostics
 - Bobcoin preset export/import and batch archive export/copy actions in Vault
 - Bobcoin host-level source reliability summaries derived from persisted recovery reports
+- Bobcoin long-horizon source reliability trends with week-over-week host comparisons
 - Go manifest anchors with typed publisher proof-kind metadata
 - SQLite-backed durable lattice block log with replay-based cold-boot recovery
 - Frontend compatibility endpoints for existing bobcoin pages
@@ -38,9 +39,9 @@
 - [ ] **Expand publication provenance beyond current publisher profile overlays**
   - optional uploader profile / reputation layer
   - richer identity-linked proofs / attestations
-- [ ] **Expand per-source recovery analytics**
-  - richer source reliability analysis
-  - longer-term source-path trend visibility
+- [ ] **Expand per-source recovery analytics further**
+  - exportable comparative source diagnostics
+  - even longer-term source-path trend visibility
 - [ ] **Deepen lattice persistence hardening**
   - periodic snapshots to reduce replay time
   - corruption detection / repair workflow

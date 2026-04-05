@@ -4,6 +4,13 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.27.0] - 2026-04-05
+### Go Port: Long-Horizon Source Reliability Sync
+- **Bobcoin Analytics Upgrade**: Updated the `bobcoin` submodule to `v8.43.0`, preserving the latest upstream replay/parity hardening while adding long-horizon source reliability analytics to Vault.
+- **Trend-Aware Operator Diagnostics**: Vault source diagnostics now compare recent and prior-week behavior, score source reliability using successful and failed shard observations, and highlight degrading/improving/healthiest sources instead of only static failure totals.
+- **Wider Local Recovery History**: Bobcoin recovery reports now retain a larger local history window and persist successful shard fetches, giving the reliability layer a stronger evidence base.
+- **Validation**: Re-validated the Bobcoin frontend production build after the long-horizon analytics integration and synchronized the root workspace to the new submodule pointer.
+
 ## [11.26.0] - 2026-04-05
 ### Go Port: Durable Lattice Persistence & Cold-Boot Recovery
 - **SQLite-Backed Consensus Durability**: Added a durable `internal/consensus/store.go` block log using `modernc.org/sqlite`, enabling confirmed lattice blocks to be appended transactionally instead of existing only in process memory.
