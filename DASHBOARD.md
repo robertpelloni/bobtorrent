@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.43.0`
+- **Root Version**: `11.44.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -38,7 +38,7 @@ bobtorrent/
 ## Submodule / External Status
 | Component | Location | Status | Notes |
 |---|---|---:|---|
-| Bobcoin | `bobcoin/` | Active | Frontend + game stack remains the primary UI reference; now includes Go storage WASM workbench, publication flow, browser-side retrieval/reconstruction, signed Go-lattice manifest anchoring, a searchable trust-aware Vault archive browser, archive reuse inside Market/Gallery flows, signed publisher provenance metadata, degraded recovery diagnostics, saved/grouped archive workflows, publisher profile/proof overlays, exportable recovery reports, failure/source attribution, portable preset/batch archive actions, long-horizon source reliability trends, structured publisher attestations, exportable comparative source diagnostics, and Go-first HTTP + signaling routing (`v8.67.0`). |
+| Bobcoin | `bobcoin/` | Active | Frontend + game stack remains the primary UI reference; now includes Go storage WASM workbench, publication flow, browser-side retrieval/reconstruction, signed Go-lattice manifest anchoring, a searchable trust-aware Vault archive browser, archive reuse inside Market/Gallery flows, signed publisher provenance metadata, degraded recovery diagnostics, saved/grouped archive workflows, publisher profile/proof overlays, exportable recovery reports, failure/source attribution, portable preset/batch archive actions, long-horizon source reliability trends, structured publisher attestations, exportable + signed comparative source diagnostics, and Go-first HTTP + signaling routing (`v8.68.0`). |
 | qBittorrent fork | `qbittorrent/` | Blocked | Local files exist, but remote repo reference remains unreachable. |
 | Forest research | `bobcoin/research/forest` | Blocked | Nested submodule metadata issue remains unresolved upstream/local. |
 | Solana research | `bobcoin/research/solana` | Blocked | Nested submodule metadata issue remains unresolved upstream/local. |

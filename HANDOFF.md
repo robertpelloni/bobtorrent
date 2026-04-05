@@ -1,70 +1,48 @@
-# Bobtorrent Omni-Workspace Handoff (v11.43.0)
+# Bobtorrent Omni-Workspace Handoff (v11.44.0)
 
 ## Session Objective
-Continue persistence hardening by making snapshot cadence/retention operator-tunable instead of relying only on hardcoded defaults.
+Continue the operator-facing diagnostics push by upgrading comparative source diagnostics from plain portable JSON into signed shareable packages.
 
 ## What Was Implemented
 
-### 1. Explicit snapshot config surface
+### 1. Signed diagnostics packages in Bobcoin Vault
 Files:
-- `internal/consensus/store.go`
-- `internal/consensus/lattice.go`
-- `internal/consensus/server.go`
+- `bobcoin/frontend/src/pages/Vault.jsx`
+- `bobcoin/frontend/src/pages/Vault.css`
 
-Added a real snapshot configuration surface:
-- `SnapshotConfig`
-- `DefaultSnapshotConfig()`
-- `NewLatticeStoreWithConfig()`
-- `NewPersistentLatticeWithConfig()`
-- env-driven `SnapshotConfigFromEnv()`
+Vault now supports:
+- plain comparative diagnostics export
+- signed diagnostics package export
+- signed diagnostics package import + verification
 
-### 2. Operator environment controls
-`NewPersistentLattice()` now honors:
-- `BOBTORRENT_LATTICE_SNAPSHOT_INTERVAL`
-- `BOBTORRENT_LATTICE_SNAPSHOT_RETENTION`
+Implementation details:
+- the diagnostics payload is canonicalized before hashing/signing
+- the package embeds exporter public key metadata
+- the payload hash is signed with the active Bobcoin wallet keypair
+- imported packages are re-canonicalized, re-hashed, and signature-verified in-browser
 
-Behavior notes:
-- interval can be set to `0` to disable automatic snapshot creation
-- retention must remain at least `1`
-- defaults still remain `25` / `3`
+### 2. Strategic effect
+Comparative source diagnostics are now:
+- portable
+- attributable
+- verifiable
 
-### 3. Runtime visibility
-Lattice status now reports:
-- `snapshotInterval`
-- `snapshotRetention`
+That makes them much more useful for operator handoff and trust-sensitive review than plain unsigned JSON exports alone.
 
-This gives operators a direct way to confirm the active persistence tuning rather than inferring it from defaults or source code.
-
-### 4. Regression coverage
-File:
-- `internal/consensus/lattice_test.go`
-
-Added `TestPersistentLatticeWithCustomSnapshotConfigHonorsIntervalAndRetention`, proving that custom config changes:
-- snapshot cadence behavior
-- retained snapshot count
-- exported persistence metadata
+### 3. Bobcoin submodule sync
+Bobcoin was updated and pushed as:
+- `v8.68.0`
+- commit: `d900d91`
 
 ## Validation
 Executed successfully:
-- `go test ./internal/consensus ./cmd/supernode-go ./internal/... -buildvcs=false`
-- `go build -buildvcs=false ./...`
-
-## Strategic State After This Session
-Persistence hardening now includes:
-- replay-backed block durability
-- snapshots
-- verification/repair
-- export/backup/import/restore
-- secure backup bundles
-- mixed transition replay coverage
-- operator-tunable snapshot cadence/retention
+- `cd bobcoin/frontend && npm run build`
 
 ## Recommended Next Steps
-1. Decide whether snapshot controls should remain startup-config-only or gain runtime/API mutability
-2. Continue expanding persistence-aware replay coverage toward even larger mixed multi-account webs
-3. Consider signed/shareable diagnostics packaging beyond the current plain JSON export
-4. Continue evaluating which specialized Node surfaces are still worth porting further
+1. Continue broader operator/trust workflows beyond the new signed diagnostics package support
+2. Continue evaluating which specialized Node surfaces are still worth porting further
+3. Keep improving frontend chunk splitting around `node-seal`
 
 ## Notes for the Next Agent
 - No running processes were terminated in this session.
-- Snapshot interval `0` now disables automatic snapshot creation, while retention remains validated as at least `1`.
+- The new diagnostics package flow intentionally uses the existing wallet signing model instead of inventing a separate trust system just for exports.

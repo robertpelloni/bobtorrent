@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.43.0
+## ✅ Completed Through v11.44.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -47,7 +47,7 @@
   - external identity/attestation integrations beyond the new structured proof cards
 - [ ] **Expand per-source recovery analytics further**
   - even longer-term source-path trend visibility
-  - signed/shareable diagnostics packaging beyond the new portable comparative JSON export
+  - richer multi-party diagnostics review and trust workflows beyond the new signed/shareable package support
 - [ ] **Deepen lattice persistence hardening**
   - signed/shareable operator diagnostics packaging beyond the new secure backup bundle support
   - continue expanding persistence-aware replay coverage toward even larger multi-account mixed webs beyond the new snapshot-tail mixed transition regression

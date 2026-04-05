@@ -4,6 +4,12 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.44.0] - 2026-04-05
+### Go Port: Signed Diagnostics Packaging Sync
+- **Bobcoin Diagnostics Authenticity**: Updated the `bobcoin` submodule to `v8.68.0`, where Vault can now export signed comparative diagnostics packages and verify imported packages in-browser using Bobcoin wallet signatures.
+- **Shareable Operator Evidence**: Comparative source diagnostics are now both portable and attributable, making archive-reliability evidence better suited for incident handoff and authenticity checks.
+- **Validation**: Re-validated `cd bobcoin/frontend && npm run build` after integrating signed diagnostics packaging.
+
 ## [11.43.0] - 2026-04-05
 ### Go Port: Operator-Tunable Snapshot Controls
 - **Snapshot Configuration Surface**: Added explicit snapshot configuration plumbing with tunable interval and retention settings for the lattice persistence layer.
