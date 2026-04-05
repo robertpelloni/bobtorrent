@@ -4,6 +4,12 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.45.0] - 2026-04-05
+### Go Port: Diagnostics Comparison Workflow Sync
+- **Bobcoin Diagnostics Review Upgrade**: Updated the `bobcoin` submodule to `v8.69.0`, where Vault now compares imported signed diagnostics packages against the operator’s current local diagnostics view.
+- **Trust Workflow Depth**: Signed diagnostics review now surfaces freshness, overlap, local-only/imported-only host visibility, and materially changed source deltas instead of only a signature validity result.
+- **Validation**: Re-validated `cd bobcoin/frontend && npm run build` after integrating the diagnostics comparison workflow.
+
 ## [11.44.0] - 2026-04-05
 ### Go Port: Signed Diagnostics Packaging Sync
 - **Bobcoin Diagnostics Authenticity**: Updated the `bobcoin` submodule to `v8.68.0`, where Vault can now export signed comparative diagnostics packages and verify imported packages in-browser using Bobcoin wallet signatures.
