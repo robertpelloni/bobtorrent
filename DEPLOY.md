@@ -1,7 +1,7 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.33.0`
+- **Version**: `11.34.0`
 
 ## 1. Build All Go Artifacts
 Use the Windows build helper:
@@ -57,11 +57,13 @@ Default services:
 The supernode expects the lattice node to be available at `http://localhost:4000`.
 
 Additional frontend-facing endpoints now provided by `supernode-go`:
+- `GET /status`
 - `GET /stats`
 - `GET /bankroll`
 - `GET /transactions`
 - `POST /mint`
 - `POST /burn`
+- `POST /submit-proof`
 - `POST /add-torrent`
 - `POST /remove-torrent`
 - `POST /upload-shard`

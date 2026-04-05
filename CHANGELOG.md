@@ -4,6 +4,13 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.34.0] - 2026-04-05
+### Go Port: Proof Submission Compatibility Endpoints
+- **Go Proof Submission Path**: Ported the lightweight game-server `POST /submit-proof` compatibility behavior into `supernode-go`, including proof payload validation, deterministic mock verification, reward mint orchestration, and durable transaction recording.
+- **Service Status Compatibility**: Added a simple `GET /status` compatibility endpoint in `supernode-go` so more health/orchestrator checks can point at Go rather than the legacy Node game-server.
+- **Further Node-to-Go Migration**: This reduces another practical Node-only compatibility cluster by moving proof-submission orchestration and status reporting into Go.
+- **Validation**: Re-validated `go test ./internal/... -buildvcs=false`, `go build -buildvcs=false ./...`, and `cd bobcoin/frontend && npm run build` after the new Go proof/status compatibility endpoints were added.
+
 ## [11.33.0] - 2026-04-05
 ### Go Port: Economic Orchestration Compatibility Endpoints
 - **Go Economic Compatibility Layer**: Ported the practical game-server economic surface into `supernode-go` with Go-native `/bankroll`, `/transactions`, `/mint`, and `/burn` endpoints.

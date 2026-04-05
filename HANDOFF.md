@@ -1,35 +1,33 @@
-# Bobtorrent Omni-Workspace Handoff (v11.33.0)
+# Bobtorrent Omni-Workspace Handoff (v11.34.0)
 
 ## Session Objective
-Continue the Go-first migration by porting a practical slice of the legacy Node game-server’s economic orchestration surface into `supernode-go`.
+Continue the Go-first service migration by porting the lightweight proof-submission orchestration path and simple service-status endpoint away from the legacy Node game-server.
 
 ## What Was Implemented
 
-### 1. Go economic compatibility endpoints
-Files:
+### 1. Go proof-submission compatibility endpoint
+File:
 - `cmd/supernode-go/main.go`
-- `internal/economy/database.go`
-- `internal/economy/database_test.go`
 
-Ported the practical Node-side economic endpoints into Go:
-- `GET /bankroll`
-- `GET /transactions`
-- `POST /mint`
-- `POST /burn`
+Ported the practical `POST /submit-proof` compatibility flow into Go.
 
-These now live beside the existing Go supernode compatibility surface.
+Current Go behavior:
+- validates proof payload shape
+- performs the same lightweight deterministic mock verification threshold (`score >= 1000`)
+- computes a proof hash deterministically from the submitted proof payload
+- mints/records the reward through the Go-side economic compatibility layer
+- returns the same broad compatibility shape (`success`, `tx`, `hash`, `zkVerified`)
 
-### 2. Durable transaction history for Go orchestration
-Added a small SQLite-backed `internal/economy` package that records mint/burn compatibility events durably.
+### 2. Go service-status compatibility endpoint
+File:
+- `cmd/supernode-go/main.go`
 
-This mirrors the lightweight transaction-history role the legacy Node game-server used for UI visibility, but moves that concern into Go.
+Added `GET /status` so health/orchestrator checks can target the Go service directly rather than requiring the legacy Node game-server for a basic online-status response.
 
-### 3. Practical Node→Go migration effect
-This does not fully eliminate the Node game-server yet, but it does remove another real cluster of practical responsibilities from the Node-only side:
-- bankroll visibility
-- transaction visibility
-- compatibility mint orchestration
-- compatibility burn recording
+### 3. Strategic Go-port effect
+This further reduces Node-only dependency by moving another real compatibility cluster into Go:
+- proof submission orchestration
+- status/health compatibility response
 
 ## Validation
 Executed successfully:
@@ -38,18 +36,19 @@ Executed successfully:
 - `cd bobcoin/frontend && npm run build`
 
 ## Strategic State After This Session
-The project is now more Go-first not only in consensus and storage, but also in service orchestration.
+The Go migration now covers more of the practical orchestration layer that frontend-facing Bobcoin flows expect.
 
-The remaining Node footprint is increasingly concentrated in:
+The remaining Node footprint is increasingly narrowed to:
 - game-specific logic
-- special cryptographic/experimental flows
-- any still-unported orchestration edges
+- experimental FHE/oracle flows
+- WebRTC signaling / specialized interaction services
+- any remaining edge-case orchestration paths not yet migrated
 
 ## Recommended Next Steps
-1. Continue porting remaining practical Node service responsibilities into Go
+1. Continue porting remaining practical Node service responsibilities into Go where clearly reasonable
 2. Add exportable comparative source diagnostics
 3. Add signed/encrypted backup bundles for persistence
 
 ## Notes for the Next Agent
-- The newly added Go economic endpoints intentionally mirror the lightweight Node behavior rather than inventing a completely new economic service model.
-- This was chosen to reduce Node dependency incrementally while preserving compatibility expectations.
+- The newly ported proof flow intentionally preserves the lightweight mock-verification semantics from Node rather than pretending the experimental ZK backend has been productionized in Go.
+- The next Go-port decision should likely distinguish between practical compatibility endpoints worth migrating now versus specialized/experimental services that may deserve separate treatment.
