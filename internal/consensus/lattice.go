@@ -400,6 +400,36 @@ func (l *Lattice) BackupPersistence(targetPath string) (*LatticeBackupResult, er
 	return l.store.CreateBackup(targetPath)
 }
 
+// ImportPersistenceBundle materializes a fresh portable lattice database from
+// an exported JSON bundle. This does not hot-swap the running node's store; it
+// creates a separate verified database for the next boot or manual recovery.
+func (l *Lattice) ImportPersistenceBundle(targetPath string, bundle *LatticeExportBundle) (*LatticeRestoreResult, error) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if l.store == nil {
+		return nil, fmt.Errorf("persistence is not enabled")
+	}
+	if targetPath == "" {
+		targetPath = defaultRestoreTarget(l.store.Path(), "imported-lattice")
+	}
+	return ImportBundleToPath(targetPath, bundle)
+}
+
+// RestorePersistenceBackup rehydrates a portable lattice database from a
+// previously created SQLite backup copy. Like bundle import, this is a safe
+// side-channel restore that avoids mutating the running node's active store.
+func (l *Lattice) RestorePersistenceBackup(sourcePath, targetPath string) (*LatticeRestoreResult, error) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if l.store == nil {
+		return nil, fmt.Errorf("persistence is not enabled")
+	}
+	if targetPath == "" {
+		targetPath = defaultRestoreTarget(l.store.Path(), "restored-backup")
+	}
+	return RestoreBackupToPath(sourcePath, targetPath)
+}
+
 type latticeSnapshot struct {
 	chains     map[string][]*torrent.Block
 	blocks     map[string]*torrent.Block

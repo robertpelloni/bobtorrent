@@ -4,6 +4,14 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.31.0] - 2026-04-05
+### Go Port: Persistence Import & Restore Controls
+- **Portable Bundle Import**: Added a controlled import workflow that can materialize a fresh portable lattice database from the JSON persistence export bundle, preserving confirmed block sequences and the newest usable snapshot.
+- **Backup Restore Workflow**: Added a restore workflow that can rehydrate a verified portable lattice database from a previously created SQLite backup copy.
+- **Operator Endpoints**: Exposed `POST /persistence/import` and `POST /persistence/restore` so operators can create restored databases for the next node boot without hot-swapping the live store.
+- **Validation Coverage**: Added consensus regression coverage proving imported bundle databases and restored backup databases reopen correctly as persistent lattices.
+- **Validation**: Re-validated `go test ./internal/consensus -buildvcs=false`, `go build -buildvcs=false ./...`, and `cd bobcoin/frontend && npm run build` after the import/restore integration.
+
 ## [11.30.0] - 2026-04-05
 ### Go Port: Persistence Backup & Export Controls
 - **Portable Persistence Export**: Added JSON export bundling for the lattice persistence layer, including integrity metadata, durable confirmed blocks, and the newest usable snapshot for operator inspection or manual archival.

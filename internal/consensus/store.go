@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -103,6 +104,17 @@ type LatticeBackupResult struct {
 	CreatedAt     int64  `json:"createdAt"`
 	BlockCount    int64  `json:"blockCount"`
 	SnapshotCount int64  `json:"snapshotCount"`
+}
+
+type LatticeRestoreResult struct {
+	Mode           string                  `json:"mode"`
+	SourcePath     string                  `json:"sourcePath,omitempty"`
+	TargetPath     string                  `json:"targetPath"`
+	CreatedAt      int64                   `json:"createdAt"`
+	BlockCount     int64                   `json:"blockCount"`
+	SnapshotCount  int64                   `json:"snapshotCount"`
+	LatestSequence int64                   `json:"latestSequence"`
+	Integrity      *LatticeIntegrityReport `json:"integrity,omitempty"`
 }
 
 func NewLatticeStore(path string) (*LatticeStore, error) {
@@ -556,6 +568,200 @@ func (s *LatticeStore) CreateBackup(targetPath string) (*LatticeBackupResult, er
 		CreatedAt:     time.Now().UnixMilli(),
 		BlockCount:    blockCount,
 		SnapshotCount: snapshotCount,
+	}, nil
+}
+
+func defaultRestoreTarget(basePath, prefix string) string {
+	name := fmt.Sprintf("%s-%s.db", prefix, time.Now().UTC().Format("20060102-150405"))
+	return filepath.Join(filepath.Dir(basePath), "restored", name)
+}
+
+func validateExportBundle(bundle *LatticeExportBundle) error {
+	if bundle == nil {
+		return fmt.Errorf("export bundle required")
+	}
+	lastSequence := int64(0)
+	for index, entry := range bundle.ConfirmedBlocks {
+		if entry.Block == nil {
+			return fmt.Errorf("confirmed block entry %d is nil", index)
+		}
+		if entry.Sequence <= lastSequence {
+			return fmt.Errorf("confirmed block sequence %d is not strictly increasing", entry.Sequence)
+		}
+		if entry.Block.Hash == "" || entry.Block.CalculateHash() != entry.Block.Hash {
+			return fmt.Errorf("confirmed block sequence %d has invalid hash integrity", entry.Sequence)
+		}
+		lastSequence = entry.Sequence
+	}
+	if bundle.LatestSnapshot != nil {
+		if bundle.LatestSnapshot.LastSequence <= 0 {
+			return fmt.Errorf("latest snapshot sequence must be positive when present")
+		}
+		if bundle.LatestSnapshot.LastSequence > lastSequence {
+			return fmt.Errorf("latest snapshot sequence %d exceeds latest confirmed block sequence %d", bundle.LatestSnapshot.LastSequence, lastSequence)
+		}
+	}
+	return nil
+}
+
+func ImportBundleToPath(targetPath string, bundle *LatticeExportBundle) (*LatticeRestoreResult, error) {
+	if targetPath == "" {
+		basePath := "data/lattice/lattice.db"
+		if bundle != nil && bundle.Path != "" {
+			basePath = bundle.Path
+		}
+		targetPath = defaultRestoreTarget(basePath, "imported-lattice")
+	}
+	if err := validateExportBundle(bundle); err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create import target directory: %w", err)
+	}
+	if _, err := os.Stat(targetPath); err == nil {
+		return nil, fmt.Errorf("import target already exists: %s", targetPath)
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to inspect import target %s: %w", targetPath, err)
+	}
+
+	store, err := NewLatticeStore(targetPath)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = store.Close()
+	}()
+
+	tx, err := store.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin lattice import transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	for _, entry := range bundle.ConfirmedBlocks {
+		encoded, err := json.Marshal(entry.Block)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode confirmed block sequence %d during import: %w", entry.Sequence, err)
+		}
+		_, err = tx.Exec(
+			`INSERT INTO confirmed_blocks (sequence, hash, account, type, height, timestamp, block_json) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			entry.Sequence,
+			entry.Block.Hash,
+			entry.Block.Account,
+			entry.Block.Type,
+			entry.Block.Height,
+			entry.Block.Timestamp,
+			string(encoded),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to import confirmed block sequence %d: %w", entry.Sequence, err)
+		}
+	}
+
+	if bundle.LatestSnapshot != nil {
+		encoded, err := json.Marshal(bundle.LatestSnapshot)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode imported snapshot: %w", err)
+		}
+		_, err = tx.Exec(`INSERT INTO lattice_snapshots (snapshot_sequence, snapshot_json) VALUES (?, ?)`, bundle.LatestSnapshot.LastSequence, string(encoded))
+		if err != nil {
+			return nil, fmt.Errorf("failed to import snapshot sequence %d: %w", bundle.LatestSnapshot.LastSequence, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit lattice import transaction: %w", err)
+	}
+
+	reloaded, err := NewPersistentLattice(targetPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reopen imported lattice database: %w", err)
+	}
+	defer func() {
+		_ = reloaded.Close()
+	}()
+	integrity, err := reloaded.VerifyPersistence()
+	if err != nil {
+		return nil, err
+	}
+	if !integrity.Healthy {
+		return nil, fmt.Errorf("imported lattice database failed integrity verification: %#v", integrity)
+	}
+
+	return &LatticeRestoreResult{
+		Mode:           "import-bundle",
+		TargetPath:     targetPath,
+		CreatedAt:      time.Now().UnixMilli(),
+		BlockCount:     integrity.BlockCount,
+		SnapshotCount:  integrity.SnapshotCount,
+		LatestSequence: integrity.LatestBlockSequence,
+		Integrity:      integrity,
+	}, nil
+}
+
+func RestoreBackupToPath(sourcePath, targetPath string) (*LatticeRestoreResult, error) {
+	if sourcePath == "" {
+		return nil, fmt.Errorf("restore source path required")
+	}
+	if targetPath == "" {
+		targetPath = defaultRestoreTarget(sourcePath, "restored-backup")
+	}
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create restore target directory: %w", err)
+	}
+	if _, err := os.Stat(targetPath); err == nil {
+		return nil, fmt.Errorf("restore target already exists: %s", targetPath)
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to inspect restore target %s: %w", targetPath, err)
+	}
+
+	source, err := os.Open(sourcePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open restore source %s: %w", sourcePath, err)
+	}
+	defer func() {
+		_ = source.Close()
+	}()
+	target, err := os.Create(targetPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create restore target %s: %w", targetPath, err)
+	}
+	defer func() {
+		_ = target.Close()
+	}()
+	if _, err := io.Copy(target, source); err != nil {
+		return nil, fmt.Errorf("failed to copy restore source into %s: %w", targetPath, err)
+	}
+	if err := target.Sync(); err != nil {
+		return nil, fmt.Errorf("failed to sync restored database %s: %w", targetPath, err)
+	}
+
+	reloaded, err := NewPersistentLattice(targetPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reopen restored backup database: %w", err)
+	}
+	defer func() {
+		_ = reloaded.Close()
+	}()
+	integrity, err := reloaded.VerifyPersistence()
+	if err != nil {
+		return nil, err
+	}
+	if !integrity.Healthy {
+		return nil, fmt.Errorf("restored backup failed integrity verification: %#v", integrity)
+	}
+
+	return &LatticeRestoreResult{
+		Mode:           "restore-backup",
+		SourcePath:     sourcePath,
+		TargetPath:     targetPath,
+		CreatedAt:      time.Now().UnixMilli(),
+		BlockCount:     integrity.BlockCount,
+		SnapshotCount:  integrity.SnapshotCount,
+		LatestSequence: integrity.LatestBlockSequence,
+		Integrity:      integrity,
 	}, nil
 }
 

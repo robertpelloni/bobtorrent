@@ -439,3 +439,116 @@ func TestPersistentLatticeBackupCreatesPortableSQLiteCopy(t *testing.T) {
 		t.Fatal("expected backup reload frontier to exist")
 	}
 }
+
+func TestImportBundleToPathCreatesVerifiedPortableDatabase(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+	defer func() {
+		if err := lattice.Close(); err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	}()
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	bundle, err := lattice.ExportPersistence()
+	if err != nil {
+		t.Fatalf("ExportPersistence failed: %v", err)
+	}
+
+	importPath := filepath.Join(t.TempDir(), "imported", "bundle-import.db")
+	result, err := ImportBundleToPath(importPath, bundle)
+	if err != nil {
+		t.Fatalf("ImportBundleToPath failed: %v", err)
+	}
+	if result.TargetPath != importPath {
+		t.Fatalf("unexpected import target path: %s", result.TargetPath)
+	}
+	if result.BlockCount != 1 {
+		t.Fatalf("expected imported block count 1, got %d", result.BlockCount)
+	}
+
+	reloaded, err := NewPersistentLattice(importPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice from imported bundle failed: %v", err)
+	}
+	defer func() {
+		if err := reloaded.Close(); err != nil {
+			t.Fatalf("Close imported lattice failed: %v", err)
+		}
+	}()
+	if reloaded.GetFrontier(wallet.PublicKey) == nil {
+		t.Fatal("expected imported lattice frontier to exist")
+	}
+}
+
+func TestRestoreBackupToPathCreatesVerifiedPortableDatabase(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "lattice.db")
+	lattice, err := NewPersistentLattice(dbPath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice failed: %v", err)
+	}
+	defer func() {
+		if err := lattice.Close(); err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	}()
+
+	wallet, err := torrent.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("GenerateKeypair failed: %v", err)
+	}
+
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	if err := genesis.Sign(wallet.PrivateKey); err != nil {
+		t.Fatalf("Sign genesis failed: %v", err)
+	}
+	if err := lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("ProcessBlock genesis failed: %v", err)
+	}
+
+	backupPath := filepath.Join(t.TempDir(), "backup", "seed.db")
+	backup, err := lattice.BackupPersistence(backupPath)
+	if err != nil {
+		t.Fatalf("BackupPersistence failed: %v", err)
+	}
+
+	restorePath := filepath.Join(t.TempDir(), "restored", "portable-restore.db")
+	result, err := RestoreBackupToPath(backup.BackupPath, restorePath)
+	if err != nil {
+		t.Fatalf("RestoreBackupToPath failed: %v", err)
+	}
+	if result.TargetPath != restorePath {
+		t.Fatalf("unexpected restore target path: %s", result.TargetPath)
+	}
+	if result.SourcePath != backup.BackupPath {
+		t.Fatalf("unexpected restore source path: %s", result.SourcePath)
+	}
+
+	reloaded, err := NewPersistentLattice(restorePath)
+	if err != nil {
+		t.Fatalf("NewPersistentLattice from restored backup failed: %v", err)
+	}
+	defer func() {
+		if err := reloaded.Close(); err != nil {
+			t.Fatalf("Close restored lattice failed: %v", err)
+		}
+	}()
+	if reloaded.GetFrontier(wallet.PublicKey) == nil {
+		t.Fatal("expected restored lattice frontier to exist")
+	}
+}

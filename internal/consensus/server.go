@@ -91,6 +91,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc("/persistence/repair", s.handlePersistenceRepair)
 	mux.HandleFunc("/persistence/export", s.handlePersistenceExport)
 	mux.HandleFunc("/persistence/backup", s.handlePersistenceBackup)
+	mux.HandleFunc("/persistence/import", s.handlePersistenceImport)
+	mux.HandleFunc("/persistence/restore", s.handlePersistenceRestore)
 	mux.HandleFunc("/ws", s.handleWebSocket)
 
 	return mux
@@ -242,6 +244,60 @@ func (s *Server) handlePersistenceBackup(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"backup":  result,
+	})
+}
+
+func (s *Server) handlePersistenceImport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body struct {
+		Path   string               `json:"path"`
+		Bundle *LatticeExportBundle `json:"bundle"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, fmt.Sprintf("invalid import payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	result, err := s.lattice.ImportPersistenceBundle(body.Path, body.Bundle)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("persistence import failed: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"restore": result,
+	})
+}
+
+func (s *Server) handlePersistenceRestore(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body struct {
+		SourcePath string `json:"sourcePath"`
+		TargetPath string `json:"targetPath"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, fmt.Sprintf("invalid restore payload: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	result, err := s.lattice.RestorePersistenceBackup(body.SourcePath, body.TargetPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("persistence restore failed: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"restore": result,
 	})
 }
 
