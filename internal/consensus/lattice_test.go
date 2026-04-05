@@ -44,8 +44,8 @@ func TestProcessPublishManifestAnchorsWalletAttributedManifest(t *testing.T) {
 			"statement": "Preserving sovereign knowledge across the lattice.",
 			"avatar":    "https://bob.example/avatar.png",
 			"proofs": []interface{}{
-				map[string]interface{}{"kind": "github", "url": "https://github.com/cipherarchivist"},
-				map[string]interface{}{"kind": "orcid", "url": "https://orcid.org/0000-0000-0000-0000"},
+				map[string]interface{}{"kind": "github", "label": "GitHub Identity", "issuer": "GitHub", "url": "https://github.com/cipherarchivist"},
+				map[string]interface{}{"kind": "orcid", "label": "ORCID Research Profile", "issuer": "ORCID", "url": "https://orcid.org/0000-0000-0000-0000"},
 			},
 		},
 		"publicationProof": map[string]interface{}{
@@ -88,8 +88,20 @@ func TestProcessPublishManifestAnchorsWalletAttributedManifest(t *testing.T) {
 	if len(stored.PublisherProofKinds) != 2 {
 		t.Fatalf("unexpected publisher proof kinds length: %d", len(stored.PublisherProofKinds))
 	}
+	if len(stored.PublisherProofLabels) != 2 {
+		t.Fatalf("unexpected publisher proof labels length: %d", len(stored.PublisherProofLabels))
+	}
+	if len(stored.PublisherProofIssuers) != 2 {
+		t.Fatalf("unexpected publisher proof issuers length: %d", len(stored.PublisherProofIssuers))
+	}
 	if stored.PublisherProofKinds[0] != "github" {
 		t.Fatalf("unexpected first proof kind: %s", stored.PublisherProofKinds[0])
+	}
+	if stored.PublisherProofLabels[0] != "GitHub Identity" {
+		t.Fatalf("unexpected first proof label: %s", stored.PublisherProofLabels[0])
+	}
+	if stored.PublisherProofIssuers[0] != "GitHub" {
+		t.Fatalf("unexpected first proof issuer: %s", stored.PublisherProofIssuers[0])
 	}
 }
 

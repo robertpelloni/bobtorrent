@@ -1,80 +1,44 @@
-# Bobtorrent Omni-Workspace Handoff (v11.31.0)
+# Bobtorrent Omni-Workspace Handoff (v11.32.0)
 
 ## Session Objective
-Complete the first full persistence-operations surface by adding import and restore controls on top of the already-shipped verify, repair, export, and backup flows.
+Continue after the completion of the first full persistence-operations surface by deepening publisher provenance semantics in both the Go lattice and the Bobcoin archive UI.
 
-## What Was Implemented
+## What Was Synced
+- Bobcoin submodule advanced to `v8.53.0`.
+- Root Go consensus now stores richer publisher attestation metadata, including proof labels and issuers in addition to proof kinds and URLs.
+- Root release/docs bumped to `v11.32.0`.
 
-### 1. Portable bundle import
-Files:
-- `internal/consensus/store.go`
-- `internal/consensus/lattice.go`
-- `internal/consensus/server.go`
+## Concrete Feature State Reflected Here
+The combined stack now supports:
+- publisher alias / website / statement
+- publisher avatar
+- typed proof/attestation links
+- structured proof labels and issuers
+- richer attestation cards in Vault
+- trust overlays
+- long-horizon source reliability trends
+- replay-backed lattice persistence
+- snapshot acceleration
+- persistence verify / repair / export / backup / import / restore controls
 
-Added a controlled import workflow that can:
-- take a JSON persistence export bundle
-- create a fresh portable SQLite lattice database
-- preserve confirmed block sequences
-- import the newest usable snapshot when present
-- reopen and verify the imported database before reporting success
-
-### 2. Backup restore workflow
-Files:
-- `internal/consensus/store.go`
-- `internal/consensus/lattice.go`
-- `internal/consensus/server.go`
-
-Added a restore workflow that can:
-- take a previously created SQLite backup copy
-- materialize a fresh portable lattice database at a target path
-- verify that restored DB by reopening it through `NewPersistentLattice`
-
-This is intentionally safe: the live node is not hot-swapped. Instead, operators get a verified restored database ready for the next boot or manual recovery workflow.
-
-### 3. Operator endpoints
-New endpoints:
-- `POST /persistence/import`
-- `POST /persistence/restore`
-
-These complete the persistence control surface alongside:
-- `GET /persistence/verify`
-- `POST /persistence/repair`
-- `GET /persistence/export`
-- `POST /persistence/backup`
-
-### 4. Validation
-Executed successfully:
+## Validation Basis
 - `go test ./internal/consensus -buildvcs=false`
 - `go build -buildvcs=false ./...`
 - `cd bobcoin/frontend && npm run build`
 
-Added test coverage proving:
-- imported bundle databases reopen correctly as persistent lattices
-- restored backup databases reopen correctly as persistent lattices
-
 ## Strategic State After This Session
-The lattice persistence layer now supports a complete first-generation operator workflow:
-1. verify
-2. repair
-3. export
-4. backup
-5. import
-6. restore
+Publisher identity evidence is now more semantically useful:
+- proofs are no longer just typed URLs
+- Go anchors retain richer attestation context
+- Vault renders proof records as more legible identity evidence
 
-This materially changes the persistence story from "durable internals" to a real operator-managed state lifecycle.
+This makes the archive product surface stronger while preserving the broader Go-first migration direction.
 
-## Remaining Gaps
-1. Broader persistence-aware consensus transition tests
-2. Configurable snapshot cadence / retention controls
-3. Signed/encrypted operator backup bundles
-4. Real Filecoin bridge
-5. Deeper peer sync / catch-up
-
-## Recommended Next Step
-1. Deepen publisher attestation semantics further
+## Recommended Next Steps
+1. Continue porting practical service-side responsibilities from Node to Go
 2. Add exportable comparative source diagnostics
-3. Add signed/encrypted backup bundles for the persistence layer
+3. Add signed/encrypted operator backup bundles for persistence
 
 ## Notes for the Next Agent
-- Import/restore intentionally create fresh verified databases instead of mutating the running node’s active store in place.
-- This preserves the safety model established in the earlier persistence work: the live node remains stable while recovery artifacts are prepared for controlled rehydration.
+- The most recent work was not just frontend dressing; the Go lattice schema itself now preserves richer attestation metadata.
+- The next major Go-port push should probably focus on remaining service responsibilities rather than only more archive UX refinement.

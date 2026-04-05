@@ -4,6 +4,13 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.32.0] - 2026-04-05
+### Go Port: Structured Publisher Attestations
+- **Consensus Attestation Enrichment**: Extended Go manifest anchors with structured attestation metadata, adding per-proof labels and issuers alongside proof kinds and proof URLs.
+- **Bobcoin Identity UX**: Updated the `bobcoin` submodule to `v8.53.0`, where publisher proofs can now be authored as richer attestation records and Vault renders them as structured proof cards instead of only compact badges.
+- **Searchable Identity Evidence**: Vault discovery now indexes attestation labels and issuers in addition to proof URLs and proof kinds.
+- **Validation**: Re-validated `go test ./internal/consensus -buildvcs=false`, `go build -buildvcs=false ./...`, and the Bobcoin frontend production build after structured attestation integration.
+
 ## [11.31.0] - 2026-04-05
 ### Go Port: Persistence Import & Restore Controls
 - **Portable Bundle Import**: Added a controlled import workflow that can materialize a fresh portable lattice database from the JSON persistence export bundle, preserving confirmed block sequences and the newest usable snapshot.

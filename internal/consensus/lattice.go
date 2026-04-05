@@ -215,26 +215,28 @@ type NFT struct {
 // lattice. The referenced manifest itself may live on a supernode registry,
 // but this anchor proves which account attached it to the sovereign network.
 type ManifestAnchor struct {
-	ID                  string   `json:"id"`
-	BlockHash           string   `json:"blockHash"`
-	Owner               string   `json:"owner"`
-	Type                string   `json:"type"`
-	ManifestID          string   `json:"manifestId,omitempty"`
-	Locator             string   `json:"locator,omitempty"`
-	ManifestURL         string   `json:"manifestUrl,omitempty"`
-	Name                string   `json:"name,omitempty"`
-	Size                int64    `json:"size,omitempty"`
-	CiphertextHash      string   `json:"ciphertextHash,omitempty"`
-	ProofHash           string   `json:"proofHash,omitempty"`
-	ProofSignature      string   `json:"proofSignature,omitempty"`
-	PublisherAlias      string   `json:"publisherAlias,omitempty"`
-	PublisherWebsite    string   `json:"publisherWebsite,omitempty"`
-	PublisherStatement  string   `json:"publisherStatement,omitempty"`
-	PublisherAvatar     string   `json:"publisherAvatar,omitempty"`
-	PublisherProofs     []string `json:"publisherProofs,omitempty"`
-	PublisherProofKinds []string `json:"publisherProofKinds,omitempty"`
-	Magnet              string   `json:"magnet,omitempty"`
-	Timestamp           int64    `json:"timestamp"`
+	ID                    string   `json:"id"`
+	BlockHash             string   `json:"blockHash"`
+	Owner                 string   `json:"owner"`
+	Type                  string   `json:"type"`
+	ManifestID            string   `json:"manifestId,omitempty"`
+	Locator               string   `json:"locator,omitempty"`
+	ManifestURL           string   `json:"manifestUrl,omitempty"`
+	Name                  string   `json:"name,omitempty"`
+	Size                  int64    `json:"size,omitempty"`
+	CiphertextHash        string   `json:"ciphertextHash,omitempty"`
+	ProofHash             string   `json:"proofHash,omitempty"`
+	ProofSignature        string   `json:"proofSignature,omitempty"`
+	PublisherAlias        string   `json:"publisherAlias,omitempty"`
+	PublisherWebsite      string   `json:"publisherWebsite,omitempty"`
+	PublisherStatement    string   `json:"publisherStatement,omitempty"`
+	PublisherAvatar       string   `json:"publisherAvatar,omitempty"`
+	PublisherProofs       []string `json:"publisherProofs,omitempty"`
+	PublisherProofKinds   []string `json:"publisherProofKinds,omitempty"`
+	PublisherProofLabels  []string `json:"publisherProofLabels,omitempty"`
+	PublisherProofIssuers []string `json:"publisherProofIssuers,omitempty"`
+	Magnet                string   `json:"magnet,omitempty"`
+	Timestamp             int64    `json:"timestamp"`
 }
 
 // StakeInfo tracks an account's active staking position.
@@ -606,6 +608,8 @@ func cloneAnchors(src map[string]*ManifestAnchor) map[string]*ManifestAnchor {
 		copy := *anchor
 		copy.PublisherProofs = append([]string(nil), anchor.PublisherProofs...)
 		copy.PublisherProofKinds = append([]string(nil), anchor.PublisherProofKinds...)
+		copy.PublisherProofLabels = append([]string(nil), anchor.PublisherProofLabels...)
+		copy.PublisherProofIssuers = append([]string(nil), anchor.PublisherProofIssuers...)
 		out[id] = &copy
 	}
 	return out
@@ -1394,6 +1398,8 @@ func (l *Lattice) processPublishManifest(b *torrent.Block, prevBalance int64) er
 	publisherAvatar := ""
 	var publisherProofs []string
 	var publisherProofKinds []string
+	var publisherProofLabels []string
+	var publisherProofIssuers []string
 	if publisher, ok := payload["publisher"].(map[string]interface{}); ok {
 		publisherAlias, _ = publisher["alias"].(string)
 		publisherWebsite, _ = publisher["website"].(string)
@@ -1406,16 +1412,22 @@ func (l *Lattice) processPublishManifest(b *torrent.Block, prevBalance int64) er
 					if strings.TrimSpace(v) != "" {
 						publisherProofs = append(publisherProofs, v)
 						publisherProofKinds = append(publisherProofKinds, "link")
+						publisherProofLabels = append(publisherProofLabels, "")
+						publisherProofIssuers = append(publisherProofIssuers, "")
 					}
 				case map[string]interface{}:
 					url, _ := v["url"].(string)
 					kind, _ := v["kind"].(string)
+					label, _ := v["label"].(string)
+					issuer, _ := v["issuer"].(string)
 					if strings.TrimSpace(url) != "" {
 						publisherProofs = append(publisherProofs, url)
 						if strings.TrimSpace(kind) == "" {
 							kind = "link"
 						}
 						publisherProofKinds = append(publisherProofKinds, kind)
+						publisherProofLabels = append(publisherProofLabels, strings.TrimSpace(label))
+						publisherProofIssuers = append(publisherProofIssuers, strings.TrimSpace(issuer))
 					}
 				}
 			}
@@ -1450,25 +1462,27 @@ func (l *Lattice) processPublishManifest(b *torrent.Block, prevBalance int64) er
 	}
 
 	l.anchors[b.Hash] = &ManifestAnchor{
-		ID:                  manifestID,
-		BlockHash:           b.Hash,
-		Owner:               b.Account,
-		Type:                "publish_manifest",
-		ManifestID:          manifestID,
-		Locator:             locator,
-		ManifestURL:         manifestURL,
-		Name:                name,
-		Size:                size,
-		CiphertextHash:      ciphertextHash,
-		ProofHash:           proofHash,
-		ProofSignature:      proofSignature,
-		PublisherAlias:      publisherAlias,
-		PublisherWebsite:    publisherWebsite,
-		PublisherStatement:  publisherStatement,
-		PublisherAvatar:     publisherAvatar,
-		PublisherProofs:     publisherProofs,
-		PublisherProofKinds: publisherProofKinds,
-		Timestamp:           b.Timestamp,
+		ID:                    manifestID,
+		BlockHash:             b.Hash,
+		Owner:                 b.Account,
+		Type:                  "publish_manifest",
+		ManifestID:            manifestID,
+		Locator:               locator,
+		ManifestURL:           manifestURL,
+		Name:                  name,
+		Size:                  size,
+		CiphertextHash:        ciphertextHash,
+		ProofHash:             proofHash,
+		ProofSignature:        proofSignature,
+		PublisherAlias:        publisherAlias,
+		PublisherWebsite:      publisherWebsite,
+		PublisherStatement:    publisherStatement,
+		PublisherAvatar:       publisherAvatar,
+		PublisherProofs:       publisherProofs,
+		PublisherProofKinds:   publisherProofKinds,
+		PublisherProofLabels:  publisherProofLabels,
+		PublisherProofIssuers: publisherProofIssuers,
+		Timestamp:             b.Timestamp,
 	}
 	return nil
 }
