@@ -4,6 +4,12 @@
 - **Trust Surfacing**: The Bobcoin archive UI now exposes heuristic trust overlays and clearer provenance cues, making anchored content easier to evaluate at a glance.
 - **Validation**: The Bobcoin frontend production build remained green after the merged trust/reputation overlay and root workspace sync.
 
+## [11.46.0] - 2026-04-05
+### Go Port: Bobcoin Frontend Bundle Health Sync
+- **Bobcoin Bundle Split**: Updated the `bobcoin` submodule to `v8.70.0`, where route-level lazy loading and manual vendor chunking now split the frontend into route chunks plus dedicated `node-seal`, `three`, React, router, and crypto vendor chunks.
+- **Healthier Runtime Profile**: The former oversized main application bundle has been substantially reduced; the remaining large warning is now mostly concentrated in the dedicated `three` vendor chunk instead of the app shell.
+- **Validation**: Re-validated `cd bobcoin/frontend && npm run build` after the route/code-splitting pass.
+
 ## [11.45.0] - 2026-04-05
 ### Go Port: Diagnostics Comparison Workflow Sync
 - **Bobcoin Diagnostics Review Upgrade**: Updated the `bobcoin` submodule to `v8.69.0`, where Vault now compares imported signed diagnostics packages against the operator’s current local diagnostics view.

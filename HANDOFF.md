@@ -1,48 +1,43 @@
-# Bobtorrent Omni-Workspace Handoff (v11.45.0)
+# Bobtorrent Omni-Workspace Handoff (v11.46.0)
 
 ## Session Objective
-Continue the operator-facing trust workflow around diagnostics packages by making imported signed packages comparable against the operator’s current local diagnostics view instead of only verifying the signature.
+Improve frontend bundle health in Bobcoin by splitting the eager route graph and isolating the heaviest libraries into explicit vendor chunks.
 
 ## What Was Implemented
 
-### 1. Signed diagnostics package comparison review in Bobcoin Vault
-Files:
-- `bobcoin/frontend/src/pages/Vault.jsx`
-- `bobcoin/frontend/src/pages/Vault.css`
+### 1. Route-level lazy loading in Bobcoin
+File:
+- `bobcoin/frontend/src/App.jsx`
 
-Imported signed diagnostics packages are now compared against the current local diagnostics model.
+All page routes are now loaded via `React.lazy` + `Suspense` instead of being eagerly imported into the main application bundle.
 
-Comparison output now includes:
-- freshness label (`LOCAL_NEWER`, `IMPORTED_NEWER`, `SAME_WINDOW`)
-- shared source count
-- local-only source count
-- imported-only source count
-- changed-source count
-- top materially changed hosts with reliability and recent-failure deltas
+### 2. Manual vendor chunking
+File:
+- `bobcoin/frontend/vite.config.js`
 
-### 2. Trust workflow effect
-This turns package review from:
-- “is the signature valid?”
-
-into:
-- “is the signature valid, and how does this package differ from what I currently see?”
-
-That is significantly more useful during real operator handoff.
-
-### 3. Bobcoin submodule sync
-Bobcoin was updated and pushed as:
-- `v8.69.0`
-- commit: `100fc05`
+Added manual chunking for:
+- `node-seal`
+- `three` / React Three Fiber stack
+- React core
+- React Router
+- crypto-heavy dependencies (`tweetnacl`, `bs58`)
 
 ## Validation
 Executed successfully:
 - `cd bobcoin/frontend && npm run build`
 
+## Findings / Analysis
+The build profile is materially healthier now:
+- the main app chunk is much smaller than before
+- page routes are emitted as separate chunks
+- `node-seal` is isolated into its own vendor chunk
+- the remaining large warning is now primarily concentrated in the dedicated `three` vendor chunk instead of the core app graph
+
 ## Recommended Next Steps
-1. Continue broader multi-party diagnostics/provenance workflows beyond the current package comparison layer
-2. Keep improving frontend chunk splitting around `node-seal`
+1. Continue broader diagnostics/provenance workflows beyond the current package comparison layer
+2. If needed later, defer the `three` stack even more aggressively beyond the current route/vendor split
 3. Continue evaluating which specialized Node surfaces are still worth porting further
 
 ## Notes for the Next Agent
 - No running processes were terminated in this session.
-- The diagnostics comparison layer intentionally reuses the same canonical diagnostics model used by both plain export and signed package export so there is no trust drift between visible and exported evidence.
+- The bundle-health pass intentionally focused on the most leverage-rich structural fix first: stop eagerly importing the whole route graph and isolate the heaviest vendors.
