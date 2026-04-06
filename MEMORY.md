@@ -2,7 +2,7 @@
 
 ## Core Architectural State
 - The Bobtorrent Go port is now a real multi-binary platform rather than a thin prototype.
-- The Go lattice has moved beyond a minimal proof-of-concept and now includes governance, NFT, staking, swap, market, websocket, peer-broadcast capabilities, replay-backed SQLite durability for confirmed blocks, materialized snapshots for faster cold boot, operator-visible persistence verification/repair tooling, backup/export controls, portable import/restore workflows for durable state, and a growing Go-side service compatibility surface around the supernode.
+- The Go lattice has moved beyond a minimal proof-of-concept and now includes governance, NFT, staking, swap, market, websocket, peer-broadcast capabilities, duplicate-aware block ingestion, ordered confirmed-block catch-up via `/blocks`, bootstrap sync initiation via `/bootstrap`, replay-backed SQLite durability for confirmed blocks, materialized snapshots for faster cold boot, operator-visible persistence verification/repair tooling, backup/export controls, portable import/restore workflows for durable state, and a growing Go-side service compatibility surface around the supernode.
 - The storage layer exists in both native Go and WebAssembly form, which is strategically important because it reduces frontend/backend crypto drift.
 - Bobcoin frontend integration is now partially live: the React app contains a browser-side Go WASM workbench for storage preprocessing, publication, retrieval, signed manifest anchoring, searchable trust-aware Vault-based archive browsing, archive reuse inside Market/Gallery flows, owner-level trust/reputation overlays, signed publisher alias/website/statement metadata, degraded recovery diagnostics, saved/grouped archive workflows, publisher avatar/profile/proof overlays, exportable recovery reports, shard failure/source attribution, portable preset/batch archive actions, long-horizon source reliability trends, and structured publisher attestation semantics, while the Go supernode serves the required WASM runtime artifacts directly.
 
@@ -15,6 +15,7 @@
   - some pages still omit explicit `height` and `staked_balance`
   - NFT transfer UI currently uses `recipient` naming, while newer Go code preferred `newOwner`
 - The Go lattice now includes compatibility handling for all of the above, but this is a temporary bridge, not the final state.
+- Multi-node sync is no longer just best-effort fan-out: the lattice now preserves confirmed global block order for catch-up, exposes `GET /blocks`, and can bootstrap from peers while merging discovered peer lists. The remaining gap is richer failure policy and divergence handling, not the absence of any late-join path.
 
 ## Build / Toolchain Findings
 - `anacrolix/dht` API drift required moving from an imagined `Addr` field to explicit `net.ListenPacket` wiring through `ServerConfig.Conn`.

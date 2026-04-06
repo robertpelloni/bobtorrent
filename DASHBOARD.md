@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.47.0`
+- **Root Version**: `11.48.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -47,7 +47,7 @@ bobtorrent/
 | Service | Artifact | Status | Purpose |
 |---|---|---:|---|
 | DHT Proxy | `build/dht-proxy` | Buildable | Privacy-preserving peer discovery with GeoIP sorting |
-| Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, operator-tunable snapshot cadence/retention, persistence verification/repair endpoints, backup/export controls, import/restore controls, signed/encrypted operator backup bundle workflows, and broader mixed-transition replay regression coverage |
+| Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, ordered confirmed-block catch-up, `GET /blocks` + `GET/POST /bootstrap` peer sync support, duplicate-aware block ingestion to reduce looped broadcast noise, operator-tunable snapshot cadence/retention, persistence verification/repair endpoints, backup/export controls, import/restore controls, signed/encrypted operator backup bundle workflows, and broader mixed-transition replay regression coverage |
 | Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation compatibility, websocket matchmaking/signaling with liveness telemetry, Lotus Filecoin bridge status/deal endpoints, WASM artifact serving, manifest/shard publication registry, and durable local transaction logging |
 | Storage WASM | `build/storage.wasm` | Buildable | Browser-side Go storage kernel |
 | Go WASM Runtime | `build/wasm_exec.js` | Packaged | Required runtime bridge for browser execution |
@@ -63,6 +63,7 @@ bobtorrent/
 - Browser-consumable storage WASM runtime
 
 ## Current Known Gaps
-- Lattice persistence is now significantly hardened, but snapshot mutability policy, larger replay webs, and richer operator diagnostics workflows remain open
+- Lattice peer sync now has a first practical bootstrap/catch-up path, but richer sync diagnostics, health policy, and heavier divergence handling remain open
+- Lattice persistence is significantly hardened, but snapshot mutability policy, larger replay webs, and richer operator diagnostics workflows remain open
 - Filecoin now has real Lotus RPC publication/verification support, but deeper CAR/import ingestion and richer lifecycle metadata are still pending
 - qBittorrent remote reference remains broken

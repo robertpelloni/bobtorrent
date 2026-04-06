@@ -126,6 +126,12 @@ type Lattice struct {
 	// peers maps registered P2P lattice node addresses for block broadcasting.
 	peers map[string]bool
 
+	// blockOrder preserves confirmed-block arrival order across the entire
+	// lattice, independent of per-account chains. This becomes the canonical
+	// stream used for peer catch-up and late-join synchronization, because the
+	// global `blocks` map alone does not retain any stable ordering.
+	blockOrder []string
+
 	// store optionally persists the confirmed block log to SQLite so the lattice
 	// can recover its full derived state after restart by replaying blocks.
 	store *LatticeStore
@@ -320,6 +326,7 @@ func newEmptyLattice(store *LatticeStore) *Lattice {
 		stakeInfo:  make(map[string]*StakeInfo),
 		stateHash:  strings.Repeat("0", 64),
 		peers:      make(map[string]bool),
+		blockOrder: make([]string, 0),
 		store:      store,
 	}
 }
@@ -475,6 +482,7 @@ func (l *Lattice) RestoreSignedEncryptedBackupBundle(sourcePath, passphrase, tar
 type latticeSnapshot struct {
 	chains     map[string][]*torrent.Block
 	blocks     map[string]*torrent.Block
+	blockOrder []string
 	pending    map[string][]PendingTx
 	proposals  map[string]*Proposal
 	votes      map[string]map[string]Vote
@@ -490,6 +498,7 @@ type persistedLatticeSnapshot struct {
 	LastSequence int64                       `json:"lastSequence"`
 	Chains       map[string][]*torrent.Block `json:"chains"`
 	Blocks       map[string]*torrent.Block   `json:"blocks"`
+	BlockOrder   []string                    `json:"blockOrder"`
 	Pending      map[string][]PendingTx      `json:"pending"`
 	Proposals    map[string]*Proposal        `json:"proposals"`
 	Votes        map[string]map[string]Vote  `json:"votes"`
@@ -505,6 +514,7 @@ func (l *Lattice) snapshotLocked() *latticeSnapshot {
 	return &latticeSnapshot{
 		chains:     cloneChains(l.chains),
 		blocks:     cloneBlocks(l.blocks),
+		blockOrder: cloneBlockOrder(l.blockOrder),
 		pending:    clonePending(l.pending),
 		proposals:  cloneProposals(l.proposals),
 		votes:      cloneVotes(l.votes),
@@ -523,6 +533,7 @@ func (l *Lattice) restoreSnapshotLocked(snapshot *latticeSnapshot) {
 	}
 	l.chains = snapshot.chains
 	l.blocks = snapshot.blocks
+	l.blockOrder = snapshot.blockOrder
 	l.pending = snapshot.pending
 	l.proposals = snapshot.proposals
 	l.votes = snapshot.votes
@@ -539,6 +550,7 @@ func (l *Lattice) persistentSnapshotLocked(lastSequence int64) *persistedLattice
 		LastSequence: lastSequence,
 		Chains:       cloneChains(l.chains),
 		Blocks:       cloneBlocks(l.blocks),
+		BlockOrder:   cloneBlockOrder(l.blockOrder),
 		Pending:      clonePending(l.pending),
 		Proposals:    cloneProposals(l.proposals),
 		Votes:        cloneVotes(l.votes),
@@ -558,6 +570,7 @@ func (l *Lattice) restorePersistentSnapshotLocked(snapshot *persistedLatticeSnap
 	l.restoreSnapshotLocked(&latticeSnapshot{
 		chains:     cloneChains(snapshot.Chains),
 		blocks:     cloneBlocks(snapshot.Blocks),
+		blockOrder: cloneBlockOrder(snapshot.BlockOrder),
 		pending:    clonePending(snapshot.Pending),
 		proposals:  cloneProposals(snapshot.Proposals),
 		votes:      cloneVotes(snapshot.Votes),
@@ -664,6 +677,10 @@ func cloneStakeInfo(src map[string]*StakeInfo) map[string]*StakeInfo {
 	return out
 }
 
+func cloneBlockOrder(src []string) []string {
+	return append([]string(nil), src...)
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // Peer Management
 // ════════════════════════════════════════════════════════════════════════════
@@ -705,6 +722,65 @@ func (l *Lattice) GetFrontier(account string) *torrent.Block {
 		return nil
 	}
 	return chain[len(chain)-1]
+}
+
+// LatestBlockHash returns the newest confirmed block hash in global arrival
+// order, or an empty string when the lattice has not confirmed any blocks yet.
+func (l *Lattice) LatestBlockHash() string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	if len(l.blockOrder) == 0 {
+		return ""
+	}
+	return l.blockOrder[len(l.blockOrder)-1]
+}
+
+// GetOrderedBlocksAfter returns confirmed blocks in the exact order they were
+// committed, optionally starting after a known block hash. This powers
+// deterministic peer catch-up for late-joining nodes.
+func (l *Lattice) GetOrderedBlocksAfter(afterHash string, limit int) ([]*torrent.Block, bool, bool) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 500 {
+		limit = 500
+	}
+
+	start := 0
+	cursorFound := true
+	if afterHash != "" {
+		cursorFound = false
+		for i, hash := range l.blockOrder {
+			if hash == afterHash {
+				start = i + 1
+				cursorFound = true
+				break
+			}
+		}
+		if !cursorFound {
+			return nil, false, len(l.blockOrder) > 0
+		}
+	}
+
+	remaining := len(l.blockOrder) - start
+	if remaining <= 0 {
+		return []*torrent.Block{}, cursorFound, false
+	}
+	if remaining > limit {
+		remaining = limit
+	}
+
+	blocks := make([]*torrent.Block, 0, remaining)
+	for _, hash := range l.blockOrder[start : start+remaining] {
+		if block, ok := l.blocks[hash]; ok {
+			blocks = append(blocks, block)
+		}
+	}
+	hasMore := start+remaining < len(l.blockOrder)
+	return blocks, cursorFound, hasMore
 }
 
 // GetBalance returns the current balance for an account with demurrage
@@ -778,12 +854,26 @@ func (l *Lattice) ApplyDemurrage(balance int64, lastTs, currentTs int64) int64 {
 //  4. Type-specific state transitions (send, receive, governance, NFT, etc.)
 //  5. State hash update (rolling SHA-256 commitment)
 func (l *Lattice) ProcessBlock(b *torrent.Block) error {
+	_, err := l.ProcessBlockDetailed(b)
+	return err
+}
+
+// ProcessBlockDetailed applies a block and reports whether it was newly
+// committed. Duplicate blocks return `(false, nil)` so peer-sync callers can
+// suppress needless looped re-broadcast while still treating the duplicate as a
+// successful already-known delivery.
+func (l *Lattice) ProcessBlockDetailed(b *torrent.Block) (bool, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return l.processBlockLocked(b, true)
+	return l.processBlockLockedDetailed(b, true)
 }
 
 func (l *Lattice) processBlockLocked(b *torrent.Block, persist bool) error {
+	_, err := l.processBlockLockedDetailed(b, persist)
+	return err
+}
+
+func (l *Lattice) processBlockLockedDetailed(b *torrent.Block, persist bool) (bool, error) {
 	var snapshot *latticeSnapshot
 	if persist && l.store != nil {
 		snapshot = l.snapshotLocked()
@@ -793,7 +883,7 @@ func (l *Lattice) processBlockLocked(b *torrent.Block, persist bool) error {
 	if _, exists := l.blocks[b.Hash]; exists {
 		// Block already processed (e.g., received via P2P broadcast).
 		// This is not an error — it's expected in a multi-peer network.
-		return nil
+		return false, nil
 	}
 
 	// ── 2. Signature Verification ──
@@ -801,7 +891,7 @@ func (l *Lattice) processBlockLocked(b *torrent.Block, persist bool) error {
 	// public key to ensure the block was authored by the account owner.
 	if b.Signature != "" {
 		if !torrent.Verify(b.Hash, b.Signature, b.Account) {
-			return fmt.Errorf("invalid signature for block %s", b.Hash[:16])
+			return false, fmt.Errorf("invalid signature for block %s", b.Hash[:16])
 		}
 	}
 
@@ -822,23 +912,23 @@ func (l *Lattice) processBlockLocked(b *torrent.Block, persist bool) error {
 
 	if b.Type == "open" {
 		if frontier != nil {
-			return fmt.Errorf("account %s already open", b.Account[:16])
+			return false, fmt.Errorf("account %s already open", b.Account[:16])
 		}
 		if b.Previous != nil {
-			return fmt.Errorf("open block must have nil previous")
+			return false, fmt.Errorf("open block must have nil previous")
 		}
 		if b.Height != 0 {
-			return fmt.Errorf("open block must have height 0")
+			return false, fmt.Errorf("open block must have height 0")
 		}
 	} else {
 		if frontier == nil {
-			return fmt.Errorf("account %s not open", b.Account[:16])
+			return false, fmt.Errorf("account %s not open", b.Account[:16])
 		}
 		if b.Previous == nil || *b.Previous != frontier.Hash {
-			return fmt.Errorf("invalid previous hash: expected %s", frontier.Hash[:16])
+			return false, fmt.Errorf("invalid previous hash: expected %s", frontier.Hash[:16])
 		}
 		if b.Height != frontier.Height+1 {
-			return fmt.Errorf("invalid height: expected %d, got %d", frontier.Height+1, b.Height)
+			return false, fmt.Errorf("invalid height: expected %d, got %d", frontier.Height+1, b.Height)
 		}
 	}
 
@@ -851,82 +941,82 @@ func (l *Lattice) processBlockLocked(b *torrent.Block, persist bool) error {
 	switch b.Type {
 	case "open":
 		if err := l.processOpen(b); err != nil {
-			return err
+			return false, err
 		}
 
 	case "send":
 		if err := l.processSend(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "receive":
 		if err := l.processReceive(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "market_bid":
 		if err := l.processMarketBid(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "accept_bid":
 		if err := l.processAcceptBid(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "proposal":
 		if err := l.processProposal(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "vote":
 		if err := l.processVote(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "mint_nft":
 		if err := l.processMintNFT(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "transfer_nft":
 		if err := l.processTransferNFT(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "stake":
 		if err := l.processStake(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "unstake":
 		if err := l.processUnstake(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "initiate_swap":
 		if err := l.processInitiateSwap(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "claim_swap":
 		if err := l.processClaimSwap(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "refund_swap":
 		if err := l.processRefundSwap(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "publish_manifest":
 		if err := l.processPublishManifest(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "data_anchor":
 		if err := l.processDataAnchor(b, prevBalance); err != nil {
-			return err
+			return false, err
 		}
 
 	case "achievement_unlock":
@@ -934,19 +1024,20 @@ func (l *Lattice) processBlockLocked(b *torrent.Block, persist bool) error {
 		// They are simply recorded on the account's chain for the Trophy Room.
 
 	default:
-		return fmt.Errorf("unknown block type: %s", b.Type)
+		return false, fmt.Errorf("unknown block type: %s", b.Type)
 	}
 
 	// ── 5. Commit ──
 	l.chains[b.Account] = append(l.chains[b.Account], b)
 	l.blocks[b.Hash] = b
+	l.blockOrder = append(l.blockOrder, b.Hash)
 	l.updateStateHash(b)
 
 	if persist && l.store != nil {
 		sequence, err := l.store.AppendBlock(b)
 		if err != nil {
 			l.restoreSnapshotLocked(snapshot)
-			return fmt.Errorf("failed to persist confirmed block %s: %w", b.Hash, err)
+			return false, fmt.Errorf("failed to persist confirmed block %s: %w", b.Hash, err)
 		}
 		l.persistedSequence = sequence
 
@@ -959,7 +1050,7 @@ func (l *Lattice) processBlockLocked(b *torrent.Block, persist bool) error {
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 // ════════════════════════════════════════════════════════════════════════════

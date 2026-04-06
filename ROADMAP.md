@@ -8,14 +8,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - operator experience
 
 ## Current Release Train
-- **Current Version**: `11.47.0`
+- **Current Version**: `11.48.0`
 - **Primary Runtime Targets**:
   - `lattice-go` — block lattice consensus node
   - `supernode-go` — torrent seeding, market polling, TUI operations
   - `dht-proxy` — privacy-preserving peer discovery utility
   - `storage.wasm` — browser-side Go storage kernel
 
-## ✅ Completed Through v11.47.0
+## ✅ Completed Through v11.48.0
 
 ### 1. Go Consensus Node
 - Ported the Bobcoin asynchronous block lattice to Go.
@@ -30,6 +30,7 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
   - `initiate_swap` / `claim_swap` / `refund_swap`
   - `publish_manifest` / `data_anchor`
 - Added peer registration and HTTP-based P2P block broadcast between lattice nodes.
+- Added duplicate-aware block processing results, ordered confirmed-block catch-up, `GET /blocks`, `GET/POST /bootstrap`, and peer-registration-triggered late-join sync so new Go lattice nodes can bootstrap practical history from existing peers.
 - Added wallet-attributed manifest anchor indexing and anchor query APIs.
 
 ### 2. Frontend Compatibility Layer
@@ -127,9 +128,9 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 
 ### C. Continue Service-Side Go Migration + Multi-Node Networking
 - Continue porting remaining practical Node-side service responsibilities into Go where feasible.
-- Upgrade the current HTTP fan-out into more robust peer synchronization.
-- Add peer gossip / bootstrap / duplicate suppression improvements.
-- Introduce state sync and catch-up for late-joining nodes.
+- Continue evolving the new lattice peer sync flow beyond its first practical bootstrap/catch-up version.
+- Add stronger peer gossip / health / retry policy around the new bootstrap and fan-out paths.
+- Extend catch-up semantics beyond ordered block replay toward more operator-visible sync diagnostics if multi-node deployments become heavier.
 
 ### D. Real Filecoin Ingestion
 - Added a Lotus JSON-RPC integration path for Filecoin deal publication and verification in `internal/bridges/filecoin.go`.

@@ -1,3 +1,12 @@
+## [11.48.0] - 2026-04-05
+### Go Port: Lattice Peer Bootstrap + Catch-Up Sync
+- **Ordered Consensus Catch-Up**: Added a deterministic ordered confirmed-block stream to the Go lattice plus a new `GET /blocks` endpoint, giving late-joining nodes a stable way to request confirmed history in commit order instead of guessing from unordered state maps.
+- **Peer Bootstrap Workflow**: Added `GET /bootstrap` summary visibility and `POST /bootstrap` sync initiation, and upgraded `POST /peers` so new peer registration can immediately bootstrap/catch up from the remote lattice node.
+- **Duplicate Suppression Hardening**: `ProcessBlockDetailed()` now reports whether a block was newly accepted or already known, allowing the HTTP layer to stop re-broadcasting duplicate deliveries and reducing looped gossip noise.
+- **Peer Discovery Merge**: During bootstrap sync, the lattice now also pulls the remote peer list and learns additional peers for future fan-out.
+- **Regression Coverage**: Added server-level tests proving duplicate block POSTs are identified, ordered block pagination works, and peer registration can catch up a late joiner while learning downstream peers.
+- **Validation**: Re-validated `go test -buildvcs=false ./cmd/supernode-go ./internal/consensus` and `go build -buildvcs=false ./...` after the peer-sync hardening pass.
+
 ## [11.47.0] - 2026-04-05
 ### Go Port: Supernode Upload + SPoRA Compatibility
 - **Go Supertorrent Surface Expanded**: Added legacy-compatible `POST /upload` handling to `cmd/supernode-go`, so multipart file uploads can now be ported through Go instead of requiring the old Node `supertorrent` control plane.

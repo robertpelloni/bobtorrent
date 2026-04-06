@@ -1,62 +1,104 @@
-# Bobtorrent Omni-Workspace Handoff (v11.47.0)
+# Bobtorrent Omni-Workspace Handoff (v11.48.0)
 
 ## Session Objective
-Continue the Go-first migration by porting additional remaining practical `supertorrent` responsibilities into `cmd/supernode-go` instead of leaving them behind in the legacy Node service.
+Continue the Go-first migration by hardening lattice multi-node synchronization so peer registration is more than just blind broadcast fan-out.
 
 ## What Was Implemented
 
-### 1. Real Go `/upload` compatibility in `supernode-go`
+### 1. Ordered confirmed-block stream in the Go lattice
 Files:
-- `cmd/supernode-go/main.go`
-- `cmd/supernode-go/main_test.go`
+- `internal/consensus/lattice.go`
 
-Added legacy-compatible `POST /upload` handling to the Go supernode.
+Added `blockOrder` to preserve global confirmed-block commit order.
+
+Why this matters:
+- the existing `blocks` map gave O(1) lookup but not deterministic ordering
+- peer catch-up needs a stable ordered stream
+- this is now the basis for late-join synchronization and block pagination
+
+Also updated in-memory and persisted snapshot handling so block order survives snapshot restore/replay flows.
+
+### 2. Duplicate-aware processing result
+File:
+- `internal/consensus/lattice.go`
+
+Added:
+- `ProcessBlockDetailed()`
 
 Behavior:
-- accepts multipart form uploads (`file` field)
-- persists the uploaded file into the Go torrent data directory
-- derives real torrent metainfo from the saved file using `anacrolix/torrent/metainfo`
-- returns a real magnet + info-hash pair
-- registers the uploaded torrent with the active Go torrent client
+- returns whether the block was newly accepted or already known
+- duplicate deliveries now return `(false, nil)`
+- the HTTP layer can suppress needless re-broadcast loops for already-known blocks
 
-This is intentionally more honest than returning a fake torrent identity derived from a plain content hash.
-
-### 2. Stronger `/spora/:challenge` compatibility
+### 3. Peer catch-up and bootstrap HTTP surface
 File:
-- `cmd/supernode-go/main.go`
+- `internal/consensus/server.go`
 
-`GET /spora/:challenge` now:
-- requires `GET`
-- requires a parseable integer challenge
-- requires the primary Core Arcade anchor to actually be tracked by the Go torrent client
-- returns a compatibility proof only when that tracked-anchor precondition is satisfied
+Added:
+- `GET /blocks`
+- `GET /bootstrap`
+- `POST /bootstrap`
 
-### 3. Core Arcade anchor tracking on Go startup
+Behavior:
+- `/blocks` pages confirmed history in deterministic commit order with `after`, `limit`, `cursorFound`, and `hasMore`
+- `/bootstrap` exposes a compact sync summary on `GET`
+- `POST /bootstrap` initiates a peer catch-up sync from a provided peer
+
+### 4. Peer-registration-triggered sync
 File:
-- `cmd/supernode-go/main.go`
+- `internal/consensus/server.go`
 
-The Go torrent client now loads the legacy Core Arcade magnets on startup so the SPoRA compatibility surface has the same basic precondition the old Node supertorrent relied on.
+`POST /peers` now supports immediate bootstrap behavior.
+
+Behavior:
+- registers the peer
+- by default attempts sync immediately
+- fetches ordered confirmed blocks from the remote node
+- applies only new blocks
+- merges the remote peer list into the local lattice peer registry
+
+This gives new nodes a first practical late-join path instead of leaving them dependent on future broadcasts only.
+
+### 5. Regression coverage
+File:
+- `internal/consensus/server_test.go`
+
+Added server-level tests proving:
+- duplicate `POST /process` calls are identified as duplicates
+- `GET /blocks` pages ordered history correctly
+- `POST /peers` can catch up a late joiner and learn downstream peers
 
 ## Validation
 Executed successfully:
-- `gofmt -w cmd/supernode-go/main.go cmd/supernode-go/main_test.go`
-- `go test -buildvcs=false ./cmd/supernode-go`
+- `gofmt -w internal/consensus/lattice.go internal/consensus/server.go internal/consensus/server_test.go`
+- `go test -buildvcs=false ./internal/consensus`
+- `go test -buildvcs=false ./cmd/supernode-go ./internal/consensus`
 - `go build -buildvcs=false ./...`
 
 ## Findings / Analysis
-This was a good next Go-port target because it moved another realistic Node-only service edge into Go without pretending that impossible specialized parity work is already solved.
+This was the right next Go-port move because the existing peer layer was still mostly a broadcast shell.
 
-Most importantly:
-- `/upload` is now no longer a Node-only operational dependency for practical compatibility use
-- `/spora/:challenge` is less of an unconditional placeholder and more of a real compatibility gate
-- the remaining service-side Node gaps are becoming narrower and more specialized
+Before this pass:
+- peers could be registered
+- blocks could be fanned out
+- duplicates were tolerated by consensus state
+- but the HTTP layer still had no real late-join catch-up protocol
+
+After this pass:
+- the lattice preserves global block order explicitly
+- peers can request ordered history through `/blocks`
+- new nodes can bootstrap from existing peers
+- duplicate deliveries no longer trigger further fan-out from the HTTP layer
+- peer discovery can propagate through remote peer-list merge
+
+This is still not the final form of multi-node sync, but it is now a real practical synchronization path rather than only best-effort gossip.
 
 ## Recommended Next Steps
-1. Continue auditing whether any other practical `supertorrent` / `game-server` responsibilities are still only living in Node
-2. Push consensus networking harder next: bootstrap, duplicate suppression, and late-join catch-up remain high-value Go-first gaps
-3. Continue deeper Filecoin ingest/lifecycle work once service-surface migration plateaus
+1. Continue deeper consensus networking hardening around retry/health policy and heavier divergence handling
+2. Add operator-visible sync diagnostics (lag, cursor resets, failed peers) if multi-node deployments become more common
+3. Continue the broader Go-first campaign once the next most practical remaining Node-only surface is identified
 
 ## Notes for the Next Agent
 - No running processes were terminated in this session.
-- The `/upload` port intentionally generates real torrent metainfo rather than a pseudo-magnet so the Go compatibility surface stays honest.
-- The stricter `/spora` behavior depends on the primary Core Arcade anchor being tracked; startup now attempts to load those magnets automatically.
+- The current catch-up flow assumes ordered replay from a compatible peer history; richer divergence resolution is still future work.
+- The new `ProcessBlockDetailed()` API is the key suppression hook preventing duplicate HTTP deliveries from being re-broadcast as if they were new.

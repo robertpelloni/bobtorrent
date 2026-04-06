@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.47.0
+## ✅ Completed Through v11.48.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -64,10 +64,15 @@
 - [ ] **Deeper Filecoin ingestion hardening**
   - add richer CAR/import orchestration when operators have fuller Lotus data-ingest pipelines
   - surface more detailed deal lifecycle metadata in operator UIs
-- [ ] **Consensus peer sync improvements**
-  - initial peer bootstrap
-  - duplicate suppression / loop prevention
-  - late joiner state catch-up
+- [x] **Consensus peer sync improvements (Phase 1)**
+  - added ordered confirmed-block catch-up via `GET /blocks`
+  - added duplicate-aware processing so duplicate deliveries do not trigger further broadcast fan-out
+  - added `GET/POST /bootstrap` and peer-registration-triggered late-join sync
+  - merged remote peer lists during bootstrap so nodes can learn additional fan-out targets
+- [ ] **Consensus peer sync improvements (Phase 2)**
+  - deeper retry/health policy around peer sync failures
+  - richer operator-visible sync diagnostics and lag visibility
+  - stronger divergence handling beyond the current ordered replay bootstrap path
 
 ## Important Compatibility / Cleanup Tasks
 - [ ] **Remove temporary legacy block shim** once bobcoin frontend includes explicit `height` and `staked_balance`

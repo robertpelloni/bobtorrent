@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	"bobtorrent/pkg/torrent"
 
@@ -71,6 +74,8 @@ func (s *Server) HTTPHandler() http.Handler {
 	// Core lattice endpoints.
 	mux.HandleFunc("/status", s.handleStatus)
 	mux.HandleFunc("/process", s.handleProcess)
+	mux.HandleFunc("/blocks", s.handleBlocks)
+	mux.HandleFunc("/bootstrap", s.handleBootstrap)
 	mux.HandleFunc("/balance/", s.handleBalance)
 	mux.HandleFunc("/frontier/", s.handleFrontier)
 	mux.HandleFunc("/chain/", s.handleChain)
@@ -125,6 +130,10 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	snapshotSequence := int64(0)
 	snapshotInterval := int64(0)
 	snapshotRetention := 0
+	latestBlockHash := ""
+	if len(s.lattice.blockOrder) > 0 {
+		latestBlockHash = s.lattice.blockOrder[len(s.lattice.blockOrder)-1]
+	}
 	if persistenceEnabled {
 		persistencePath = s.lattice.store.Path()
 		persistedBlocks, _ = s.lattice.store.CountBlocks()
@@ -135,20 +144,21 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"status":      "online",
-		"service":     "Go Block Lattice Node",
-		"chains":      len(s.lattice.chains),
-		"accounts":    len(s.lattice.chains),
-		"blocks":      len(s.lattice.blocks),
-		"totalBlocks": len(s.lattice.blocks),
-		"stateHash":   s.lattice.stateHash,
-		"peers":       len(s.lattice.peers),
-		"wsClients":   s.hub.ClientCount(),
-		"proposals":   len(s.lattice.proposals),
-		"nfts":        len(s.lattice.nfts),
-		"marketBids":  len(s.lattice.marketBids),
-		"activeSwaps": len(s.lattice.swaps),
-		"anchors":     len(s.lattice.anchors),
+		"status":          "online",
+		"service":         "Go Block Lattice Node",
+		"chains":          len(s.lattice.chains),
+		"accounts":        len(s.lattice.chains),
+		"blocks":          len(s.lattice.blocks),
+		"totalBlocks":     len(s.lattice.blocks),
+		"stateHash":       s.lattice.stateHash,
+		"latestBlockHash": latestBlockHash,
+		"peers":           len(s.lattice.peers),
+		"wsClients":       s.hub.ClientCount(),
+		"proposals":       len(s.lattice.proposals),
+		"nfts":            len(s.lattice.nfts),
+		"marketBids":      len(s.lattice.marketBids),
+		"activeSwaps":     len(s.lattice.swaps),
+		"anchors":         len(s.lattice.anchors),
 		"persistence": map[string]interface{}{
 			"enabled":           persistenceEnabled,
 			"path":              persistencePath,
@@ -393,7 +403,8 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := s.lattice.ProcessBlock(&block); err != nil {
+	accepted, err := s.lattice.ProcessBlockDetailed(&block)
+	if err != nil {
 		http.Error(w, fmt.Sprintf("block rejected: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -404,14 +415,95 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	stateHash := s.lattice.stateHash
 	s.lattice.mu.RUnlock()
 
-	go s.broadcastBlock(&block)
-	go s.hub.BroadcastBlock(&block, stateHash, chains, blocks)
+	if accepted {
+		go s.broadcastBlock(&block)
+		go s.hub.BroadcastBlock(&block, stateHash, chains, blocks)
+	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success":   true,
+		"accepted":  accepted,
+		"duplicate": !accepted,
 		"hash":      block.Hash,
 		"stateHash": stateHash,
 	})
+}
+
+func (s *Server) handleBlocks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	after := strings.TrimSpace(r.URL.Query().Get("after"))
+	limit := 100
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		if _, err := fmt.Sscanf(raw, "%d", &limit); err != nil {
+			http.Error(w, "invalid limit", http.StatusBadRequest)
+			return
+		}
+	}
+
+	blocks, cursorFound, hasMore := s.lattice.GetOrderedBlocksAfter(after, limit)
+	s.lattice.mu.RLock()
+	totalBlocks := len(s.lattice.blocks)
+	latestHash := ""
+	if len(s.lattice.blockOrder) > 0 {
+		latestHash = s.lattice.blockOrder[len(s.lattice.blockOrder)-1]
+	}
+	s.lattice.mu.RUnlock()
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"blocks":      blocks,
+		"count":       len(blocks),
+		"after":       after,
+		"cursorFound": cursorFound,
+		"hasMore":     hasMore,
+		"latestHash":  latestHash,
+		"totalBlocks": totalBlocks,
+	})
+}
+
+func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		peers := s.lattice.GetPeers()
+		s.lattice.mu.RLock()
+		totalBlocks := len(s.lattice.blocks)
+		stateHash := s.lattice.stateHash
+		latestBlockHash := ""
+		if len(s.lattice.blockOrder) > 0 {
+			latestBlockHash = s.lattice.blockOrder[len(s.lattice.blockOrder)-1]
+		}
+		s.lattice.mu.RUnlock()
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"status":          "online",
+			"service":         "Go Block Lattice Bootstrap",
+			"latestBlockHash": latestBlockHash,
+			"totalBlocks":     totalBlocks,
+			"stateHash":       stateHash,
+			"peers":           peers,
+			"peerCount":       len(peers),
+		})
+	case http.MethodPost:
+		var req struct {
+			Peer string `json:"peer"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Peer) == "" {
+			http.Error(w, "valid peer required", http.StatusBadRequest)
+			return
+		}
+		result, err := s.syncPeer(req.Peer)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("bootstrap sync failed: %v", err), http.StatusBadGateway)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"success": true,
+			"sync":    result,
+		})
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (s *Server) handleBalance(w http.ResponseWriter, r *http.Request) {
@@ -640,13 +732,34 @@ func (s *Server) handlePeers(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		var req struct {
 			Addr string `json:"addr"`
+			Sync *bool  `json:"sync,omitempty"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Addr == "" {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Addr) == "" {
 			http.Error(w, "valid addr required", http.StatusBadRequest)
 			return
 		}
-		s.lattice.AddPeer(req.Addr)
-		writeJSON(w, http.StatusOK, map[string]interface{}{"registered": req.Addr})
+		addr, err := normalizePeerAddr(req.Addr)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("invalid peer addr: %v", err), http.StatusBadRequest)
+			return
+		}
+		s.lattice.AddPeer(addr)
+
+		syncRequested := true
+		if req.Sync != nil {
+			syncRequested = *req.Sync
+		}
+		if !syncRequested {
+			writeJSON(w, http.StatusOK, map[string]interface{}{"registered": addr, "sync": nil})
+			return
+		}
+
+		result, err := s.syncPeer(addr)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("peer registration sync failed: %v", err), http.StatusBadGateway)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"registered": addr, "sync": result})
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -663,14 +776,15 @@ func (s *Server) broadcastBlock(block *torrent.Block) {
 		return
 	}
 
+	client := &http.Client{Timeout: 5 * time.Second}
 	for _, peerAddr := range peers {
 		go func(addr string) {
-			resp, err := http.Post(fmt.Sprintf("http://%s/process", addr), "application/json", bytes.NewBuffer(payload))
+			resp, err := client.Post(peerBaseURL(addr)+"/process", "application/json", bytes.NewBuffer(payload))
 			if err != nil {
 				log.Printf("[consensus] broadcast to %s failed: %v", addr, err)
 				return
 			}
-			resp.Body.Close()
+			defer resp.Body.Close()
 		}(peerAddr)
 	}
 }
@@ -709,6 +823,168 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
+}
+
+type peerBlocksResponse struct {
+	Blocks      []*torrent.Block `json:"blocks"`
+	Count       int              `json:"count"`
+	CursorFound bool             `json:"cursorFound"`
+	HasMore     bool             `json:"hasMore"`
+	LatestHash  string           `json:"latestHash"`
+	TotalBlocks int              `json:"totalBlocks"`
+}
+
+type peerListResponse struct {
+	Peers []string `json:"peers"`
+}
+
+type PeerSyncResult struct {
+	Peer            string   `json:"peer"`
+	RequestedCursor string   `json:"requestedCursor,omitempty"`
+	AppliedBlocks   int      `json:"appliedBlocks"`
+	DuplicateBlocks int      `json:"duplicateBlocks"`
+	FetchedPages    int      `json:"fetchedPages"`
+	CursorReset     bool     `json:"cursorReset"`
+	DiscoveredPeers []string `json:"discoveredPeers,omitempty"`
+	LatestBlockHash string   `json:"latestBlockHash,omitempty"`
+}
+
+func normalizePeerAddr(addr string) (string, error) {
+	trimmed := strings.TrimSpace(addr)
+	trimmed = strings.TrimSuffix(trimmed, "/")
+	if trimmed == "" {
+		return "", fmt.Errorf("peer address is empty")
+	}
+	if strings.Contains(trimmed, "://") {
+		parsed, err := url.Parse(trimmed)
+		if err != nil {
+			return "", err
+		}
+		if parsed.Host == "" {
+			return "", fmt.Errorf("peer URL host missing")
+		}
+		return parsed.Host, nil
+	}
+	if strings.Contains(trimmed, "/") {
+		return "", fmt.Errorf("peer address must not include a path")
+	}
+	return trimmed, nil
+}
+
+func peerBaseURL(addr string) string {
+	if strings.Contains(addr, "://") {
+		return strings.TrimSuffix(addr, "/")
+	}
+	return "http://" + strings.TrimSuffix(addr, "/")
+}
+
+func (s *Server) syncPeer(addr string) (*PeerSyncResult, error) {
+	normalized, err := normalizePeerAddr(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &PeerSyncResult{Peer: normalized}
+	result.RequestedCursor = s.lattice.LatestBlockHash()
+	baseURL := peerBaseURL(normalized)
+	client := &http.Client{Timeout: 10 * time.Second}
+	cursor := result.RequestedCursor
+	usedCursor := cursor != ""
+
+	for {
+		page, err := fetchPeerBlocks(client, baseURL, cursor)
+		if err != nil {
+			return result, err
+		}
+		result.FetchedPages++
+		if usedCursor && !page.CursorFound {
+			cursor = ""
+			usedCursor = false
+			result.CursorReset = true
+			continue
+		}
+		if len(page.Blocks) == 0 {
+			result.LatestBlockHash = page.LatestHash
+			break
+		}
+
+		for _, block := range page.Blocks {
+			accepted, err := s.lattice.ProcessBlockDetailed(block)
+			if err != nil {
+				return result, fmt.Errorf("failed to apply peer block %s: %w", block.Hash, err)
+			}
+			if accepted {
+				result.AppliedBlocks++
+			} else {
+				result.DuplicateBlocks++
+			}
+			cursor = block.Hash
+		}
+		result.LatestBlockHash = page.LatestHash
+		usedCursor = false
+		if !page.HasMore {
+			break
+		}
+	}
+
+	peers, err := fetchPeerPeers(client, baseURL)
+	if err == nil {
+		known := make(map[string]bool)
+		for _, existing := range s.lattice.GetPeers() {
+			known[existing] = true
+		}
+		for _, peer := range peers {
+			normalizedPeer, normalizeErr := normalizePeerAddr(peer)
+			if normalizeErr != nil || normalizedPeer == "" || normalizedPeer == normalized {
+				continue
+			}
+			if known[normalizedPeer] {
+				continue
+			}
+			s.lattice.AddPeer(normalizedPeer)
+			known[normalizedPeer] = true
+			result.DiscoveredPeers = append(result.DiscoveredPeers, normalizedPeer)
+		}
+	}
+
+	return result, nil
+}
+
+func fetchPeerBlocks(client *http.Client, baseURL, after string) (*peerBlocksResponse, error) {
+	endpoint := baseURL + "/blocks?limit=200"
+	if after != "" {
+		endpoint += "&after=" + url.QueryEscape(after)
+	}
+	resp, err := client.Get(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("fetch peer blocks failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		return nil, fmt.Errorf("peer blocks returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var page peerBlocksResponse
+	if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
+		return nil, fmt.Errorf("decode peer blocks failed: %w", err)
+	}
+	return &page, nil
+}
+
+func fetchPeerPeers(client *http.Client, baseURL string) ([]string, error) {
+	resp, err := client.Get(baseURL + "/peers")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("peer list returned %d", resp.StatusCode)
+	}
+	var result peerListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+	return result.Peers, nil
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
