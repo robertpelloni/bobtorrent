@@ -294,3 +294,93 @@ func TestHandlePeersSyncRetriesTransientBlockFetchFailure(t *testing.T) {
 		t.Fatalf("expected telemetry entry for flaky peer %s, got %#v", parsedFlaky.Host, peersPayload)
 	}
 }
+
+func TestHandlePeersSkipsSyncDuringCooldownAfterFailure(t *testing.T) {
+	server := NewServer()
+	handler := server.HTTPHandler()
+
+	first := postJSON(t, handler, "/peers", map[string]interface{}{"addr": "127.0.0.1:1", "sync": true})
+	if first.Code != http.StatusBadGateway {
+		t.Fatalf("expected initial failing sync status %d, got %d with %s", http.StatusBadGateway, first.Code, first.Body.String())
+	}
+
+	second := postJSON(t, handler, "/peers", map[string]interface{}{"addr": "127.0.0.1:1", "sync": true})
+	if second.Code != http.StatusOK {
+		t.Fatalf("expected cooldown-skipped sync status %d, got %d with %s", http.StatusOK, second.Code, second.Body.String())
+	}
+	body := decodeJSONBody(t, second)
+	syncPayload, ok := body["sync"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected sync payload on cooldown skip, got %#v", body)
+	}
+	if syncPayload["skippedDueToCooldown"] != true {
+		t.Fatalf("expected skippedDueToCooldown=true, got %#v", syncPayload)
+	}
+	if syncPayload["cooldownRemainingMs"] == nil || syncPayload["cooldownRemainingMs"] == float64(0) {
+		t.Fatalf("expected cooldownRemainingMs to be populated, got %#v", syncPayload)
+	}
+}
+
+func TestHandlePeersMarksDivergenceWhenRemoteLacksLocalCursor(t *testing.T) {
+	remote := NewServer()
+	remoteWallet := mustGenerateKeypair(t)
+	remoteGenesis := torrent.NewBlock("open", remoteWallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, remoteGenesis, remoteWallet.PrivateKey)
+	if err := remote.lattice.ProcessBlock(remoteGenesis); err != nil {
+		t.Fatalf("remote genesis failed: %v", err)
+	}
+	remoteHTTP := httptest.NewServer(remote.HTTPHandler())
+	defer remoteHTTP.Close()
+
+	local := NewServer()
+	localWallet := mustGenerateKeypair(t)
+	localGenesis := torrent.NewBlock("open", localWallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, localGenesis, localWallet.PrivateKey)
+	if err := local.lattice.ProcessBlock(localGenesis); err != nil {
+		t.Fatalf("local genesis failed: %v", err)
+	}
+
+	registerRec := postJSON(t, local.HTTPHandler(), "/peers", map[string]interface{}{"addr": remoteHTTP.URL, "sync": true, "force": true})
+	if registerRec.Code != http.StatusBadGateway {
+		t.Fatalf("expected divergence sync status %d, got %d with %s", http.StatusBadGateway, registerRec.Code, registerRec.Body.String())
+	}
+
+	statusRec := httptest.NewRecorder()
+	statusReq := httptest.NewRequest(http.MethodGet, "/status", nil)
+	local.HTTPHandler().ServeHTTP(statusRec, statusReq)
+	if statusRec.Code != http.StatusOK {
+		t.Fatalf("expected status response %d, got %d with %s", http.StatusOK, statusRec.Code, statusRec.Body.String())
+	}
+	statusBody := decodeJSONBody(t, statusRec)
+	peerSync, ok := statusBody["peerSync"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected peerSync diagnostics in status response, got %#v", statusBody)
+	}
+	peersPayload, ok := peerSync["peers"].([]interface{})
+	if !ok || len(peersPayload) == 0 {
+		t.Fatalf("expected peer telemetry entries in status response, got %#v", peerSync)
+	}
+	parsedRemote, err := url.Parse(remoteHTTP.URL)
+	if err != nil {
+		t.Fatalf("failed to parse remote server url: %v", err)
+	}
+	matched := false
+	for _, entry := range peersPayload {
+		peerEntry, ok := entry.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if peerEntry["peer"] == parsedRemote.Host {
+			matched = true
+			if peerEntry["health"] != "diverged" {
+				t.Fatalf("expected diverged health, got %#v", peerEntry)
+			}
+			if peerEntry["lastDivergenceReason"] == nil || peerEntry["lastDivergenceReason"] == "" {
+				t.Fatalf("expected divergence reason to be recorded, got %#v", peerEntry)
+			}
+		}
+	}
+	if !matched {
+		t.Fatalf("expected telemetry entry for divergent peer %s, got %#v", parsedRemote.Host, peersPayload)
+	}
+}

@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.49.0
+## ✅ Completed Through v11.50.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -72,10 +72,14 @@
 - [x] **Consensus peer sync improvements (Phase 2A)**
   - added bounded retry handling around bootstrap, ordered block-page sync, peer-list fetches, and fan-out delivery
   - added per-peer operator-visible diagnostics for sync state, retries, lag, and broadcast failures
-- [ ] **Consensus peer sync improvements (Phase 2B)**
-  - stronger backoff / health policy beyond the current bounded retry layer
-  - richer divergence handling beyond the current ordered replay bootstrap path
+- [x] **Consensus peer sync improvements (Phase 2B)**
+  - added cooldown/backoff behavior so repeated failures suppress immediate reattempts
+  - added divergence suspicion handling when a peer lacks the local ordered-history cursor
+  - fan-out now skips peers in cooldown and records those skips in telemetry
+- [ ] **Consensus peer sync improvements (Phase 3)**
+  - richer divergence reconciliation beyond suspicion + refusal
   - more explicit reconciliation / lag tooling for heavier multi-node operations
+  - stronger peer-gossip and policy tuning beyond the current simple cooldown model
 
 ## Important Compatibility / Cleanup Tasks
 - [ ] **Remove temporary legacy block shim** once bobcoin frontend includes explicit `height` and `staked_balance`

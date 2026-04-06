@@ -1,3 +1,12 @@
+## [11.50.0] - 2026-04-05
+### Go Port: Lattice Cooldown Policy + Divergence Suspicion
+- **Cooldown / Backoff Policy**: Added per-peer cooldown windows after repeated sync failures, allowing the Go lattice to stop hammering obviously unhealthy peers and to skip sync/broadcast attempts until the cooldown expires unless a sync is explicitly forced.
+- **Broadcast Policy Hardening**: Fan-out delivery now skips peers that are in cooldown instead of retrying the same unhealthy target on every new block, and the skip is recorded in peer telemetry.
+- **Divergence Suspicion Handling**: If a non-empty local node asks a peer for ordered history after its current cursor and the peer does not contain that cursor, the lattice now records divergence suspicion and refuses to silently full-replay from zero as though the histories were equivalent.
+- **Operator Diagnostics Depth**: Peer telemetry now includes cooldown, skipped sync/broadcast counters, divergence count/reason, remote state hash, and explicit skipped-due-to-cooldown sync responses.
+- **Regression Coverage**: Added consensus server tests proving cooldown skips repeated failing sync attempts and divergence suspicion is recorded when a remote peer lacks the local cursor.
+- **Validation**: Re-validated `go test -buildvcs=false ./cmd/supernode-go ./internal/consensus` and `go build -buildvcs=false ./...` after the stronger sync-policy pass.
+
 ## [11.49.0] - 2026-04-05
 ### Go Port: Lattice Peer Health + Retry Diagnostics
 - **Peer Health Telemetry**: Added per-peer sync/broadcast diagnostics to the Go lattice server, tracking last sync status, retry usage, lag, discovered peers, consecutive failures, and broadcast success/failure history.

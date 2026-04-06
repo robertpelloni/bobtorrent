@@ -501,13 +501,14 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 		})
 	case http.MethodPost:
 		var req struct {
-			Peer string `json:"peer"`
+			Peer  string `json:"peer"`
+			Force bool   `json:"force"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Peer) == "" {
 			http.Error(w, "valid peer required", http.StatusBadRequest)
 			return
 		}
-		result, err := s.syncPeer(req.Peer)
+		result, err := s.syncPeer(req.Peer, req.Force)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("bootstrap sync failed: %v", err), http.StatusBadGateway)
 			return
@@ -749,8 +750,9 @@ func (s *Server) handlePeers(w http.ResponseWriter, r *http.Request) {
 		})
 	case http.MethodPost:
 		var req struct {
-			Addr string `json:"addr"`
-			Sync *bool  `json:"sync,omitempty"`
+			Addr  string `json:"addr"`
+			Sync  *bool  `json:"sync,omitempty"`
+			Force bool   `json:"force"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Addr) == "" {
 			http.Error(w, "valid addr required", http.StatusBadRequest)
@@ -773,7 +775,7 @@ func (s *Server) handlePeers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		result, err := s.syncPeer(addr)
+		result, err := s.syncPeer(addr, req.Force)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("peer registration sync failed: %v", err), http.StatusBadGateway)
 			return
@@ -798,6 +800,10 @@ func (s *Server) broadcastBlock(block *torrent.Block) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	for _, peerAddr := range peers {
 		go func(addr string) {
+			if remaining := s.peerCooldownRemaining(addr); remaining > 0 {
+				s.markPeerBroadcastSkipped(addr, remaining)
+				return
+			}
 			s.markPeerBroadcastAttempt(addr)
 			retriesUsed, err := retryFetch(2, 100*time.Millisecond, func() error {
 				resp, postErr := client.Post(peerBaseURL(addr)+"/process", "application/json", bytes.NewBuffer(payload))
@@ -874,18 +880,23 @@ type peerListResponse struct {
 }
 
 type PeerSyncResult struct {
-	Peer              string   `json:"peer"`
-	RequestedCursor   string   `json:"requestedCursor,omitempty"`
-	AppliedBlocks     int      `json:"appliedBlocks"`
-	DuplicateBlocks   int      `json:"duplicateBlocks"`
-	FetchedPages      int      `json:"fetchedPages"`
-	CursorReset       bool     `json:"cursorReset"`
-	DiscoveredPeers   []string `json:"discoveredPeers,omitempty"`
-	LatestBlockHash   string   `json:"latestBlockHash,omitempty"`
-	RemoteTotalBlocks int      `json:"remoteTotalBlocks,omitempty"`
-	RemotePeerCount   int      `json:"remotePeerCount,omitempty"`
-	LagBlocks         int      `json:"lagBlocks,omitempty"`
-	RetryCount        int      `json:"retryCount"`
+	Peer                 string   `json:"peer"`
+	RequestedCursor      string   `json:"requestedCursor,omitempty"`
+	AppliedBlocks        int      `json:"appliedBlocks"`
+	DuplicateBlocks      int      `json:"duplicateBlocks"`
+	FetchedPages         int      `json:"fetchedPages"`
+	CursorReset          bool     `json:"cursorReset"`
+	DiscoveredPeers      []string `json:"discoveredPeers,omitempty"`
+	LatestBlockHash      string   `json:"latestBlockHash,omitempty"`
+	RemoteStateHash      string   `json:"remoteStateHash,omitempty"`
+	RemoteTotalBlocks    int      `json:"remoteTotalBlocks,omitempty"`
+	RemotePeerCount      int      `json:"remotePeerCount,omitempty"`
+	LagBlocks            int      `json:"lagBlocks,omitempty"`
+	RetryCount           int      `json:"retryCount"`
+	SkippedDueToCooldown bool     `json:"skippedDueToCooldown,omitempty"`
+	CooldownRemainingMs  int64    `json:"cooldownRemainingMs,omitempty"`
+	DivergenceSuspected  bool     `json:"divergenceSuspected,omitempty"`
+	DivergenceReason     string   `json:"divergenceReason,omitempty"`
 }
 
 type peerBootstrapResponse struct {
@@ -911,10 +922,18 @@ type PeerStatus struct {
 	LastSyncCompletedAt      int64    `json:"lastSyncCompletedAt,omitempty"`
 	LastSyncSucceededAt      int64    `json:"lastSyncSucceededAt,omitempty"`
 	LastSyncFailedAt         int64    `json:"lastSyncFailedAt,omitempty"`
+	LastSkippedSyncAt        int64    `json:"lastSkippedSyncAt,omitempty"`
 	TotalSyncAttempts        int64    `json:"totalSyncAttempts"`
 	TotalSyncSuccesses       int64    `json:"totalSyncSuccesses"`
 	TotalSyncFailures        int64    `json:"totalSyncFailures"`
+	SkippedSyncs             int64    `json:"skippedSyncs"`
+	SkippedBroadcasts        int64    `json:"skippedBroadcasts"`
 	ConsecutiveFailures      int      `json:"consecutiveFailures"`
+	CooldownUntil            int64    `json:"cooldownUntil,omitempty"`
+	CooldownRemainingMs      int64    `json:"cooldownRemainingMs,omitempty"`
+	DivergenceCount          int64    `json:"divergenceCount"`
+	LastDivergenceAt         int64    `json:"lastDivergenceAt,omitempty"`
+	LastDivergenceReason     string   `json:"lastDivergenceReason,omitempty"`
 	LastAppliedBlocks        int      `json:"lastAppliedBlocks"`
 	LastDuplicateBlocks      int      `json:"lastDuplicateBlocks"`
 	LastFetchedPages         int      `json:"lastFetchedPages"`
@@ -924,6 +943,7 @@ type PeerStatus struct {
 	LastRemoteTotalBlocks    int      `json:"lastRemoteTotalBlocks"`
 	LastKnownRemotePeerCount int      `json:"lastKnownRemotePeerCount"`
 	LastAdvertisedLatestHash string   `json:"lastAdvertisedLatestHash,omitempty"`
+	LastRemoteStateHash      string   `json:"lastRemoteStateHash,omitempty"`
 	LastDiscoveredPeers      []string `json:"lastDiscoveredPeers,omitempty"`
 	LastBroadcastAttemptAt   int64    `json:"lastBroadcastAttemptAt,omitempty"`
 	LastBroadcastSucceededAt int64    `json:"lastBroadcastSucceededAt,omitempty"`
@@ -942,9 +962,38 @@ func clonePeerStatus(src *PeerStatus) *PeerStatus {
 	return &copyStatus
 }
 
+func peerCooldownDuration(consecutiveFailures int) time.Duration {
+	if consecutiveFailures <= 0 {
+		return 0
+	}
+	cooldown := time.Duration(consecutiveFailures) * 5 * time.Second
+	if cooldown > time.Minute {
+		cooldown = time.Minute
+	}
+	return cooldown
+}
+
+func peerCooldownRemaining(status *PeerStatus, now time.Time) int64 {
+	if status == nil || status.CooldownUntil == 0 {
+		return 0
+	}
+	remaining := status.CooldownUntil - now.UnixMilli()
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
 func peerHealth(status *PeerStatus) string {
 	if status == nil {
 		return "unknown"
+	}
+	now := time.Now()
+	if status.LastDivergenceReason != "" && status.LastDivergenceAt >= status.LastSyncSucceededAt {
+		return "diverged"
+	}
+	if peerCooldownRemaining(status, now) > 0 {
+		return "cooldown"
 	}
 	if status.ConsecutiveFailures >= 3 {
 		return "failing"
@@ -975,9 +1024,11 @@ func (s *Server) ensurePeerStatus(peer string) *PeerStatus {
 func (s *Server) peerStatusSnapshot() []*PeerStatus {
 	s.peerStatusMu.RLock()
 	defer s.peerStatusMu.RUnlock()
+	now := time.Now()
 	statuses := make([]*PeerStatus, 0, len(s.peerStatus))
 	for _, status := range s.peerStatus {
 		copyStatus := clonePeerStatus(status)
+		copyStatus.CooldownRemainingMs = peerCooldownRemaining(copyStatus, now)
 		copyStatus.Health = peerHealth(copyStatus)
 		statuses = append(statuses, copyStatus)
 	}
@@ -995,6 +1046,8 @@ func summarizePeerStatuses(statuses []*PeerStatus) map[string]int {
 		"failing":  0,
 		"warning":  0,
 		"idle":     0,
+		"cooldown": 0,
+		"diverged": 0,
 	}
 	for _, status := range statuses {
 		summary[status.Health]++
@@ -1032,6 +1085,7 @@ func (s *Server) markPeerSyncSucceeded(peer string, result *PeerSyncResult) {
 	status.LastSyncSucceededAt = now
 	status.TotalSyncSuccesses++
 	status.ConsecutiveFailures = 0
+	status.CooldownUntil = 0
 	if result != nil {
 		status.LastAppliedBlocks = result.AppliedBlocks
 		status.LastDuplicateBlocks = result.DuplicateBlocks
@@ -1042,7 +1096,11 @@ func (s *Server) markPeerSyncSucceeded(peer string, result *PeerSyncResult) {
 		status.LastRemoteTotalBlocks = result.RemoteTotalBlocks
 		status.LastKnownRemotePeerCount = result.RemotePeerCount
 		status.LastAdvertisedLatestHash = result.LatestBlockHash
+		status.LastRemoteStateHash = result.RemoteStateHash
 		status.LastDiscoveredPeers = append([]string(nil), result.DiscoveredPeers...)
+		if !result.DivergenceSuspected {
+			status.LastDivergenceReason = ""
+		}
 	}
 	status.Health = peerHealth(status)
 }
@@ -1061,6 +1119,7 @@ func (s *Server) markPeerSyncFailed(peer string, result *PeerSyncResult, err err
 	status.LastSyncFailedAt = now
 	status.TotalSyncFailures++
 	status.ConsecutiveFailures++
+	status.CooldownUntil = now + peerCooldownDuration(status.ConsecutiveFailures).Milliseconds()
 	if err != nil {
 		status.LastError = err.Error()
 	}
@@ -1074,7 +1133,13 @@ func (s *Server) markPeerSyncFailed(peer string, result *PeerSyncResult, err err
 		status.LastRemoteTotalBlocks = result.RemoteTotalBlocks
 		status.LastKnownRemotePeerCount = result.RemotePeerCount
 		status.LastAdvertisedLatestHash = result.LatestBlockHash
+		status.LastRemoteStateHash = result.RemoteStateHash
 		status.LastDiscoveredPeers = append([]string(nil), result.DiscoveredPeers...)
+		if result.DivergenceSuspected {
+			status.DivergenceCount++
+			status.LastDivergenceAt = now
+			status.LastDivergenceReason = result.DivergenceReason
+		}
 	}
 	status.Health = peerHealth(status)
 }
@@ -1136,6 +1201,49 @@ func (s *Server) markPeerRetryCount(peer string, retries int) {
 	status.Health = peerHealth(status)
 }
 
+func (s *Server) peerCooldownRemaining(peer string) int64 {
+	s.peerStatusMu.RLock()
+	defer s.peerStatusMu.RUnlock()
+	return peerCooldownRemaining(s.peerStatus[peer], time.Now())
+}
+
+func (s *Server) markPeerSyncSkipped(peer string, remainingMs int64) {
+	now := time.Now().UnixMilli()
+	s.peerStatusMu.Lock()
+	defer s.peerStatusMu.Unlock()
+	status := s.peerStatus[peer]
+	if status == nil {
+		status = &PeerStatus{Peer: peer}
+		s.peerStatus[peer] = status
+	}
+	status.LastStatus = "sync_skipped_cooldown"
+	status.LastSkippedSyncAt = now
+	status.SkippedSyncs++
+	status.CooldownRemainingMs = remainingMs
+	status.Health = peerHealth(status)
+}
+
+func (s *Server) markPeerBroadcastSkipped(peer string, remainingMs int64) {
+	s.peerStatusMu.Lock()
+	defer s.peerStatusMu.Unlock()
+	status := s.peerStatus[peer]
+	if status == nil {
+		status = &PeerStatus{Peer: peer}
+		s.peerStatus[peer] = status
+	}
+	status.LastStatus = "broadcast_skipped_cooldown"
+	status.SkippedBroadcasts++
+	status.CooldownRemainingMs = remainingMs
+	status.Health = peerHealth(status)
+}
+
+func shortenHash(hash string) string {
+	if len(hash) <= 16 {
+		return hash
+	}
+	return hash[:16]
+}
+
 func normalizePeerAddr(addr string) (string, error) {
 	trimmed := strings.TrimSpace(addr)
 	trimmed = strings.TrimSuffix(trimmed, "/")
@@ -1165,14 +1273,21 @@ func peerBaseURL(addr string) string {
 	return "http://" + strings.TrimSuffix(addr, "/")
 }
 
-func (s *Server) syncPeer(addr string) (*PeerSyncResult, error) {
+func (s *Server) syncPeer(addr string, force bool) (*PeerSyncResult, error) {
 	normalized, err := normalizePeerAddr(addr)
 	if err != nil {
 		return nil, err
 	}
 
-	s.markPeerSyncStarted(normalized)
 	result := &PeerSyncResult{Peer: normalized}
+	if remaining := s.peerCooldownRemaining(normalized); remaining > 0 && !force {
+		result.SkippedDueToCooldown = true
+		result.CooldownRemainingMs = remaining
+		s.markPeerSyncSkipped(normalized, remaining)
+		return result, nil
+	}
+
+	s.markPeerSyncStarted(normalized)
 	result.RequestedCursor = s.lattice.LatestBlockHash()
 	baseURL := peerBaseURL(normalized)
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -1185,6 +1300,7 @@ func (s *Server) syncPeer(addr string) (*PeerSyncResult, error) {
 		result.RemoteTotalBlocks = bootstrap.TotalBlocks
 		result.RemotePeerCount = bootstrap.PeerCount
 		result.LatestBlockHash = bootstrap.LatestBlockHash
+		result.RemoteStateHash = bootstrap.StateHash
 	}
 
 	for {
@@ -1202,9 +1318,19 @@ func (s *Server) syncPeer(addr string) (*PeerSyncResult, error) {
 			result.LatestBlockHash = page.LatestHash
 		}
 		if usedCursor && !page.CursorFound {
+			result.CursorReset = true
+			s.lattice.mu.RLock()
+			localBlocks := len(s.lattice.blocks)
+			s.lattice.mu.RUnlock()
+			if localBlocks > 0 {
+				result.DivergenceSuspected = true
+				result.DivergenceReason = fmt.Sprintf("remote peer %s does not contain local cursor %s", normalized, shortenHash(result.RequestedCursor))
+				divergenceErr := fmt.Errorf("peer divergence suspected: %s", result.DivergenceReason)
+				s.markPeerSyncFailed(normalized, result, divergenceErr)
+				return result, divergenceErr
+			}
 			cursor = ""
 			usedCursor = false
-			result.CursorReset = true
 			continue
 		}
 		if len(page.Blocks) == 0 {
