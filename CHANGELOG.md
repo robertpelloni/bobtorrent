@@ -1,3 +1,9 @@
+## [11.53.0] - 2026-04-06
+### Go Port: Consensus API Compatibility Regression Coverage
+- **WebSocket Feed Tests**: Added executable regression coverage for the `NEW_BLOCK` live feed, proving the Go lattice correctly upgrades the connection, emits `STATS` on join, and broadcasts correctly formatted `NEW_BLOCK` JSON messages when a new block is processed.
+- **Payload Format Tests**: Added executable coverage for `POST /process` payload tolerance, proving the endpoint correctly parses both raw block JSON objects and blocks wrapped in a `{"block": ...}` wrapper as expected by the legacy frontend and the Go supernode poller.
+- **Validation**: Re-validated `go test -buildvcs=false ./internal/consensus` across the integrated workspace.
+
 ## [11.52.0] - 2026-04-05
 ### Go Port: Lattice Reconciliation Execution
 - **Safe Execution Workflow**: Added `POST /reconcile/apply` to the Go lattice server, providing an operator-guided path to execute synchronization based on analysis results.

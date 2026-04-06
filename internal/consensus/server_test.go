@@ -8,8 +8,11 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"bobtorrent/pkg/torrent"
+
+	"github.com/gorilla/websocket"
 )
 
 func mustGenerateKeypair(t *testing.T) *torrent.Keypair {
@@ -73,6 +76,81 @@ func TestHandleProcessReturnsDuplicateMetadataForKnownBlock(t *testing.T) {
 	secondBody := decodeJSONBody(t, second)
 	if secondBody["accepted"] != false || secondBody["duplicate"] != true {
 		t.Fatalf("expected second process to report duplicate block, got %#v", secondBody)
+	}
+}
+
+func TestHandleProcessAcceptsBothRawAndWrappedFormats(t *testing.T) {
+	server := NewServer()
+	handler := server.HTTPHandler()
+
+	wallet1 := mustGenerateKeypair(t)
+	rawGenesis := torrent.NewBlock("open", wallet1.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, rawGenesis, wallet1.PrivateKey)
+
+	rawRec := postJSON(t, handler, "/process", rawGenesis)
+	if rawRec.Code != http.StatusOK {
+		t.Fatalf("expected raw block submission to succeed, got %d with %s", rawRec.Code, rawRec.Body.String())
+	}
+	if len(server.lattice.blocks) != 1 {
+		t.Fatalf("expected 1 block in lattice after raw submission, got %d", len(server.lattice.blocks))
+	}
+
+	wrappedBlock := torrent.NewBlock("achievement_unlock", wallet1.PublicKey, &rawGenesis.Hash, rawGenesis.Balance, rawGenesis.StakedBalance, rawGenesis.Height+1, "a1", nil, map[string]interface{}{"achievement": "A1"})
+	mustSignBlock(t, wrappedBlock, wallet1.PrivateKey)
+
+	wrappedRec := postJSON(t, handler, "/process", map[string]interface{}{"block": wrappedBlock})
+	if wrappedRec.Code != http.StatusOK {
+		t.Fatalf("expected wrapped block submission to succeed, got %d with %s", wrappedRec.Code, wrappedRec.Body.String())
+	}
+	if len(server.lattice.blocks) != 2 {
+		t.Fatalf("expected 2 blocks in lattice after wrapped submission, got %d", len(server.lattice.blocks))
+	}
+}
+
+func TestHandleWebSocketEmitsLiveFeedOnNewBlock(t *testing.T) {
+	server := NewServer()
+	httpServer := httptest.NewServer(server.HTTPHandler())
+	defer httpServer.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/ws"
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("failed to dial websocket: %v", err)
+	}
+	defer conn.Close()
+	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+
+	var welcome map[string]interface{}
+	if err := conn.ReadJSON(&welcome); err != nil {
+		t.Fatalf("failed to read welcome message: %v", err)
+	}
+	if welcome["event"] != "CONNECTED" || welcome["type"] != "STATS" {
+		t.Fatalf("expected STATS CONNECTED welcome message, got %#v", welcome)
+	}
+
+	wallet := mustGenerateKeypair(t)
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, genesis, wallet.PrivateKey)
+
+	processRec := postJSON(t, server.HTTPHandler(), "/process", genesis)
+	if processRec.Code != http.StatusOK {
+		t.Fatalf("expected block submission to succeed, got %d with %s", processRec.Code, processRec.Body.String())
+	}
+
+	var liveEvent map[string]interface{}
+	if err := conn.ReadJSON(&liveEvent); err != nil {
+		t.Fatalf("failed to read live block event: %v", err)
+	}
+
+	if liveEvent["type"] != "NEW_BLOCK" || liveEvent["event"] != "NEW_BLOCK" {
+		t.Fatalf("expected NEW_BLOCK live event, got %#v", liveEvent)
+	}
+	blockPayload, ok := liveEvent["block"].(map[string]interface{})
+	if !ok || blockPayload["hash"] != genesis.Hash {
+		t.Fatalf("expected live event to carry genesis block hash %s, got block payload %#v", genesis.Hash, liveEvent["block"])
+	}
+	if liveEvent["stateHash"] == nil || liveEvent["stateHash"] == strings.Repeat("0", 64) {
+		t.Fatalf("expected updated state hash in live event, got %v", liveEvent["stateHash"])
 	}
 }
 

@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.52.0
+## ✅ Completed Through v11.53.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -94,7 +94,7 @@
   - stake/unstake
   - swaps
   - proposals/votes
-- [ ] **Add integration tests** for websocket live feed and wrapped-vs-raw block submission formats
+- [x] **Add integration tests** for websocket live feed and wrapped-vs-raw block submission formats
 
 ## Strategic Backlog
 - [ ] **Go Supernode WebUI integration**
