@@ -80,6 +80,7 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc("/process", s.handleProcess)
 	mux.HandleFunc("/blocks", s.handleBlocks)
 	mux.HandleFunc("/bootstrap", s.handleBootstrap)
+	mux.HandleFunc("/reconcile", s.handleReconcile)
 	mux.HandleFunc("/balance/", s.handleBalance)
 	mux.HandleFunc("/frontier/", s.handleFrontier)
 	mux.HandleFunc("/chain/", s.handleChain)
@@ -522,6 +523,31 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) handleReconcile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Peer string `json:"peer"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Peer) == "" {
+		http.Error(w, "valid peer required", http.StatusBadRequest)
+		return
+	}
+
+	report, err := s.analyzePeerReconciliation(req.Peer)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("reconciliation analysis failed: %v", err), http.StatusBadGateway)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":        true,
+		"reconciliation": report,
+	})
+}
+
 func (s *Server) handleBalance(w http.ResponseWriter, r *http.Request) {
 	account := strings.TrimPrefix(r.URL.Path, "/balance/")
 	if account == "" {
@@ -907,6 +933,22 @@ type peerBootstrapResponse struct {
 	StateHash       string   `json:"stateHash"`
 	Peers           []string `json:"peers"`
 	PeerCount       int      `json:"peerCount"`
+}
+
+type PeerReconciliationReport struct {
+	Peer                      string   `json:"peer"`
+	LocalLatestHash           string   `json:"localLatestHash,omitempty"`
+	RemoteLatestHash          string   `json:"remoteLatestHash,omitempty"`
+	LocalStateHash            string   `json:"localStateHash,omitempty"`
+	RemoteStateHash           string   `json:"remoteStateHash,omitempty"`
+	LocalTotalBlocks          int      `json:"localTotalBlocks"`
+	RemoteTotalBlocks         int      `json:"remoteTotalBlocks"`
+	PeerCooldownRemainingMs   int64    `json:"peerCooldownRemainingMs,omitempty"`
+	RemoteContainsLocalCursor bool     `json:"remoteContainsLocalCursor"`
+	LocalContainsRemoteLatest bool     `json:"localContainsRemoteLatest"`
+	Relationship              string   `json:"relationship"`
+	SuggestedAction           string   `json:"suggestedAction"`
+	Notes                     []string `json:"notes,omitempty"`
 }
 
 // PeerStatus captures operator-visible sync and delivery telemetry for one
@@ -1304,7 +1346,7 @@ func (s *Server) syncPeer(addr string, force bool) (*PeerSyncResult, error) {
 	}
 
 	for {
-		page, retries, err := fetchPeerBlocksWithRetry(client, baseURL, cursor)
+		page, retries, err := fetchPeerBlocksWithRetry(client, baseURL, cursor, 200)
 		result.RetryCount += retries
 		if err != nil {
 			s.markPeerSyncFailed(normalized, result, err)
@@ -1391,6 +1433,103 @@ func (s *Server) syncPeer(addr string, force bool) (*PeerSyncResult, error) {
 	return result, nil
 }
 
+func (s *Server) analyzePeerReconciliation(addr string) (*PeerReconciliationReport, error) {
+	normalized, err := normalizePeerAddr(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	s.lattice.mu.RLock()
+	localLatest := ""
+	if len(s.lattice.blockOrder) > 0 {
+		localLatest = s.lattice.blockOrder[len(s.lattice.blockOrder)-1]
+	}
+	localStateHash := s.lattice.stateHash
+	localTotalBlocks := len(s.lattice.blocks)
+	localContains := func(hash string) bool {
+		_, ok := s.lattice.blocks[hash]
+		return ok
+	}
+	s.lattice.mu.RUnlock()
+
+	report := &PeerReconciliationReport{
+		Peer:                    normalized,
+		LocalLatestHash:         localLatest,
+		LocalStateHash:          localStateHash,
+		LocalTotalBlocks:        localTotalBlocks,
+		PeerCooldownRemainingMs: s.peerCooldownRemaining(normalized),
+	}
+
+	baseURL := peerBaseURL(normalized)
+	client := &http.Client{Timeout: 10 * time.Second}
+	bootstrap, _, err := fetchPeerBootstrapWithRetry(client, baseURL)
+	if err != nil {
+		return nil, err
+	}
+	report.RemoteLatestHash = bootstrap.LatestBlockHash
+	report.RemoteStateHash = bootstrap.StateHash
+	report.RemoteTotalBlocks = bootstrap.TotalBlocks
+
+	if report.RemoteLatestHash != "" {
+		report.LocalContainsRemoteLatest = localContains(report.RemoteLatestHash)
+	}
+
+	switch {
+	case localTotalBlocks == 0 && report.RemoteTotalBlocks == 0:
+		report.Relationship = "both_empty"
+		report.SuggestedAction = "no_action"
+		report.Notes = append(report.Notes, "Both local and remote peers are empty.")
+		return report, nil
+	case localTotalBlocks == 0 && report.RemoteTotalBlocks > 0:
+		report.RemoteContainsLocalCursor = true
+		report.Relationship = "local_empty_remote_has_state"
+		report.SuggestedAction = "bootstrap_from_peer"
+		report.Notes = append(report.Notes, "Local node has no blocks while the remote peer already has confirmed history.")
+		return report, nil
+	case localTotalBlocks > 0 && report.RemoteTotalBlocks == 0:
+		report.Relationship = "remote_empty"
+		report.SuggestedAction = "do_not_sync_reset_remote_or_wait"
+		report.Notes = append(report.Notes, "Remote peer is empty while local node already has confirmed history.")
+		return report, nil
+	}
+
+	page, _, err := fetchPeerBlocksWithRetry(client, baseURL, localLatest, 1)
+	if err != nil {
+		return nil, err
+	}
+	report.RemoteContainsLocalCursor = page.CursorFound
+
+	if report.RemoteContainsLocalCursor {
+		switch {
+		case report.RemoteStateHash == report.LocalStateHash && report.RemoteTotalBlocks == report.LocalTotalBlocks:
+			report.Relationship = "in_sync"
+			report.SuggestedAction = "no_action"
+			report.Notes = append(report.Notes, "Local and remote peers report the same state hash and block count.")
+		case report.RemoteTotalBlocks > report.LocalTotalBlocks:
+			report.Relationship = "remote_ahead"
+			report.SuggestedAction = "bootstrap_from_peer"
+			report.Notes = append(report.Notes, fmt.Sprintf("Remote peer appears ahead by approximately %d block(s).", report.RemoteTotalBlocks-report.LocalTotalBlocks))
+		case report.LocalContainsRemoteLatest && report.LocalTotalBlocks >= report.RemoteTotalBlocks:
+			report.Relationship = "local_ahead"
+			report.SuggestedAction = "wait_or_sync_remote_from_local"
+			report.Notes = append(report.Notes, "Local node already contains the remote peer's advertised head block.")
+		default:
+			report.Relationship = "partially_overlapping"
+			report.SuggestedAction = "investigate_state_hash_mismatch"
+			report.Notes = append(report.Notes, "Remote peer recognizes the local cursor, but state summary still differs.")
+		}
+		return report, nil
+	}
+
+	report.Relationship = "divergent"
+	report.SuggestedAction = "investigate_divergence"
+	report.Notes = append(report.Notes, "Remote peer does not contain the local ordered-history cursor on a non-empty local node.")
+	if report.LocalContainsRemoteLatest {
+		report.Notes = append(report.Notes, "Local node still contains the remote head block, suggesting the remote may be stale or truncated rather than entirely unrelated.")
+	}
+	return report, nil
+}
+
 func retryFetch(attempts int, delay time.Duration, op func() error) (int, error) {
 	if attempts <= 0 {
 		attempts = 1
@@ -1439,8 +1578,11 @@ func fetchPeerBootstrapWithRetry(client *http.Client, baseURL string) (*peerBoot
 	return result, retriesUsed, err
 }
 
-func fetchPeerBlocks(client *http.Client, baseURL, after string) (*peerBlocksResponse, error) {
-	endpoint := baseURL + "/blocks?limit=200"
+func fetchPeerBlocks(client *http.Client, baseURL, after string, limit int) (*peerBlocksResponse, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	endpoint := fmt.Sprintf("%s/blocks?limit=%d", baseURL, limit)
 	if after != "" {
 		endpoint += "&after=" + url.QueryEscape(after)
 	}
@@ -1460,11 +1602,11 @@ func fetchPeerBlocks(client *http.Client, baseURL, after string) (*peerBlocksRes
 	return &page, nil
 }
 
-func fetchPeerBlocksWithRetry(client *http.Client, baseURL, after string) (*peerBlocksResponse, int, error) {
+func fetchPeerBlocksWithRetry(client *http.Client, baseURL, after string, limit int) (*peerBlocksResponse, int, error) {
 	var result *peerBlocksResponse
 	retriesUsed, err := retryFetch(3, 150*time.Millisecond, func() error {
 		var fetchErr error
-		result, fetchErr = fetchPeerBlocks(client, baseURL, after)
+		result, fetchErr = fetchPeerBlocks(client, baseURL, after, limit)
 		return fetchErr
 	})
 	return result, retriesUsed, err

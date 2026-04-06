@@ -1,3 +1,11 @@
+## [11.51.0] - 2026-04-05
+### Go Port: Lattice Reconciliation Analysis Tooling
+- **Safe Reconciliation Endpoint**: Added `POST /reconcile` to the Go lattice server so operators can analyze local-vs-remote history relationship without mutating consensus state.
+- **Relationship Classification**: Reconciliation now classifies peers into states such as `in_sync`, `remote_ahead`, `local_ahead`, `remote_empty`, `local_empty_remote_has_state`, and `divergent`, with explicit suggested next actions instead of forcing operators to infer meaning from raw hashes and counts.
+- **Ordered-History Analysis Reuse**: The new reconciliation flow reuses the ordered-block catch-up protocol plus remote bootstrap summary, comparing cursor presence, state hashes, head hashes, and block totals to derive safer operator guidance.
+- **Regression Coverage**: Added consensus server tests proving `POST /reconcile` reports both a normal `remote_ahead` lag case and a true divergence case.
+- **Validation**: Re-validated `go test -buildvcs=false ./cmd/supernode-go ./internal/consensus` and `go build -buildvcs=false ./...` after adding the reconciliation tooling.
+
 ## [11.50.0] - 2026-04-05
 ### Go Port: Lattice Cooldown Policy + Divergence Suspicion
 - **Cooldown / Backoff Policy**: Added per-peer cooldown windows after repeated sync failures, allowing the Go lattice to stop hammering obviously unhealthy peers and to skip sync/broadcast attempts until the cooldown expires unless a sync is explicitly forced.

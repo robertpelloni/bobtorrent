@@ -384,3 +384,78 @@ func TestHandlePeersMarksDivergenceWhenRemoteLacksLocalCursor(t *testing.T) {
 		t.Fatalf("expected telemetry entry for divergent peer %s, got %#v", parsedRemote.Host, peersPayload)
 	}
 }
+
+func TestHandleReconcileReportsRemoteAhead(t *testing.T) {
+	wallet := mustGenerateKeypair(t)
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, genesis, wallet.PrivateKey)
+
+	remote := NewServer()
+	if err := remote.lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("remote genesis failed: %v", err)
+	}
+	blockOne := torrent.NewBlock("achievement_unlock", wallet.PublicKey, &genesis.Hash, genesis.Balance, genesis.StakedBalance, genesis.Height+1, "remote-a1", nil, map[string]interface{}{"achievement": "REMOTE_A1"})
+	mustSignBlock(t, blockOne, wallet.PrivateKey)
+	if err := remote.lattice.ProcessBlock(blockOne); err != nil {
+		t.Fatalf("remote blockOne failed: %v", err)
+	}
+	remoteHTTP := httptest.NewServer(remote.HTTPHandler())
+	defer remoteHTTP.Close()
+
+	local := NewServer()
+	if err := local.lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("local genesis failed: %v", err)
+	}
+
+	reconcileRec := postJSON(t, local.HTTPHandler(), "/reconcile", map[string]interface{}{"peer": remoteHTTP.URL})
+	if reconcileRec.Code != http.StatusOK {
+		t.Fatalf("expected reconcile status %d, got %d with %s", http.StatusOK, reconcileRec.Code, reconcileRec.Body.String())
+	}
+	body := decodeJSONBody(t, reconcileRec)
+	report, ok := body["reconciliation"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected reconciliation payload, got %#v", body)
+	}
+	if report["relationship"] != "remote_ahead" {
+		t.Fatalf("expected remote_ahead relationship, got %#v", report)
+	}
+	if report["suggestedAction"] != "bootstrap_from_peer" {
+		t.Fatalf("expected bootstrap_from_peer suggestion, got %#v", report)
+	}
+}
+
+func TestHandleReconcileReportsDivergence(t *testing.T) {
+	remote := NewServer()
+	remoteWallet := mustGenerateKeypair(t)
+	remoteGenesis := torrent.NewBlock("open", remoteWallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, remoteGenesis, remoteWallet.PrivateKey)
+	if err := remote.lattice.ProcessBlock(remoteGenesis); err != nil {
+		t.Fatalf("remote genesis failed: %v", err)
+	}
+	remoteHTTP := httptest.NewServer(remote.HTTPHandler())
+	defer remoteHTTP.Close()
+
+	local := NewServer()
+	localWallet := mustGenerateKeypair(t)
+	localGenesis := torrent.NewBlock("open", localWallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, localGenesis, localWallet.PrivateKey)
+	if err := local.lattice.ProcessBlock(localGenesis); err != nil {
+		t.Fatalf("local genesis failed: %v", err)
+	}
+
+	reconcileRec := postJSON(t, local.HTTPHandler(), "/reconcile", map[string]interface{}{"peer": remoteHTTP.URL})
+	if reconcileRec.Code != http.StatusOK {
+		t.Fatalf("expected reconcile status %d, got %d with %s", http.StatusOK, reconcileRec.Code, reconcileRec.Body.String())
+	}
+	body := decodeJSONBody(t, reconcileRec)
+	report, ok := body["reconciliation"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected reconciliation payload, got %#v", body)
+	}
+	if report["relationship"] != "divergent" {
+		t.Fatalf("expected divergent relationship, got %#v", report)
+	}
+	if report["suggestedAction"] != "investigate_divergence" {
+		t.Fatalf("expected investigate_divergence suggestion, got %#v", report)
+	}
+}

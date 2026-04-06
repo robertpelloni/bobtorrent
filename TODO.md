@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.50.0
+## ✅ Completed Through v11.51.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -76,9 +76,12 @@
   - added cooldown/backoff behavior so repeated failures suppress immediate reattempts
   - added divergence suspicion handling when a peer lacks the local ordered-history cursor
   - fan-out now skips peers in cooldown and records those skips in telemetry
-- [ ] **Consensus peer sync improvements (Phase 3)**
-  - richer divergence reconciliation beyond suspicion + refusal
-  - more explicit reconciliation / lag tooling for heavier multi-node operations
+- [x] **Consensus peer sync improvements (Phase 3A)**
+  - added safe `POST /reconcile` analysis for local-vs-remote history relationship and recommended next action
+  - operators can now distinguish `remote_ahead`, `local_ahead`, `remote_empty`, `local_empty_remote_has_state`, and `divergent` cases without mutating live state
+- [ ] **Consensus peer sync improvements (Phase 3B)**
+  - richer reconciliation execution beyond suspicion + refusal + analysis
+  - more explicit lag/reconciliation workflows for heavier multi-node operations
   - stronger peer-gossip and policy tuning beyond the current simple cooldown model
 
 ## Important Compatibility / Cleanup Tasks

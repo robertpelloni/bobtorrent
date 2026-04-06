@@ -15,7 +15,7 @@
   - some pages still omit explicit `height` and `staked_balance`
   - NFT transfer UI currently uses `recipient` naming, while newer Go code preferred `newOwner`
 - The Go lattice now includes compatibility handling for all of the above, but this is a temporary bridge, not the final state.
-- Multi-node sync is no longer just best-effort fan-out: the lattice now preserves confirmed global block order for catch-up, exposes `GET /blocks`, can bootstrap from peers while merging discovered peer lists, tracks per-peer sync/broadcast telemetry with bounded retries, suppresses repeated attempts through cooldown windows, and treats missing-cursor peers as divergence suspicion instead of blindly replaying from zero. The remaining gap is richer reconciliation policy, not the absence of any late-join path.
+- Multi-node sync is no longer just best-effort fan-out: the lattice now preserves confirmed global block order for catch-up, exposes `GET /blocks`, can bootstrap from peers while merging discovered peer lists, tracks per-peer sync/broadcast telemetry with bounded retries, suppresses repeated attempts through cooldown windows, treats missing-cursor peers as divergence suspicion instead of blindly replaying from zero, and now exposes a safe `POST /reconcile` analysis path for operator-side local-vs-remote relationship review. The remaining gap is richer reconciliation execution policy, not the absence of any late-join path.
 
 ## Build / Toolchain Findings
 - `anacrolix/dht` API drift required moving from an imagined `Addr` field to explicit `net.ListenPacket` wiring through `ServerConfig.Conn`.

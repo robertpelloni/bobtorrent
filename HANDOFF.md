@@ -1,58 +1,72 @@
-# Bobtorrent Omni-Workspace Handoff (v11.50.0)
+# Bobtorrent Omni-Workspace Handoff (v11.51.0)
 
 ## Session Objective
-Continue hardening the new lattice networking layer by moving beyond simple retries into stronger policy behavior: cooldown/backoff for unhealthy peers and explicit divergence suspicion when a remote history does not contain the local ordered-history cursor.
+Continue the new consensus networking Phase 3 work by adding explicit operator reconciliation tooling on top of the existing bootstrap/catch-up, retry, cooldown, and divergence-suspicion layers.
 
 ## What Was Implemented
 
-### 1. Cooldown / backoff policy for failing peers
+### 1. Safe reconciliation endpoint
 File:
 - `internal/consensus/server.go`
 
-Added a first practical cooldown model:
-- repeated sync failures now place a peer into a cooldown window
-- future sync attempts are skipped during cooldown unless explicitly forced
-- block fan-out now also skips peers that are in cooldown
-- skipped syncs and skipped broadcasts are recorded in telemetry
+Added:
+- `POST /reconcile`
 
-This prevents the node from hammering obviously unhealthy peers on every request/event.
+This endpoint is analysis-only. It does **not** mutate live consensus state.
 
-### 2. Divergence suspicion handling
+It compares local-vs-remote history using:
+- local latest ordered-history cursor
+- remote bootstrap summary (`latestBlockHash`, `stateHash`, `totalBlocks`)
+- whether the remote contains the local cursor
+- whether the local node contains the remote latest hash
+
+### 2. Reconciliation report model
 File:
 - `internal/consensus/server.go`
 
-Strengthened the ordered catch-up logic:
-- if the local node is non-empty
-- and it asks a peer for blocks after its current cursor
-- and the peer does not contain that cursor
+Added `PeerReconciliationReport`.
 
-then the lattice now:
-- marks the peer as divergence-suspect
-- records a divergence reason in telemetry
-- refuses to silently reset to zero and replay remote history as though both histories were equivalent
+It now reports:
+- local latest hash
+- remote latest hash
+- local/remote state hashes
+- local/remote block totals
+- whether the remote contains the local cursor
+- whether the local node contains the remote latest hash
+- relationship classification
+- suggested next action
+- explanatory notes
+- current peer cooldown state
 
-That is much safer and more honest than blindly pretending the remote chain is simply a superset.
+### 3. Relationship classification
+The new reconciliation analysis can now classify a peer relationship as:
+- `both_empty`
+- `local_empty_remote_has_state`
+- `remote_empty`
+- `in_sync`
+- `remote_ahead`
+- `local_ahead`
+- `partially_overlapping`
+- `divergent`
 
-### 3. Expanded peer diagnostics
-File:
-- `internal/consensus/server.go`
+This gives operators a much clearer next-step signal than comparing raw hashes/counts manually.
 
-Peer telemetry now additionally includes:
-- cooldown deadline / remaining cooldown
-- skipped sync count
-- skipped broadcast count
-- divergence count
-- last divergence timestamp and reason
-- remote state hash from bootstrap summary
-- explicit `skippedDueToCooldown` sync responses
+### 4. Suggested-action guidance
+The new analysis also emits explicit next-step hints such as:
+- `no_action`
+- `bootstrap_from_peer`
+- `wait_or_sync_remote_from_local`
+- `do_not_sync_reset_remote_or_wait`
+- `investigate_state_hash_mismatch`
+- `investigate_divergence`
 
-### 4. Regression coverage
+### 5. Regression coverage
 File:
 - `internal/consensus/server_test.go`
 
 Added tests proving:
-- failing peers enter cooldown and subsequent sync attempts can be skipped during the cooldown window
-- divergence suspicion is recorded when a remote peer does not contain the local ordered-history cursor
+- `POST /reconcile` reports a normal `remote_ahead` case when the local node is simply behind the remote node on the same chain
+- `POST /reconcile` reports a `divergent` case when the remote node does not contain the local cursor
 
 ## Validation
 Executed successfully:
@@ -62,26 +76,26 @@ Executed successfully:
 - `go build -buildvcs=false ./...`
 
 ## Findings / Analysis
-This was the right next step because the previous milestone added visibility and retries, but not enough policy memory.
+This was the correct next step after cooldown/divergence suspicion because the system could now detect unsafe sync scenarios, but operators still needed a dedicated safe analysis surface to understand what those scenarios meant.
 
 Before this pass:
-- transient failures could recover
-- operators could see peer health
-- but the node could still keep reattempting obviously unhealthy peers too aggressively
-- and missing-cursor cases still needed stronger semantic treatment
+- the node could suspect divergence
+- the node could refuse unsafe replay behavior
+- the node could expose telemetry
+- but operators still lacked an explicit compare/report workflow for deciding what to do next
 
 After this pass:
-- the node has a first real cooldown/backoff policy
-- unhealthy peers are not retried immediately forever
-- fan-out also respects cooldown state
-- missing-cursor cases on non-empty local nodes are treated as divergence suspicion, not as normal full replay
+- operators can ask the node to compare itself against a peer safely
+- the node returns a structured relationship classification
+- suggested next action is explicit
+- no live consensus state is mutated during analysis
 
 ## Recommended Next Steps
-1. Continue toward richer divergence reconciliation beyond the current suspicion + refusal model
-2. Add more explicit operator tooling around reconciliation/lag workflows if multi-node deployments become more common
-3. Continue the Go-first campaign once the next most practical remaining Node-only surface or higher-leverage systems gap is identified
+1. Continue toward richer reconciliation execution beyond analysis + suspicion + refusal
+2. Add operator workflows for lag/reconciliation if multi-node deployments become heavier
+3. Continue the broader Go-first campaign once the next highest-leverage systems gap is selected
 
 ## Notes for the Next Agent
 - No running processes were terminated in this session.
-- The current divergence behavior is intentionally conservative: it detects and refuses, rather than auto-reconciling.
-- The current cooldown model is intentionally simple; future work can refine backoff tuning and peer health policy further.
+- The new `/reconcile` endpoint is intentionally analysis-only; it does not rewrite local state or hot-swap history.
+- The next natural step is adding safer operator-guided reconciliation execution paths, not weakening the current safety boundary.
