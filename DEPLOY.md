@@ -42,7 +42,8 @@ Provides:
 - ordered block catch-up endpoint: `GET /blocks`
 - bootstrap summary endpoint: `GET /bootstrap`
 - bootstrap sync endpoint: `POST /bootstrap`
-- peer list endpoints: `GET /peers`, `POST /peers`
+- peer list / health endpoints: `GET /peers`, `POST /peers`
+- peer health telemetry is surfaced through `/status`, `/bootstrap`, and `/peers`
 - persistence verification endpoint: `GET /persistence/verify`
 - persistence repair endpoint: `POST /persistence/repair`
 - persistence export endpoint: `GET /persistence/export`

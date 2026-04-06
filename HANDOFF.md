@@ -1,104 +1,97 @@
-# Bobtorrent Omni-Workspace Handoff (v11.48.0)
+# Bobtorrent Omni-Workspace Handoff (v11.49.0)
 
 ## Session Objective
-Continue the Go-first migration by hardening lattice multi-node synchronization so peer registration is more than just blind broadcast fan-out.
+Continue hardening the new lattice peer sync flow by adding bounded retry handling and operator-visible peer health telemetry on top of the earlier bootstrap/catch-up path.
 
 ## What Was Implemented
 
-### 1. Ordered confirmed-block stream in the Go lattice
-Files:
-- `internal/consensus/lattice.go`
-
-Added `blockOrder` to preserve global confirmed-block commit order.
-
-Why this matters:
-- the existing `blocks` map gave O(1) lookup but not deterministic ordering
-- peer catch-up needs a stable ordered stream
-- this is now the basis for late-join synchronization and block pagination
-
-Also updated in-memory and persisted snapshot handling so block order survives snapshot restore/replay flows.
-
-### 2. Duplicate-aware processing result
-File:
-- `internal/consensus/lattice.go`
-
-Added:
-- `ProcessBlockDetailed()`
-
-Behavior:
-- returns whether the block was newly accepted or already known
-- duplicate deliveries now return `(false, nil)`
-- the HTTP layer can suppress needless re-broadcast loops for already-known blocks
-
-### 3. Peer catch-up and bootstrap HTTP surface
+### 1. Per-peer telemetry in the lattice server
 File:
 - `internal/consensus/server.go`
 
-Added:
-- `GET /blocks`
+Added `PeerStatus` tracking inside the Go lattice server.
+
+Telemetry now includes:
+- sync status (`syncing`, `synced`, `sync_failed`, etc.)
+- last error
+- sync attempt/success/failure counters
+- consecutive failure count
+- blocks applied vs duplicates during sync
+- fetched page count
+- cursor reset visibility
+- retry usage
+- remote total-block count and lag estimate
+- discovered peers from bootstrap
+- broadcast attempt/success/failure timestamps and counters
+
+### 2. Bounded retry policy
+File:
+- `internal/consensus/server.go`
+
+Added bounded retry handling for:
+- `GET /bootstrap` fetches during sync
+- `GET /blocks` ordered catch-up page fetches
+- `GET /peers` remote peer-list discovery fetches
+- block broadcast delivery fan-out to peers
+
+The current design is intentionally conservative:
+- retries are bounded
+- delays are short and linear
+- transient faults can recover
+- permanent faults still surface clearly in telemetry
+
+### 3. Operator-visible sync diagnostics
+File:
+- `internal/consensus/server.go`
+
+Extended operator-facing responses so diagnostics are visible in:
+- `GET /status`
 - `GET /bootstrap`
-- `POST /bootstrap`
+- `GET /peers`
 
-Behavior:
-- `/blocks` pages confirmed history in deterministic commit order with `after`, `limit`, `cursorFound`, and `hasMore`
-- `/bootstrap` exposes a compact sync summary on `GET`
-- `POST /bootstrap` initiates a peer catch-up sync from a provided peer
+This means operators can now see:
+- peer health summary counts
+- per-peer telemetry objects
+- whether a peer is healthy / degraded / failing / warning / idle
+- retry usage and lag estimates
 
-### 4. Peer-registration-triggered sync
-File:
-- `internal/consensus/server.go`
-
-`POST /peers` now supports immediate bootstrap behavior.
-
-Behavior:
-- registers the peer
-- by default attempts sync immediately
-- fetches ordered confirmed blocks from the remote node
-- applies only new blocks
-- merges the remote peer list into the local lattice peer registry
-
-This gives new nodes a first practical late-join path instead of leaving them dependent on future broadcasts only.
-
-### 5. Regression coverage
+### 4. Regression coverage
 File:
 - `internal/consensus/server_test.go`
 
-Added server-level tests proving:
-- duplicate `POST /process` calls are identified as duplicates
-- `GET /blocks` pages ordered history correctly
-- `POST /peers` can catch up a late joiner and learn downstream peers
+Added tests proving:
+- `GET /peers` exposes diagnostics after a successful sync
+- transient `/blocks` fetch failures recover through retry
+- retry usage is recorded into peer telemetry and exposed through `/status`
 
 ## Validation
 Executed successfully:
-- `gofmt -w internal/consensus/lattice.go internal/consensus/server.go internal/consensus/server_test.go`
+- `gofmt -w internal/consensus/server.go internal/consensus/server_test.go`
 - `go test -buildvcs=false ./internal/consensus`
 - `go test -buildvcs=false ./cmd/supernode-go ./internal/consensus`
 - `go build -buildvcs=false ./...`
 
 ## Findings / Analysis
-This was the right next Go-port move because the existing peer layer was still mostly a broadcast shell.
+This was the correct next step after Phase 1 peer bootstrap/catch-up because the system previously had a synchronization path but little operational truth around it.
 
 Before this pass:
-- peers could be registered
-- blocks could be fanned out
-- duplicates were tolerated by consensus state
-- but the HTTP layer still had no real late-join catch-up protocol
+- peers could sync
+- peers could retry only insofar as operators manually retried the whole request
+- transient faults looked too similar to hard faults
+- operators had almost no per-peer health visibility
 
 After this pass:
-- the lattice preserves global block order explicitly
-- peers can request ordered history through `/blocks`
-- new nodes can bootstrap from existing peers
-- duplicate deliveries no longer trigger further fan-out from the HTTP layer
-- peer discovery can propagate through remote peer-list merge
-
-This is still not the final form of multi-node sync, but it is now a real practical synchronization path rather than only best-effort gossip.
+- transient faults can recover automatically within bounded limits
+- retry usage becomes visible telemetry instead of hidden behavior
+- sync lag, cursor resets, and flaky peers are visible through status APIs
+- broadcast fan-out now records success/failure state per peer
 
 ## Recommended Next Steps
-1. Continue deeper consensus networking hardening around retry/health policy and heavier divergence handling
-2. Add operator-visible sync diagnostics (lag, cursor resets, failed peers) if multi-node deployments become more common
-3. Continue the broader Go-first campaign once the next most practical remaining Node-only surface is identified
+1. Continue consensus networking hardening with stronger backoff / health policy beyond the current bounded retry layer
+2. Add heavier divergence/reconciliation handling beyond ordered replay catch-up
+3. Keep evaluating remaining practical Node-side surfaces for further Go migration once this networking slice feels operationally solid
 
 ## Notes for the Next Agent
 - No running processes were terminated in this session.
-- The current catch-up flow assumes ordered replay from a compatible peer history; richer divergence resolution is still future work.
-- The new `ProcessBlockDetailed()` API is the key suppression hook preventing duplicate HTTP deliveries from being re-broadcast as if they were new.
+- The new telemetry is intentionally observational only; it does not yet drive peer eviction or automatic divergence remediation.
+- The next natural extension is stronger policy (backoff, cooldowns, divergence handling), not merely more raw counters.

@@ -1,3 +1,11 @@
+## [11.49.0] - 2026-04-05
+### Go Port: Lattice Peer Health + Retry Diagnostics
+- **Peer Health Telemetry**: Added per-peer sync/broadcast diagnostics to the Go lattice server, tracking last sync status, retry usage, lag, discovered peers, consecutive failures, and broadcast success/failure history.
+- **Bounded Retry Policy**: Wrapped bootstrap summary fetches, ordered block-page sync, peer-list fetches, and block fan-out delivery in bounded retries so transient peer/network faults do not immediately look like permanent consensus divergence.
+- **Operator Visibility**: `/status`, `GET /bootstrap`, and `GET /peers` now expose structured peer health summaries and per-peer telemetry, making sync lag and flaky peers visible instead of hidden behind generic peer counts.
+- **Regression Coverage**: Added consensus server tests proving peer diagnostics are surfaced and that transient `/blocks` fetch failures recover through retry while recording retry usage in telemetry.
+- **Validation**: Re-validated `go test -buildvcs=false ./cmd/supernode-go ./internal/consensus` and `go build -buildvcs=false ./...` after the peer-health hardening pass.
+
 ## [11.48.0] - 2026-04-05
 ### Go Port: Lattice Peer Bootstrap + Catch-Up Sync
 - **Ordered Consensus Catch-Up**: Added a deterministic ordered confirmed-block stream to the Go lattice plus a new `GET /blocks` endpoint, giving late-joining nodes a stable way to request confirmed history in commit order instead of guessing from unordered state maps.

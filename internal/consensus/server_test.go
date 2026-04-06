@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"bobtorrent/pkg/torrent"
@@ -199,5 +200,97 @@ func TestHandlePeersSyncsLateJoinerAndLearnsPeerList(t *testing.T) {
 	}
 	if !foundDiscovered {
 		t.Fatalf("expected joiner to learn discovered peer, got %#v", peers)
+	}
+
+	peerRec := httptest.NewRecorder()
+	peerReq := httptest.NewRequest(http.MethodGet, "/peers", nil)
+	joinerHandler.ServeHTTP(peerRec, peerReq)
+	if peerRec.Code != http.StatusOK {
+		t.Fatalf("expected peers status %d, got %d with %s", http.StatusOK, peerRec.Code, peerRec.Body.String())
+	}
+	peerBody := decodeJSONBody(t, peerRec)
+	healthSummary, ok := peerBody["healthSummary"].(map[string]interface{})
+	if !ok || healthSummary["healthy"] == nil {
+		t.Fatalf("expected health summary in peers response, got %#v", peerBody)
+	}
+	diagnostics, ok := peerBody["diagnostics"].([]interface{})
+	if !ok || len(diagnostics) == 0 {
+		t.Fatalf("expected peer diagnostics in peers response, got %#v", peerBody["diagnostics"])
+	}
+}
+
+func TestHandlePeersSyncRetriesTransientBlockFetchFailure(t *testing.T) {
+	origin := NewServer()
+	originHandler := origin.HTTPHandler()
+	wallet := mustGenerateKeypair(t)
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, genesis, wallet.PrivateKey)
+	if err := origin.lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("origin genesis failed: %v", err)
+	}
+
+	blockFailures := 0
+	flakyHTTP := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/blocks") && blockFailures == 0 {
+			blockFailures++
+			http.Error(w, "temporary upstream fault", http.StatusBadGateway)
+			return
+		}
+		originHandler.ServeHTTP(w, r)
+	}))
+	defer flakyHTTP.Close()
+
+	joiner := NewServer()
+	joinerHandler := joiner.HTTPHandler()
+	registerRec := postJSON(t, joinerHandler, "/peers", map[string]interface{}{"addr": flakyHTTP.URL, "sync": true})
+	if registerRec.Code != http.StatusOK {
+		t.Fatalf("expected peer registration sync status %d, got %d with %s", http.StatusOK, registerRec.Code, registerRec.Body.String())
+	}
+	registerBody := decodeJSONBody(t, registerRec)
+	syncPayload, ok := registerBody["sync"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected sync payload after retrying transient error, got %#v", registerBody)
+	}
+	if syncPayload["retryCount"] == float64(0) {
+		t.Fatalf("expected retryCount > 0 after transient failure, got %#v", syncPayload)
+	}
+	if len(joiner.lattice.blocks) != 1 {
+		t.Fatalf("expected joiner to catch up to 1 block after retry, got %d", len(joiner.lattice.blocks))
+	}
+
+	statusRec := httptest.NewRecorder()
+	statusReq := httptest.NewRequest(http.MethodGet, "/status", nil)
+	joinerHandler.ServeHTTP(statusRec, statusReq)
+	if statusRec.Code != http.StatusOK {
+		t.Fatalf("expected status response %d, got %d with %s", http.StatusOK, statusRec.Code, statusRec.Body.String())
+	}
+	statusBody := decodeJSONBody(t, statusRec)
+	peerSync, ok := statusBody["peerSync"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected peerSync diagnostics in status response, got %#v", statusBody)
+	}
+	peersPayload, ok := peerSync["peers"].([]interface{})
+	if !ok || len(peersPayload) == 0 {
+		t.Fatalf("expected peer telemetry entries in status response, got %#v", peerSync)
+	}
+	parsedFlaky, err := url.Parse(flakyHTTP.URL)
+	if err != nil {
+		t.Fatalf("failed to parse flaky server url: %v", err)
+	}
+	matched := false
+	for _, entry := range peersPayload {
+		peerEntry, ok := entry.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if peerEntry["peer"] == parsedFlaky.Host {
+			matched = true
+			if peerEntry["lastRetryCount"] == float64(0) {
+				t.Fatalf("expected lastRetryCount to record retry usage, got %#v", peerEntry)
+			}
+		}
+	}
+	if !matched {
+		t.Fatalf("expected telemetry entry for flaky peer %s, got %#v", parsedFlaky.Host, peersPayload)
 	}
 }

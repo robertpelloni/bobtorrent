@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"bobtorrent/pkg/torrent"
@@ -25,9 +26,11 @@ import (
 //     legacy paths such as /proposals, /pending/:account, and a WebSocket
 //     connection on the lattice root URL.
 type Server struct {
-	lattice  *Lattice
-	hub      *Hub
-	upgrader websocket.Upgrader
+	lattice      *Lattice
+	hub          *Hub
+	upgrader     websocket.Upgrader
+	peerStatusMu sync.RWMutex
+	peerStatus   map[string]*PeerStatus
 }
 
 // NewServer creates a lattice server with a fresh in-memory consensus state.
@@ -48,8 +51,9 @@ func NewPersistentServer(path string) (*Server, error) {
 
 func newServerWithLattice(lattice *Lattice) *Server {
 	return &Server{
-		lattice: lattice,
-		hub:     NewHub(),
+		lattice:    lattice,
+		hub:        NewHub(),
+		peerStatus: make(map[string]*PeerStatus),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
@@ -142,6 +146,8 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		snapshotInterval = s.lattice.store.SnapshotInterval()
 		snapshotRetention = s.lattice.store.SnapshotRetention()
 	}
+	peerStatuses := s.peerStatusSnapshot()
+	peerSummary := summarizePeerStatuses(peerStatuses)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":          "online",
@@ -159,6 +165,10 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"marketBids":      len(s.lattice.marketBids),
 		"activeSwaps":     len(s.lattice.swaps),
 		"anchors":         len(s.lattice.anchors),
+		"peerSync": map[string]interface{}{
+			"summary": peerSummary,
+			"peers":   peerStatuses,
+		},
 		"persistence": map[string]interface{}{
 			"enabled":           persistenceEnabled,
 			"path":              persistencePath,
@@ -467,6 +477,7 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		peers := s.lattice.GetPeers()
+		peerStatuses := s.peerStatusSnapshot()
 		s.lattice.mu.RLock()
 		totalBlocks := len(s.lattice.blocks)
 		stateHash := s.lattice.stateHash
@@ -483,6 +494,10 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 			"stateHash":       stateHash,
 			"peers":           peers,
 			"peerCount":       len(peers),
+			"peerSync": map[string]interface{}{
+				"summary": summarizePeerStatuses(peerStatuses),
+				"peers":   peerStatuses,
+			},
 		})
 	case http.MethodPost:
 		var req struct {
@@ -725,9 +740,12 @@ func (s *Server) handlePeers(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		peers := s.lattice.GetPeers()
+		statuses := s.peerStatusSnapshot()
 		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"peers": peers,
-			"count": len(peers),
+			"peers":         peers,
+			"count":         len(peers),
+			"diagnostics":   statuses,
+			"healthSummary": summarizePeerStatuses(statuses),
 		})
 	case http.MethodPost:
 		var req struct {
@@ -744,6 +762,7 @@ func (s *Server) handlePeers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.lattice.AddPeer(addr)
+		s.ensurePeerStatus(addr)
 
 		syncRequested := true
 		if req.Sync != nil {
@@ -779,12 +798,28 @@ func (s *Server) broadcastBlock(block *torrent.Block) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	for _, peerAddr := range peers {
 		go func(addr string) {
-			resp, err := client.Post(peerBaseURL(addr)+"/process", "application/json", bytes.NewBuffer(payload))
+			s.markPeerBroadcastAttempt(addr)
+			retriesUsed, err := retryFetch(2, 100*time.Millisecond, func() error {
+				resp, postErr := client.Post(peerBaseURL(addr)+"/process", "application/json", bytes.NewBuffer(payload))
+				if postErr != nil {
+					return postErr
+				}
+				defer resp.Body.Close()
+				if resp.StatusCode != http.StatusOK {
+					body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+					return fmt.Errorf("peer process returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+				}
+				return nil
+			})
+			if retriesUsed > 0 {
+				s.markPeerRetryCount(addr, retriesUsed)
+			}
 			if err != nil {
 				log.Printf("[consensus] broadcast to %s failed: %v", addr, err)
+				s.markPeerBroadcastFailed(addr, err)
 				return
 			}
-			defer resp.Body.Close()
+			s.markPeerBroadcastSucceeded(addr)
 		}(peerAddr)
 	}
 }
@@ -839,14 +874,266 @@ type peerListResponse struct {
 }
 
 type PeerSyncResult struct {
-	Peer            string   `json:"peer"`
-	RequestedCursor string   `json:"requestedCursor,omitempty"`
-	AppliedBlocks   int      `json:"appliedBlocks"`
-	DuplicateBlocks int      `json:"duplicateBlocks"`
-	FetchedPages    int      `json:"fetchedPages"`
-	CursorReset     bool     `json:"cursorReset"`
-	DiscoveredPeers []string `json:"discoveredPeers,omitempty"`
-	LatestBlockHash string   `json:"latestBlockHash,omitempty"`
+	Peer              string   `json:"peer"`
+	RequestedCursor   string   `json:"requestedCursor,omitempty"`
+	AppliedBlocks     int      `json:"appliedBlocks"`
+	DuplicateBlocks   int      `json:"duplicateBlocks"`
+	FetchedPages      int      `json:"fetchedPages"`
+	CursorReset       bool     `json:"cursorReset"`
+	DiscoveredPeers   []string `json:"discoveredPeers,omitempty"`
+	LatestBlockHash   string   `json:"latestBlockHash,omitempty"`
+	RemoteTotalBlocks int      `json:"remoteTotalBlocks,omitempty"`
+	RemotePeerCount   int      `json:"remotePeerCount,omitempty"`
+	LagBlocks         int      `json:"lagBlocks,omitempty"`
+	RetryCount        int      `json:"retryCount"`
+}
+
+type peerBootstrapResponse struct {
+	Status          string   `json:"status"`
+	Service         string   `json:"service"`
+	LatestBlockHash string   `json:"latestBlockHash"`
+	TotalBlocks     int      `json:"totalBlocks"`
+	StateHash       string   `json:"stateHash"`
+	Peers           []string `json:"peers"`
+	PeerCount       int      `json:"peerCount"`
+}
+
+// PeerStatus captures operator-visible sync and delivery telemetry for one
+// known lattice peer. This is intentionally diagnostic rather than consensus-
+// critical state: it helps operators understand peer lag, flaky bootstrap
+// attempts, and repeated broadcast failures without influencing validation.
+type PeerStatus struct {
+	Peer                     string   `json:"peer"`
+	Health                   string   `json:"health"`
+	LastStatus               string   `json:"lastStatus"`
+	LastError                string   `json:"lastError,omitempty"`
+	LastSyncStartedAt        int64    `json:"lastSyncStartedAt,omitempty"`
+	LastSyncCompletedAt      int64    `json:"lastSyncCompletedAt,omitempty"`
+	LastSyncSucceededAt      int64    `json:"lastSyncSucceededAt,omitempty"`
+	LastSyncFailedAt         int64    `json:"lastSyncFailedAt,omitempty"`
+	TotalSyncAttempts        int64    `json:"totalSyncAttempts"`
+	TotalSyncSuccesses       int64    `json:"totalSyncSuccesses"`
+	TotalSyncFailures        int64    `json:"totalSyncFailures"`
+	ConsecutiveFailures      int      `json:"consecutiveFailures"`
+	LastAppliedBlocks        int      `json:"lastAppliedBlocks"`
+	LastDuplicateBlocks      int      `json:"lastDuplicateBlocks"`
+	LastFetchedPages         int      `json:"lastFetchedPages"`
+	LastCursorReset          bool     `json:"lastCursorReset"`
+	LastRetryCount           int      `json:"lastRetryCount"`
+	LastKnownLagBlocks       int      `json:"lastKnownLagBlocks"`
+	LastRemoteTotalBlocks    int      `json:"lastRemoteTotalBlocks"`
+	LastKnownRemotePeerCount int      `json:"lastKnownRemotePeerCount"`
+	LastAdvertisedLatestHash string   `json:"lastAdvertisedLatestHash,omitempty"`
+	LastDiscoveredPeers      []string `json:"lastDiscoveredPeers,omitempty"`
+	LastBroadcastAttemptAt   int64    `json:"lastBroadcastAttemptAt,omitempty"`
+	LastBroadcastSucceededAt int64    `json:"lastBroadcastSucceededAt,omitempty"`
+	LastBroadcastFailedAt    int64    `json:"lastBroadcastFailedAt,omitempty"`
+	BroadcastSuccesses       int64    `json:"broadcastSuccesses"`
+	BroadcastFailures        int64    `json:"broadcastFailures"`
+	LastBroadcastError       string   `json:"lastBroadcastError,omitempty"`
+}
+
+func clonePeerStatus(src *PeerStatus) *PeerStatus {
+	if src == nil {
+		return nil
+	}
+	copyStatus := *src
+	copyStatus.LastDiscoveredPeers = append([]string(nil), src.LastDiscoveredPeers...)
+	return &copyStatus
+}
+
+func peerHealth(status *PeerStatus) string {
+	if status == nil {
+		return "unknown"
+	}
+	if status.ConsecutiveFailures >= 3 {
+		return "failing"
+	}
+	if status.ConsecutiveFailures > 0 || status.LastKnownLagBlocks > 0 || status.LastCursorReset {
+		return "degraded"
+	}
+	if status.TotalSyncSuccesses > 0 || status.BroadcastSuccesses > 0 {
+		return "healthy"
+	}
+	if status.TotalSyncAttempts > 0 || status.BroadcastFailures > 0 {
+		return "warning"
+	}
+	return "idle"
+}
+
+func (s *Server) ensurePeerStatus(peer string) *PeerStatus {
+	s.peerStatusMu.Lock()
+	defer s.peerStatusMu.Unlock()
+	status := s.peerStatus[peer]
+	if status == nil {
+		status = &PeerStatus{Peer: peer, Health: "idle", LastStatus: "registered"}
+		s.peerStatus[peer] = status
+	}
+	return status
+}
+
+func (s *Server) peerStatusSnapshot() []*PeerStatus {
+	s.peerStatusMu.RLock()
+	defer s.peerStatusMu.RUnlock()
+	statuses := make([]*PeerStatus, 0, len(s.peerStatus))
+	for _, status := range s.peerStatus {
+		copyStatus := clonePeerStatus(status)
+		copyStatus.Health = peerHealth(copyStatus)
+		statuses = append(statuses, copyStatus)
+	}
+	sort.Slice(statuses, func(i, j int) bool {
+		return statuses[i].Peer < statuses[j].Peer
+	})
+	return statuses
+}
+
+func summarizePeerStatuses(statuses []*PeerStatus) map[string]int {
+	summary := map[string]int{
+		"total":    len(statuses),
+		"healthy":  0,
+		"degraded": 0,
+		"failing":  0,
+		"warning":  0,
+		"idle":     0,
+	}
+	for _, status := range statuses {
+		summary[status.Health]++
+	}
+	return summary
+}
+
+func (s *Server) markPeerSyncStarted(peer string) {
+	now := time.Now().UnixMilli()
+	s.peerStatusMu.Lock()
+	defer s.peerStatusMu.Unlock()
+	status := s.peerStatus[peer]
+	if status == nil {
+		status = &PeerStatus{Peer: peer}
+		s.peerStatus[peer] = status
+	}
+	status.LastStatus = "syncing"
+	status.LastSyncStartedAt = now
+	status.TotalSyncAttempts++
+	status.Health = peerHealth(status)
+}
+
+func (s *Server) markPeerSyncSucceeded(peer string, result *PeerSyncResult) {
+	now := time.Now().UnixMilli()
+	s.peerStatusMu.Lock()
+	defer s.peerStatusMu.Unlock()
+	status := s.peerStatus[peer]
+	if status == nil {
+		status = &PeerStatus{Peer: peer}
+		s.peerStatus[peer] = status
+	}
+	status.LastStatus = "synced"
+	status.LastError = ""
+	status.LastSyncCompletedAt = now
+	status.LastSyncSucceededAt = now
+	status.TotalSyncSuccesses++
+	status.ConsecutiveFailures = 0
+	if result != nil {
+		status.LastAppliedBlocks = result.AppliedBlocks
+		status.LastDuplicateBlocks = result.DuplicateBlocks
+		status.LastFetchedPages = result.FetchedPages
+		status.LastCursorReset = result.CursorReset
+		status.LastRetryCount = result.RetryCount
+		status.LastKnownLagBlocks = result.LagBlocks
+		status.LastRemoteTotalBlocks = result.RemoteTotalBlocks
+		status.LastKnownRemotePeerCount = result.RemotePeerCount
+		status.LastAdvertisedLatestHash = result.LatestBlockHash
+		status.LastDiscoveredPeers = append([]string(nil), result.DiscoveredPeers...)
+	}
+	status.Health = peerHealth(status)
+}
+
+func (s *Server) markPeerSyncFailed(peer string, result *PeerSyncResult, err error) {
+	now := time.Now().UnixMilli()
+	s.peerStatusMu.Lock()
+	defer s.peerStatusMu.Unlock()
+	status := s.peerStatus[peer]
+	if status == nil {
+		status = &PeerStatus{Peer: peer}
+		s.peerStatus[peer] = status
+	}
+	status.LastStatus = "sync_failed"
+	status.LastSyncCompletedAt = now
+	status.LastSyncFailedAt = now
+	status.TotalSyncFailures++
+	status.ConsecutiveFailures++
+	if err != nil {
+		status.LastError = err.Error()
+	}
+	if result != nil {
+		status.LastAppliedBlocks = result.AppliedBlocks
+		status.LastDuplicateBlocks = result.DuplicateBlocks
+		status.LastFetchedPages = result.FetchedPages
+		status.LastCursorReset = result.CursorReset
+		status.LastRetryCount = result.RetryCount
+		status.LastKnownLagBlocks = result.LagBlocks
+		status.LastRemoteTotalBlocks = result.RemoteTotalBlocks
+		status.LastKnownRemotePeerCount = result.RemotePeerCount
+		status.LastAdvertisedLatestHash = result.LatestBlockHash
+		status.LastDiscoveredPeers = append([]string(nil), result.DiscoveredPeers...)
+	}
+	status.Health = peerHealth(status)
+}
+
+func (s *Server) markPeerBroadcastAttempt(peer string) {
+	now := time.Now().UnixMilli()
+	s.peerStatusMu.Lock()
+	defer s.peerStatusMu.Unlock()
+	status := s.peerStatus[peer]
+	if status == nil {
+		status = &PeerStatus{Peer: peer}
+		s.peerStatus[peer] = status
+	}
+	status.LastBroadcastAttemptAt = now
+}
+
+func (s *Server) markPeerBroadcastSucceeded(peer string) {
+	now := time.Now().UnixMilli()
+	s.peerStatusMu.Lock()
+	defer s.peerStatusMu.Unlock()
+	status := s.peerStatus[peer]
+	if status == nil {
+		status = &PeerStatus{Peer: peer}
+		s.peerStatus[peer] = status
+	}
+	status.LastBroadcastSucceededAt = now
+	status.BroadcastSuccesses++
+	status.LastBroadcastError = ""
+	status.Health = peerHealth(status)
+}
+
+func (s *Server) markPeerBroadcastFailed(peer string, err error) {
+	now := time.Now().UnixMilli()
+	s.peerStatusMu.Lock()
+	defer s.peerStatusMu.Unlock()
+	status := s.peerStatus[peer]
+	if status == nil {
+		status = &PeerStatus{Peer: peer}
+		s.peerStatus[peer] = status
+	}
+	status.LastBroadcastFailedAt = now
+	status.BroadcastFailures++
+	if err != nil {
+		status.LastBroadcastError = err.Error()
+		status.LastError = err.Error()
+	}
+	status.Health = peerHealth(status)
+}
+
+func (s *Server) markPeerRetryCount(peer string, retries int) {
+	s.peerStatusMu.Lock()
+	defer s.peerStatusMu.Unlock()
+	status := s.peerStatus[peer]
+	if status == nil {
+		status = &PeerStatus{Peer: peer}
+		s.peerStatus[peer] = status
+	}
+	status.LastRetryCount = retries
+	status.Health = peerHealth(status)
 }
 
 func normalizePeerAddr(addr string) (string, error) {
@@ -884,6 +1171,7 @@ func (s *Server) syncPeer(addr string) (*PeerSyncResult, error) {
 		return nil, err
 	}
 
+	s.markPeerSyncStarted(normalized)
 	result := &PeerSyncResult{Peer: normalized}
 	result.RequestedCursor = s.lattice.LatestBlockHash()
 	baseURL := peerBaseURL(normalized)
@@ -891,12 +1179,28 @@ func (s *Server) syncPeer(addr string) (*PeerSyncResult, error) {
 	cursor := result.RequestedCursor
 	usedCursor := cursor != ""
 
+	bootstrap, retries, err := fetchPeerBootstrapWithRetry(client, baseURL)
+	result.RetryCount += retries
+	if err == nil && bootstrap != nil {
+		result.RemoteTotalBlocks = bootstrap.TotalBlocks
+		result.RemotePeerCount = bootstrap.PeerCount
+		result.LatestBlockHash = bootstrap.LatestBlockHash
+	}
+
 	for {
-		page, err := fetchPeerBlocks(client, baseURL, cursor)
+		page, retries, err := fetchPeerBlocksWithRetry(client, baseURL, cursor)
+		result.RetryCount += retries
 		if err != nil {
+			s.markPeerSyncFailed(normalized, result, err)
 			return result, err
 		}
 		result.FetchedPages++
+		if page.TotalBlocks > result.RemoteTotalBlocks {
+			result.RemoteTotalBlocks = page.TotalBlocks
+		}
+		if page.LatestHash != "" {
+			result.LatestBlockHash = page.LatestHash
+		}
 		if usedCursor && !page.CursorFound {
 			cursor = ""
 			usedCursor = false
@@ -904,14 +1208,15 @@ func (s *Server) syncPeer(addr string) (*PeerSyncResult, error) {
 			continue
 		}
 		if len(page.Blocks) == 0 {
-			result.LatestBlockHash = page.LatestHash
 			break
 		}
 
 		for _, block := range page.Blocks {
 			accepted, err := s.lattice.ProcessBlockDetailed(block)
 			if err != nil {
-				return result, fmt.Errorf("failed to apply peer block %s: %w", block.Hash, err)
+				wrapped := fmt.Errorf("failed to apply peer block %s: %w", block.Hash, err)
+				s.markPeerSyncFailed(normalized, result, wrapped)
+				return result, wrapped
 			}
 			if accepted {
 				result.AppliedBlocks++
@@ -920,15 +1225,16 @@ func (s *Server) syncPeer(addr string) (*PeerSyncResult, error) {
 			}
 			cursor = block.Hash
 		}
-		result.LatestBlockHash = page.LatestHash
 		usedCursor = false
 		if !page.HasMore {
 			break
 		}
 	}
 
-	peers, err := fetchPeerPeers(client, baseURL)
+	peers, retries, err := fetchPeerPeersWithRetry(client, baseURL)
+	result.RetryCount += retries
 	if err == nil {
+		result.RemotePeerCount = len(peers)
 		known := make(map[string]bool)
 		for _, existing := range s.lattice.GetPeers() {
 			known[existing] = true
@@ -942,12 +1248,69 @@ func (s *Server) syncPeer(addr string) (*PeerSyncResult, error) {
 				continue
 			}
 			s.lattice.AddPeer(normalizedPeer)
+			s.ensurePeerStatus(normalizedPeer)
 			known[normalizedPeer] = true
 			result.DiscoveredPeers = append(result.DiscoveredPeers, normalizedPeer)
 		}
 	}
 
+	s.lattice.mu.RLock()
+	localBlocks := len(s.lattice.blocks)
+	s.lattice.mu.RUnlock()
+	if result.RemoteTotalBlocks > localBlocks {
+		result.LagBlocks = result.RemoteTotalBlocks - localBlocks
+	}
+
+	s.markPeerSyncSucceeded(normalized, result)
 	return result, nil
+}
+
+func retryFetch(attempts int, delay time.Duration, op func() error) (int, error) {
+	if attempts <= 0 {
+		attempts = 1
+	}
+	var lastErr error
+	for attempt := 0; attempt < attempts; attempt++ {
+		if err := op(); err != nil {
+			lastErr = err
+			if attempt < attempts-1 {
+				time.Sleep(delay * time.Duration(attempt+1))
+			}
+			continue
+		}
+		return attempt, nil
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("retry operation failed")
+	}
+	return attempts - 1, lastErr
+}
+
+func fetchPeerBootstrap(client *http.Client, baseURL string) (*peerBootstrapResponse, error) {
+	resp, err := client.Get(baseURL + "/bootstrap")
+	if err != nil {
+		return nil, fmt.Errorf("fetch peer bootstrap failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		return nil, fmt.Errorf("peer bootstrap returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var summary peerBootstrapResponse
+	if err := json.NewDecoder(resp.Body).Decode(&summary); err != nil {
+		return nil, fmt.Errorf("decode peer bootstrap failed: %w", err)
+	}
+	return &summary, nil
+}
+
+func fetchPeerBootstrapWithRetry(client *http.Client, baseURL string) (*peerBootstrapResponse, int, error) {
+	var result *peerBootstrapResponse
+	retriesUsed, err := retryFetch(3, 150*time.Millisecond, func() error {
+		var fetchErr error
+		result, fetchErr = fetchPeerBootstrap(client, baseURL)
+		return fetchErr
+	})
+	return result, retriesUsed, err
 }
 
 func fetchPeerBlocks(client *http.Client, baseURL, after string) (*peerBlocksResponse, error) {
@@ -971,6 +1334,16 @@ func fetchPeerBlocks(client *http.Client, baseURL, after string) (*peerBlocksRes
 	return &page, nil
 }
 
+func fetchPeerBlocksWithRetry(client *http.Client, baseURL, after string) (*peerBlocksResponse, int, error) {
+	var result *peerBlocksResponse
+	retriesUsed, err := retryFetch(3, 150*time.Millisecond, func() error {
+		var fetchErr error
+		result, fetchErr = fetchPeerBlocks(client, baseURL, after)
+		return fetchErr
+	})
+	return result, retriesUsed, err
+}
+
 func fetchPeerPeers(client *http.Client, baseURL string) ([]string, error) {
 	resp, err := client.Get(baseURL + "/peers")
 	if err != nil {
@@ -985,6 +1358,16 @@ func fetchPeerPeers(client *http.Client, baseURL string) ([]string, error) {
 		return nil, err
 	}
 	return result.Peers, nil
+}
+
+func fetchPeerPeersWithRetry(client *http.Client, baseURL string) ([]string, int, error) {
+	var result []string
+	retriesUsed, err := retryFetch(2, 100*time.Millisecond, func() error {
+		var fetchErr error
+		result, fetchErr = fetchPeerPeers(client, baseURL)
+		return fetchErr
+	})
+	return result, retriesUsed, err
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
