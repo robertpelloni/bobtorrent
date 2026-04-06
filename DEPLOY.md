@@ -43,6 +43,7 @@ Provides:
 - bootstrap summary endpoint: `GET /bootstrap`
 - bootstrap sync endpoint: `POST /bootstrap`
 - reconciliation analysis endpoint: `POST /reconcile`
+- reconciliation execution endpoint: `POST /reconcile/apply`
 - peer list / health endpoints: `GET /peers`, `POST /peers`
 - peer health telemetry is surfaced through `/status`, `/bootstrap`, and `/peers`
 - peer sync now supports cooldown-skipped responses and explicit divergence suspicion when a remote peer lacks the local ordered-history cursor

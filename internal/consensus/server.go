@@ -81,6 +81,7 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc("/blocks", s.handleBlocks)
 	mux.HandleFunc("/bootstrap", s.handleBootstrap)
 	mux.HandleFunc("/reconcile", s.handleReconcile)
+	mux.HandleFunc("/reconcile/apply", s.handleReconcileApply)
 	mux.HandleFunc("/balance/", s.handleBalance)
 	mux.HandleFunc("/frontier/", s.handleFrontier)
 	mux.HandleFunc("/chain/", s.handleChain)
@@ -548,6 +549,36 @@ func (s *Server) handleReconcile(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleReconcileApply(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Peer  string `json:"peer"`
+		Force bool   `json:"force"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Peer) == "" {
+		http.Error(w, "valid peer required", http.StatusBadRequest)
+		return
+	}
+
+	result, statusCode, err := s.applyPeerReconciliation(req.Peer, req.Force)
+	if err != nil {
+		writeJSON(w, statusCode, map[string]interface{}{
+			"success": false,
+			"apply":   result,
+			"error":   err.Error(),
+		})
+		return
+	}
+	writeJSON(w, statusCode, map[string]interface{}{
+		"success": true,
+		"apply":   result,
+	})
+}
+
 func (s *Server) handleBalance(w http.ResponseWriter, r *http.Request) {
 	account := strings.TrimPrefix(r.URL.Path, "/balance/")
 	if account == "" {
@@ -949,6 +980,17 @@ type PeerReconciliationReport struct {
 	Relationship              string   `json:"relationship"`
 	SuggestedAction           string   `json:"suggestedAction"`
 	Notes                     []string `json:"notes,omitempty"`
+}
+
+type ReconciliationApplyResult struct {
+	Peer            string                    `json:"peer"`
+	Relationship    string                    `json:"relationship"`
+	SuggestedAction string                    `json:"suggestedAction"`
+	Executed        bool                      `json:"executed"`
+	ExecutionMode   string                    `json:"executionMode"`
+	Reason          string                    `json:"reason,omitempty"`
+	Reconciliation  *PeerReconciliationReport `json:"reconciliation,omitempty"`
+	Sync            *PeerSyncResult           `json:"sync,omitempty"`
 }
 
 // PeerStatus captures operator-visible sync and delivery telemetry for one
@@ -1431,6 +1473,64 @@ func (s *Server) syncPeer(addr string, force bool) (*PeerSyncResult, error) {
 
 	s.markPeerSyncSucceeded(normalized, result)
 	return result, nil
+}
+
+func (s *Server) applyPeerReconciliation(addr string, force bool) (*ReconciliationApplyResult, int, error) {
+	report, err := s.analyzePeerReconciliation(addr)
+	if err != nil {
+		return nil, http.StatusBadGateway, err
+	}
+
+	result := &ReconciliationApplyResult{
+		Peer:            report.Peer,
+		Relationship:    report.Relationship,
+		SuggestedAction: report.SuggestedAction,
+		Reconciliation:  report,
+	}
+
+	switch report.Relationship {
+	case "both_empty", "in_sync":
+		result.Executed = false
+		result.ExecutionMode = "noop"
+		result.Reason = "Local and remote state do not require any reconciliation action."
+		return result, http.StatusOK, nil
+	case "remote_ahead", "local_empty_remote_has_state":
+		result.ExecutionMode = "remote_to_local_sync"
+		syncResult, syncErr := s.syncPeer(addr, force)
+		result.Sync = syncResult
+		if syncErr != nil {
+			result.Reason = "Safe remote-to-local reconciliation was attempted but the sync failed."
+			return result, http.StatusBadGateway, syncErr
+		}
+		if syncResult != nil && syncResult.SkippedDueToCooldown {
+			result.Executed = false
+			result.Reason = "Safe reconciliation is currently suppressed by peer cooldown policy. Retry later or force explicitly if appropriate."
+			return result, http.StatusConflict, fmt.Errorf("reconciliation skipped due to cooldown")
+		}
+		result.Executed = true
+		result.Reason = "Safe remote-to-local reconciliation completed."
+		return result, http.StatusOK, nil
+	case "local_ahead":
+		result.Executed = false
+		result.ExecutionMode = "refused"
+		result.Reason = "Local node is ahead of the remote peer. Remote-to-local reconciliation is unnecessary, and remote push execution is not implemented in this safe workflow."
+		return result, http.StatusConflict, fmt.Errorf("reconciliation refused: local node is ahead of peer")
+	case "remote_empty":
+		result.Executed = false
+		result.ExecutionMode = "refused"
+		result.Reason = "Remote peer is empty while local node already has history. Safe reconciliation refuses to overwrite local state or infer that the remote should become canonical."
+		return result, http.StatusConflict, fmt.Errorf("reconciliation refused: remote peer is empty")
+	case "partially_overlapping", "divergent":
+		result.Executed = false
+		result.ExecutionMode = "refused"
+		result.Reason = "Safe reconciliation refuses to execute when histories are ambiguous or divergent. Use analysis output to investigate before attempting any manual recovery plan."
+		return result, http.StatusConflict, fmt.Errorf("reconciliation refused: %s relationship requires manual investigation", report.Relationship)
+	default:
+		result.Executed = false
+		result.ExecutionMode = "refused"
+		result.Reason = "Relationship classification is not executable under the current safe reconciliation policy."
+		return result, http.StatusConflict, fmt.Errorf("reconciliation refused: unsupported relationship %s", report.Relationship)
+	}
 }
 
 func (s *Server) analyzePeerReconciliation(addr string) (*PeerReconciliationReport, error) {

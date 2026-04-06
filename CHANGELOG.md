@@ -1,3 +1,11 @@
+## [11.52.0] - 2026-04-05
+### Go Port: Lattice Reconciliation Execution
+- **Safe Execution Workflow**: Added `POST /reconcile/apply` to the Go lattice server, providing an operator-guided path to execute synchronization based on analysis results.
+- **Conservative Policy**: The execution layer explicitly allows safe `remote_ahead` and `local_empty_remote_has_state` catch-up syncs while refusing dangerous `divergent`, `remote_empty`, or `partially_overlapping` cases that require manual intervention.
+- **Policy Memory**: Reconciliation attempts, refusals, and skipped executions (due to cooldown) are now fully captured in peer telemetry and the apply-result payload.
+- **Regression Coverage**: Added consensus server tests proving that `remote_ahead` relationships trigger a successful sync while `divergent` relationships are correctly refused with structured error feedback.
+- **Validation**: Re-validated `go test -buildvcs=false ./cmd/supernode-go ./internal/consensus` and `go build -buildvcs=false ./...` across the integrated workspace.
+
 ## [11.51.0] - 2026-04-05
 ### Go Port: Lattice Reconciliation Analysis Tooling
 - **Safe Reconciliation Endpoint**: Added `POST /reconcile` to the Go lattice server so operators can analyze local-vs-remote history relationship without mutating consensus state.

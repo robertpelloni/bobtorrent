@@ -8,14 +8,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - operator experience
 
 ## Current Release Train
-- **Current Version**: `11.51.0`
+- **Current Version**: `11.52.0`
 - **Primary Runtime Targets**:
   - `lattice-go` — block lattice consensus node
   - `supernode-go` — torrent seeding, market polling, TUI operations
   - `dht-proxy` — privacy-preserving peer discovery utility
   - `storage.wasm` — browser-side Go storage kernel
 
-## ✅ Completed Through v11.51.0
+## ✅ Completed Through v11.52.0
 
 ### 1. Go Consensus Node
 - Ported the Bobcoin asynchronous block lattice to Go.
@@ -34,6 +34,7 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Added peer-health telemetry plus bounded retry handling around bootstrap, block-page sync, peer-list sync, and fan-out delivery so multi-node operations expose lag/failure state instead of only raw peer counts.
 - Added a stronger sync policy layer on top: peers can now enter cooldown after failures, broadcasts skip peers in cooldown, and missing-cursor cases on non-empty local chains are treated as divergence suspicion instead of silent full replay.
 - Added safe reconciliation analysis tooling via `POST /reconcile`, allowing operators to compare local-vs-remote ordered-history state and receive a suggested next action without mutating the live node.
+- Added safe reconciliation execution via `POST /reconcile/apply`, enabling operator-guided catch-up for `remote_ahead` cases while enforcing refusal for divergent or unsafe sync paths.
 - Added wallet-attributed manifest anchor indexing and anchor query APIs.
 
 ### 2. Frontend Compatibility Layer

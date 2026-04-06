@@ -459,3 +459,78 @@ func TestHandleReconcileReportsDivergence(t *testing.T) {
 		t.Fatalf("expected investigate_divergence suggestion, got %#v", report)
 	}
 }
+
+func TestHandleReconcileApplyExecutesSafeRemoteAheadSync(t *testing.T) {
+	wallet := mustGenerateKeypair(t)
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, genesis, wallet.PrivateKey)
+
+	remote := NewServer()
+	if err := remote.lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("remote genesis failed: %v", err)
+	}
+	blockOne := torrent.NewBlock("achievement_unlock", wallet.PublicKey, &genesis.Hash, genesis.Balance, genesis.StakedBalance, genesis.Height+1, "remote-a1", nil, map[string]interface{}{"achievement": "REMOTE_A1"})
+	mustSignBlock(t, blockOne, wallet.PrivateKey)
+	if err := remote.lattice.ProcessBlock(blockOne); err != nil {
+		t.Fatalf("remote blockOne failed: %v", err)
+	}
+	remoteHTTP := httptest.NewServer(remote.HTTPHandler())
+	defer remoteHTTP.Close()
+
+	local := NewServer()
+	if err := local.lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("local genesis failed: %v", err)
+	}
+
+	applyRec := postJSON(t, local.HTTPHandler(), "/reconcile/apply", map[string]interface{}{"peer": remoteHTTP.URL})
+	if applyRec.Code != http.StatusOK {
+		t.Fatalf("expected reconcile apply status %d, got %d with %s", http.StatusOK, applyRec.Code, applyRec.Body.String())
+	}
+	body := decodeJSONBody(t, applyRec)
+	apply, ok := body["apply"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected apply payload, got %#v", body)
+	}
+	if apply["executed"] != true || apply["executionMode"] != "remote_to_local_sync" {
+		t.Fatalf("expected executed remote_to_local_sync result, got %#v", apply)
+	}
+	if len(local.lattice.blocks) != 2 {
+		t.Fatalf("expected local node to catch up to 2 blocks, got %d", len(local.lattice.blocks))
+	}
+}
+
+func TestHandleReconcileApplyRefusesDivergentPeer(t *testing.T) {
+	remote := NewServer()
+	remoteWallet := mustGenerateKeypair(t)
+	remoteGenesis := torrent.NewBlock("open", remoteWallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, remoteGenesis, remoteWallet.PrivateKey)
+	if err := remote.lattice.ProcessBlock(remoteGenesis); err != nil {
+		t.Fatalf("remote genesis failed: %v", err)
+	}
+	remoteHTTP := httptest.NewServer(remote.HTTPHandler())
+	defer remoteHTTP.Close()
+
+	local := NewServer()
+	localWallet := mustGenerateKeypair(t)
+	localGenesis := torrent.NewBlock("open", localWallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, localGenesis, localWallet.PrivateKey)
+	if err := local.lattice.ProcessBlock(localGenesis); err != nil {
+		t.Fatalf("local genesis failed: %v", err)
+	}
+
+	applyRec := postJSON(t, local.HTTPHandler(), "/reconcile/apply", map[string]interface{}{"peer": remoteHTTP.URL, "force": true})
+	if applyRec.Code != http.StatusConflict {
+		t.Fatalf("expected reconcile apply conflict status %d, got %d with %s", http.StatusConflict, applyRec.Code, applyRec.Body.String())
+	}
+	body := decodeJSONBody(t, applyRec)
+	if body["success"] != false {
+		t.Fatalf("expected success=false for refused divergent reconciliation, got %#v", body)
+	}
+	apply, ok := body["apply"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected apply payload, got %#v", body)
+	}
+	if apply["executionMode"] != "refused" {
+		t.Fatalf("expected refused execution mode, got %#v", apply)
+	}
+}

@@ -1,72 +1,44 @@
-# Bobtorrent Omni-Workspace Handoff (v11.51.0)
+# Bobtorrent Omni-Workspace Handoff (v11.52.0)
 
 ## Session Objective
-Continue the new consensus networking Phase 3 work by adding explicit operator reconciliation tooling on top of the existing bootstrap/catch-up, retry, cooldown, and divergence-suspicion layers.
+Finalize Phase 3 of the consensus networking hardening by adding safe, operator-guided reconciliation execution on top of the existing analysis and policy layers.
 
 ## What Was Implemented
 
-### 1. Safe reconciliation endpoint
+### 1. Reconciliation execution endpoint
 File:
 - `internal/consensus/server.go`
 
 Added:
-- `POST /reconcile`
+- `POST /reconcile/apply`
 
-This endpoint is analysis-only. It does **not** mutate live consensus state.
+This endpoint allows operators to trigger synchronization based on the results of a reconciliation analysis. It follows a strict "safety-first" policy.
 
-It compares local-vs-remote history using:
-- local latest ordered-history cursor
-- remote bootstrap summary (`latestBlockHash`, `stateHash`, `totalBlocks`)
-- whether the remote contains the local cursor
-- whether the local node contains the remote latest hash
+### 2. Execution policy
+The implementation explicitly handles relationship types to prevent data loss or accidental state resets:
+- **Safe to Sync**: `remote_ahead` and `local_empty_remote_has_state` trigger a standard remote-to-local ordered catch-up.
+- **No Action Needed**: `both_empty` and `in_sync` return success without performing any work.
+- **Explicitly Refused**: `divergent`, `partially_overlapping`, `local_ahead`, and `remote_empty` are refused with a `409 Conflict` and detailed guidance.
 
-### 2. Reconciliation report model
+This ensures that reconciliation can only be automated for straightforward "catching up" scenarios, while ambiguous or potentially dangerous state mismatches require manual operator intervention.
+
+### 3. Apply result model
 File:
 - `internal/consensus/server.go`
 
-Added `PeerReconciliationReport`.
+Added `ReconciliationApplyResult`, which provides comprehensive feedback on:
+- whether execution happened (`executed` bool)
+- the execution mode (`noop`, `remote_to_local_sync`, `refused`)
+- the reasoning for the decision
+- the underlying analysis report and sync results (if applicable)
 
-It now reports:
-- local latest hash
-- remote latest hash
-- local/remote state hashes
-- local/remote block totals
-- whether the remote contains the local cursor
-- whether the local node contains the remote latest hash
-- relationship classification
-- suggested next action
-- explanatory notes
-- current peer cooldown state
-
-### 3. Relationship classification
-The new reconciliation analysis can now classify a peer relationship as:
-- `both_empty`
-- `local_empty_remote_has_state`
-- `remote_empty`
-- `in_sync`
-- `remote_ahead`
-- `local_ahead`
-- `partially_overlapping`
-- `divergent`
-
-This gives operators a much clearer next-step signal than comparing raw hashes/counts manually.
-
-### 4. Suggested-action guidance
-The new analysis also emits explicit next-step hints such as:
-- `no_action`
-- `bootstrap_from_peer`
-- `wait_or_sync_remote_from_local`
-- `do_not_sync_reset_remote_or_wait`
-- `investigate_state_hash_mismatch`
-- `investigate_divergence`
-
-### 5. Regression coverage
+### 4. Regression coverage
 File:
 - `internal/consensus/server_test.go`
 
 Added tests proving:
-- `POST /reconcile` reports a normal `remote_ahead` case when the local node is simply behind the remote node on the same chain
-- `POST /reconcile` reports a `divergent` case when the remote node does not contain the local cursor
+- Safe execution path for `remote_ahead` correctly catches up history.
+- Dangerous path for `divergent` peers is correctly blocked with a conflict status and "refused" execution mode.
 
 ## Validation
 Executed successfully:
@@ -76,26 +48,20 @@ Executed successfully:
 - `go build -buildvcs=false ./...`
 
 ## Findings / Analysis
-This was the correct next step after cooldown/divergence suspicion because the system could now detect unsafe sync scenarios, but operators still needed a dedicated safe analysis surface to understand what those scenarios meant.
+Phase 3 is now complete. The lattice networking layer has transitioned from a basic fan-out prototype to an operationally robust system with:
+- Order-preserved history paging (`/blocks`).
+- Peer health and retry observability.
+- Conservative cooldown and backoff policy.
+- Structural divergence detection.
+- Safe, guided reconciliation workflows.
 
-Before this pass:
-- the node could suspect divergence
-- the node could refuse unsafe replay behavior
-- the node could expose telemetry
-- but operators still lacked an explicit compare/report workflow for deciding what to do next
-
-After this pass:
-- operators can ask the node to compare itself against a peer safely
-- the node returns a structured relationship classification
-- suggested next action is explicit
-- no live consensus state is mutated during analysis
+The system is now capable of managing its own multi-node synchronization with a high degree of safety and operator visibility.
 
 ## Recommended Next Steps
-1. Continue toward richer reconciliation execution beyond analysis + suspicion + refusal
-2. Add operator workflows for lag/reconciliation if multi-node deployments become heavier
-3. Continue the broader Go-first campaign once the next highest-leverage systems gap is selected
+1. **Consensus Networking Phase 4**: Focus on richer divergence reconciliation (e.g., selective side-chain preservation or forced resets for specific accounts) if the network environment becomes more complex.
+2. **Continued Service Porting**: Audit the remaining Node-side specialized services (Matchmaking details, specialized game market logic) for further Go migration.
+3. **Identity/Attestation Depth**: Deepen the structured publisher attestation model toward external integrations.
 
 ## Notes for the Next Agent
-- No running processes were terminated in this session.
-- The new `/reconcile` endpoint is intentionally analysis-only; it does not rewrite local state or hot-swap history.
-- The next natural step is adding safer operator-guided reconciliation execution paths, not weakening the current safety boundary.
+- No processes were terminated.
+- The `apply` endpoint is intentionally conservative. If a sync is refused, the operator should use the `/reconcile` report to determine the root cause of divergence.

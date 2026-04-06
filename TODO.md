@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.51.0
+## ✅ Completed Through v11.52.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -76,13 +76,14 @@
   - added cooldown/backoff behavior so repeated failures suppress immediate reattempts
   - added divergence suspicion handling when a peer lacks the local ordered-history cursor
   - fan-out now skips peers in cooldown and records those skips in telemetry
-- [x] **Consensus peer sync improvements (Phase 3A)**
-  - added safe `POST /reconcile` analysis for local-vs-remote history relationship and recommended next action
-  - operators can now distinguish `remote_ahead`, `local_ahead`, `remote_empty`, `local_empty_remote_has_state`, and `divergent` cases without mutating live state
-- [ ] **Consensus peer sync improvements (Phase 3B)**
-  - richer reconciliation execution beyond suspicion + refusal + analysis
-  - more explicit lag/reconciliation workflows for heavier multi-node operations
-  - stronger peer-gossip and policy tuning beyond the current simple cooldown model
+- [x] **Consensus peer sync improvements (Phase 3B)**
+  - added safe `POST /reconcile/apply` execution for remote-to-local catch-up syncs
+  - execution policy refuses `divergent`, `remote_empty`, and `partially_overlapping` cases to preserve chain safety
+  - supports `force` parameter to bypass cooldown while still enforcing relationship safety
+- [ ] **Consensus peer sync improvements (Phase 4)**
+  - more advanced reconciliation (e.g., selective rollbacks or side-chain preservation) for divergent cases
+  - deeper peer-gossip policy tuning and backoff refinements
+  - richer sync dashboards / operator visualizers
 
 ## Important Compatibility / Cleanup Tasks
 - [ ] **Remove temporary legacy block shim** once bobcoin frontend includes explicit `height` and `staked_balance`
