@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.46.0`
+- **Root Version**: `11.47.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -48,7 +48,7 @@ bobtorrent/
 |---|---|---:|---|
 | DHT Proxy | `build/dht-proxy` | Buildable | Privacy-preserving peer discovery with GeoIP sorting |
 | Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, operator-tunable snapshot cadence/retention, persistence verification/repair endpoints, backup/export controls, import/restore controls, signed/encrypted operator backup bundle workflows, and broader mixed-transition replay regression coverage |
-| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, websocket matchmaking/signaling with liveness telemetry, Lotus Filecoin bridge status/deal endpoints, WASM artifact serving, manifest/shard publication registry, and durable local transaction logging |
+| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation compatibility, websocket matchmaking/signaling with liveness telemetry, Lotus Filecoin bridge status/deal endpoints, WASM artifact serving, manifest/shard publication registry, and durable local transaction logging |
 | Storage WASM | `build/storage.wasm` | Buildable | Browser-side Go storage kernel |
 | Go WASM Runtime | `build/wasm_exec.js` | Packaged | Required runtime bridge for browser execution |
 
@@ -63,6 +63,6 @@ bobtorrent/
 - Browser-consumable storage WASM runtime
 
 ## Current Known Gaps
-- Lattice persistence now includes a durable confirmed-block log, materialized snapshot acceleration, conservative snapshot repair tooling, backup/export controls, and import/restore workflows, but operator-tunable snapshot controls and signed/encrypted backup bundles are still missing
-- Filecoin bridge is simulated, not production RPC-backed
+- Lattice persistence is now significantly hardened, but snapshot mutability policy, larger replay webs, and richer operator diagnostics workflows remain open
+- Filecoin now has real Lotus RPC publication/verification support, but deeper CAR/import ingestion and richer lifecycle metadata are still pending
 - qBittorrent remote reference remains broken

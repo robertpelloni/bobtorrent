@@ -84,6 +84,8 @@ Additional frontend-facing endpoints now provided by `supernode-go`:
 - `POST /submit-proof`
 - `POST /add-torrent`
 - `POST /remove-torrent`
+- `POST /upload`
+- `GET /spora/:challenge`
 - `POST /upload-shard`
 - `POST /publish-manifest`
 - `GET /manifests/:id`

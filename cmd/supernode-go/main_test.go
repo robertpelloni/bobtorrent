@@ -1,14 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	anacrolixTorrent "github.com/anacrolix/torrent"
+	"github.com/anacrolix/torrent/metainfo"
 	"github.com/gorilla/websocket"
 )
 
@@ -249,5 +253,169 @@ func TestHandleServiceStatusIncludesSignalingSnapshot(t *testing.T) {
 	}
 	if signaling["activeConnections"] != float64(2) || signaling["activePairs"] != float64(1) || signaling["totalMatches"] != float64(3) {
 		t.Fatalf("unexpected signaling snapshot: %#v", signaling)
+	}
+}
+
+func TestBuildUploadedTorrentFromMultipartCreatesRealMagnet(t *testing.T) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "demo.bin")
+	if err != nil {
+		t.Fatalf("failed to create multipart file: %v", err)
+	}
+	if _, err := part.Write([]byte("hello world from bobtorrent")); err != nil {
+		t.Fatalf("failed to write multipart payload: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("failed to finalize multipart payload: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	file, header, err := req.FormFile("file")
+	if err != nil {
+		t.Fatalf("failed to reopen multipart file: %v", err)
+	}
+	defer file.Close()
+
+	uploaded, err := buildUploadedTorrentFromMultipart(file, header, t.TempDir())
+	if err != nil {
+		t.Fatalf("expected torrent metadata build to succeed, got %v", err)
+	}
+	if uploaded.InfoHash == "" || len(uploaded.InfoHash) != 40 {
+		t.Fatalf("expected 40-character info hash, got %q", uploaded.InfoHash)
+	}
+	if !strings.Contains(uploaded.Magnet, uploaded.InfoHash) {
+		t.Fatalf("expected magnet %q to contain info hash %q", uploaded.Magnet, uploaded.InfoHash)
+	}
+	if uploaded.Size <= 0 {
+		t.Fatalf("expected uploaded size to be captured, got %d", uploaded.Size)
+	}
+}
+
+func TestHandleUploadRegistersTorrent(t *testing.T) {
+	originalClient := torrentClient
+	originalDataDir := torrentDataDir
+	defer func() {
+		if torrentClient != nil {
+			torrentClient.Close()
+		}
+		torrentClient = originalClient
+		torrentDataDir = originalDataDir
+	}()
+
+	torrentDataDir = t.TempDir()
+	cfg := anacrolixTorrent.NewDefaultClientConfig()
+	cfg.DataDir = torrentDataDir
+	cfg.ListenPort = 0
+	cfg.Seed = true
+
+	client, err := anacrolixTorrent.NewClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to start test torrent client: %v", err)
+	}
+	torrentClient = client
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "demo.bin")
+	if err != nil {
+		t.Fatalf("failed to create multipart file: %v", err)
+	}
+	if _, err := part.Write([]byte("supernode upload regression payload")); err != nil {
+		t.Fatalf("failed to write upload payload: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("failed to finalize multipart upload: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	rec := httptest.NewRecorder()
+
+	handleUpload(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode upload response: %v", err)
+	}
+	infoHash, _ := resp["infoHash"].(string)
+	if infoHash == "" {
+		t.Fatalf("expected upload response to include infoHash, got %#v", resp)
+	}
+	var ih metainfo.Hash
+	if err := ih.FromHexString(infoHash); err != nil {
+		t.Fatalf("failed to parse returned info hash: %v", err)
+	}
+	if _, exists := torrentClient.Torrent(ih); !exists {
+		t.Fatalf("expected uploaded torrent %s to be registered with client", infoHash)
+	}
+}
+
+func TestHandleSporaRequiresTrackedAnchor(t *testing.T) {
+	originalClient := torrentClient
+	defer func() { torrentClient = originalClient }()
+	torrentClient = nil
+
+	req := httptest.NewRequest(http.MethodGet, "/spora/12345", nil)
+	rec := httptest.NewRecorder()
+
+	handleSpora(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rec.Code)
+	}
+}
+
+func TestHandleSporaReturnsProofWhenAnchorTracked(t *testing.T) {
+	originalClient := torrentClient
+	originalDataDir := torrentDataDir
+	defer func() {
+		if torrentClient != nil {
+			torrentClient.Close()
+		}
+		torrentClient = originalClient
+		torrentDataDir = originalDataDir
+	}()
+
+	torrentDataDir = t.TempDir()
+	cfg := anacrolixTorrent.NewDefaultClientConfig()
+	cfg.DataDir = torrentDataDir
+	cfg.ListenPort = 0
+	cfg.Seed = true
+
+	client, err := anacrolixTorrent.NewClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to start test torrent client: %v", err)
+	}
+	torrentClient = client
+	trackCoreArcadeAnchors()
+
+	req := httptest.NewRequest(http.MethodGet, "/spora/12345", nil)
+	rec := httptest.NewRecorder()
+
+	handleSpora(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode spora response: %v", err)
+	}
+	spora, ok := body["spora"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected spora payload, got %#v", body)
+	}
+	if spora["infoHash"] != primaryCoreArcadeInfoHash {
+		t.Fatalf("expected primary core arcade info hash, got %#v", spora["infoHash"])
+	}
+	if spora["challenge"] != float64(12345) {
+		t.Fatalf("expected challenge 12345, got %#v", spora["challenge"])
 	}
 }

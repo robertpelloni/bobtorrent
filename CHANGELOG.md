@@ -1,3 +1,11 @@
+## [11.47.0] - 2026-04-05
+### Go Port: Supernode Upload + SPoRA Compatibility
+- **Go Supertorrent Surface Expanded**: Added legacy-compatible `POST /upload` handling to `cmd/supernode-go`, so multipart file uploads can now be ported through Go instead of requiring the old Node `supertorrent` control plane.
+- **Real Torrent Identity Generation**: The new Go upload path persists the uploaded file, derives real torrent metainfo with `anacrolix/torrent/metainfo`, returns an honest magnet/info-hash pair, and registers the torrent with the active Go client instead of faking torrent identity with a plain content hash.
+- **SPoRA Parity Hardening**: Tightened `GET /spora/:challenge` to require a valid integer challenge and an actively tracked Core Arcade anchor before attesting storage, mirroring the older Node supertorrent expectation more faithfully.
+- **Regression Coverage**: Added executable tests proving multipart uploads generate real torrent metadata, uploaded torrents register with the Go client, and SPoRA now rejects missing-anchor cases while succeeding when the core anchor is tracked.
+- **Validation**: Re-validated `go test -buildvcs=false ./cmd/supernode-go` and `go build -buildvcs=false ./...` after the new Go compatibility slice landed.
+
 ## [11.15.0] - 2026-04-04
 ### Go Port: Bobcoin Trust-Aware Archive Intelligence Sync
 - **Bobcoin Intelligence Surface**: Updated the `bobcoin` submodule to `v8.16.0`, preserving upstream Go-parity hardening while adding owner trust scores, trust tiers, sorting modes, and a sovereign publisher leaderboard to the Vault archive surface.

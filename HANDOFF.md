@@ -1,43 +1,62 @@
-# Bobtorrent Omni-Workspace Handoff (v11.46.0)
+# Bobtorrent Omni-Workspace Handoff (v11.47.0)
 
 ## Session Objective
-Improve frontend bundle health in Bobcoin by splitting the eager route graph and isolating the heaviest libraries into explicit vendor chunks.
+Continue the Go-first migration by porting additional remaining practical `supertorrent` responsibilities into `cmd/supernode-go` instead of leaving them behind in the legacy Node service.
 
 ## What Was Implemented
 
-### 1. Route-level lazy loading in Bobcoin
+### 1. Real Go `/upload` compatibility in `supernode-go`
+Files:
+- `cmd/supernode-go/main.go`
+- `cmd/supernode-go/main_test.go`
+
+Added legacy-compatible `POST /upload` handling to the Go supernode.
+
+Behavior:
+- accepts multipart form uploads (`file` field)
+- persists the uploaded file into the Go torrent data directory
+- derives real torrent metainfo from the saved file using `anacrolix/torrent/metainfo`
+- returns a real magnet + info-hash pair
+- registers the uploaded torrent with the active Go torrent client
+
+This is intentionally more honest than returning a fake torrent identity derived from a plain content hash.
+
+### 2. Stronger `/spora/:challenge` compatibility
 File:
-- `bobcoin/frontend/src/App.jsx`
+- `cmd/supernode-go/main.go`
 
-All page routes are now loaded via `React.lazy` + `Suspense` instead of being eagerly imported into the main application bundle.
+`GET /spora/:challenge` now:
+- requires `GET`
+- requires a parseable integer challenge
+- requires the primary Core Arcade anchor to actually be tracked by the Go torrent client
+- returns a compatibility proof only when that tracked-anchor precondition is satisfied
 
-### 2. Manual vendor chunking
+### 3. Core Arcade anchor tracking on Go startup
 File:
-- `bobcoin/frontend/vite.config.js`
+- `cmd/supernode-go/main.go`
 
-Added manual chunking for:
-- `node-seal`
-- `three` / React Three Fiber stack
-- React core
-- React Router
-- crypto-heavy dependencies (`tweetnacl`, `bs58`)
+The Go torrent client now loads the legacy Core Arcade magnets on startup so the SPoRA compatibility surface has the same basic precondition the old Node supertorrent relied on.
 
 ## Validation
 Executed successfully:
-- `cd bobcoin/frontend && npm run build`
+- `gofmt -w cmd/supernode-go/main.go cmd/supernode-go/main_test.go`
+- `go test -buildvcs=false ./cmd/supernode-go`
+- `go build -buildvcs=false ./...`
 
 ## Findings / Analysis
-The build profile is materially healthier now:
-- the main app chunk is much smaller than before
-- page routes are emitted as separate chunks
-- `node-seal` is isolated into its own vendor chunk
-- the remaining large warning is now primarily concentrated in the dedicated `three` vendor chunk instead of the core app graph
+This was a good next Go-port target because it moved another realistic Node-only service edge into Go without pretending that impossible specialized parity work is already solved.
+
+Most importantly:
+- `/upload` is now no longer a Node-only operational dependency for practical compatibility use
+- `/spora/:challenge` is less of an unconditional placeholder and more of a real compatibility gate
+- the remaining service-side Node gaps are becoming narrower and more specialized
 
 ## Recommended Next Steps
-1. Continue broader diagnostics/provenance workflows beyond the current package comparison layer
-2. If needed later, defer the `three` stack even more aggressively beyond the current route/vendor split
-3. Continue evaluating which specialized Node surfaces are still worth porting further
+1. Continue auditing whether any other practical `supertorrent` / `game-server` responsibilities are still only living in Node
+2. Push consensus networking harder next: bootstrap, duplicate suppression, and late-join catch-up remain high-value Go-first gaps
+3. Continue deeper Filecoin ingest/lifecycle work once service-surface migration plateaus
 
 ## Notes for the Next Agent
 - No running processes were terminated in this session.
-- The bundle-health pass intentionally focused on the most leverage-rich structural fix first: stop eagerly importing the whole route graph and isolate the heaviest vendors.
+- The `/upload` port intentionally generates real torrent metainfo rather than a pseudo-magnet so the Go compatibility surface stays honest.
+- The stricter `/spora` behavior depends on the primary Core Arcade anchor being tracked; startup now attempts to load those magnets automatically.

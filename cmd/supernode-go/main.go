@@ -8,12 +8,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +30,7 @@ import (
 	"bobtorrent/pkg/torrent"
 
 	anacrolixTorrent "github.com/anacrolix/torrent"
+	"github.com/anacrolix/torrent/bencode"
 	"github.com/anacrolix/torrent/metainfo"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/go-resty/resty/v2"
@@ -39,12 +43,17 @@ const (
 	signalingPingPeriod     = 25 * time.Second
 	signalingWaitTimeout    = 45 * time.Second
 	signalingMaxMessageSize = 1 << 20
+
+	primaryCoreArcadeMagnet   = "magnet:?xt=urn:btih:1234567890abcdef1234567890abcdef12345678"
+	primaryCoreArcadeInfoHash = "1234567890abcdef1234567890abcdef12345678"
+	secondaryCoreArcadeMagnet = "magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12"
 )
 
 var (
 	nodeWallet          *torrent.Keypair
 	httpClient          = resty.New().SetTimeout(10 * time.Second)
 	latticeURL          = "http://localhost:4000"
+	torrentDataDir      = "./downloads"
 	torrentClient       *anacrolixTorrent.Client
 	uiProgram           *tea.Program
 	fcBridge            *bridges.FilecoinBridge
@@ -323,6 +332,7 @@ func startTrackerServices() {
 	mux.HandleFunc("/submit-proof", withCORS(handleSubmitProof))
 	mux.HandleFunc("/add-torrent", withCORS(handleAddTorrent))
 	mux.HandleFunc("/remove-torrent", withCORS(handleRemoveTorrent))
+	mux.HandleFunc("/upload", withCORS(handleUpload))
 	mux.HandleFunc("/upload-shard", withCORS(handleUploadShard))
 	mux.HandleFunc("/publish-manifest", withCORS(handlePublishManifest))
 	mux.HandleFunc("/manifests/", withCORS(handleGetManifest))
@@ -371,7 +381,7 @@ func initEconomyDatabase() {
 
 func initTorrentClient() {
 	cfg := anacrolixTorrent.NewDefaultClientConfig()
-	cfg.DataDir = "./downloads"
+	cfg.DataDir = torrentDataDir
 	cfg.ListenPort = 4242
 	cfg.Seed = true
 
@@ -380,6 +390,8 @@ func initTorrentClient() {
 	if err != nil {
 		log.Fatalf("failed to start torrent client: %v", err)
 	}
+
+	trackCoreArcadeAnchors()
 }
 
 func loadOrCreateWallet() {
@@ -606,12 +618,78 @@ func sendStatus(text string, balance int64) {
 	}
 }
 
+// trackCoreArcadeAnchors keeps the legacy "Core Arcade" magnets loaded in the
+// Go torrent client. The historical Node supertorrent booted with these tracked
+// by default, and the `/spora/:challenge` compatibility endpoint expects the
+// primary anchor to be present before it will attest storage.
+func trackCoreArcadeAnchors() {
+	if torrentClient == nil {
+		return
+	}
+
+	for _, magnetURI := range []string{primaryCoreArcadeMagnet, secondaryCoreArcadeMagnet} {
+		spec, err := metainfo.ParseMagnetUri(magnetURI)
+		if err != nil {
+			log.Printf("invalid core arcade magnet %q: %v", magnetURI, err)
+			continue
+		}
+		if _, exists := torrentClient.Torrent(spec.InfoHash); exists {
+			continue
+		}
+		t, err := torrentClient.AddMagnet(magnetURI)
+		if err != nil {
+			log.Printf("failed to track core arcade magnet %s: %v", spec.InfoHash.HexString(), err)
+			continue
+		}
+		go func(target *anacrolixTorrent.Torrent) {
+			<-target.GotInfo()
+			target.DownloadAll()
+		}(t)
+	}
+}
+
+func primaryCoreArcadeTracked() bool {
+	if torrentClient == nil {
+		return false
+	}
+	var infoHash metainfo.Hash
+	if err := infoHash.FromHexString(primaryCoreArcadeInfoHash); err != nil {
+		return false
+	}
+	_, exists := torrentClient.Torrent(infoHash)
+	return exists
+}
+
 func handleSpora(w http.ResponseWriter, r *http.Request) {
-	challenge := strings.TrimPrefix(r.URL.Path, "/spora/")
-	infoHash := "1234567890abcdef1234567890abcdef12345678"
-	chunkHash := torrent.HashSHA256(infoHash + challenge)
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"success": true, "spora": {"infoHash": "%s", "challenge": %s, "chunkHash": "%s"}}`, infoHash, challenge, chunkHash)
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	challengeRaw := strings.TrimPrefix(r.URL.Path, "/spora/")
+	if challengeRaw == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"error": "challenge required"})
+		return
+	}
+	challenge, err := strconv.Atoi(challengeRaw)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"error": "challenge must be an integer"})
+		return
+	}
+	if !primaryCoreArcadeTracked() {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"error": "Supernode is not tracking the Core Arcade Anchor. SPoRA failed."})
+		return
+	}
+
+	chunkHash := torrent.HashSHA256(primaryCoreArcadeInfoHash + strconv.Itoa(challenge))
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"spora": map[string]interface{}{
+			"infoHash":  primaryCoreArcadeInfoHash,
+			"challenge": challenge,
+			"chunkHash": chunkHash,
+		},
+	})
 }
 
 func walletFrontier() (*string, int64, int64, int, error) {
@@ -650,10 +728,9 @@ func recordEconomyTransaction(txType string, amount float64, hash, reason, addre
 }
 
 func buildLocalSpora(challenge int) map[string]interface{} {
-	infoHash := "1234567890abcdef1234567890abcdef12345678"
-	chunkHash := torrent.HashSHA256(infoHash + fmt.Sprintf("%d", challenge))
+	chunkHash := torrent.HashSHA256(primaryCoreArcadeInfoHash + fmt.Sprintf("%d", challenge))
 	return map[string]interface{}{
-		"infoHash":  infoHash,
+		"infoHash":  primaryCoreArcadeInfoHash,
 		"challenge": challenge,
 		"chunkHash": chunkHash,
 	}
@@ -1200,6 +1277,141 @@ func handleRemoveTorrent(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success":  true,
 		"infoHash": req.InfoHash,
+	})
+}
+
+type uploadedTorrentDescriptor struct {
+	MetaInfo     *metainfo.MetaInfo
+	InfoHash     string
+	Magnet       string
+	Size         int64
+	StoredPath   string
+	StoredName   string
+	OriginalName string
+}
+
+// buildUploadedTorrentFromMultipart persists an uploaded file into the
+// supernode data directory, derives real torrent metainfo from the saved bytes,
+// and returns a magnet/info-hash pair that can be registered with the active Go
+// torrent client. This keeps `/upload` honest: callers receive a real torrent
+// identity rather than a synthetic content hash pretending to be a torrent.
+func buildUploadedTorrentFromMultipart(file multipart.File, header *multipart.FileHeader, dataDir string) (*uploadedTorrentDescriptor, error) {
+	if header == nil {
+		return nil, fmt.Errorf("multipart file header required")
+	}
+	if dataDir == "" {
+		return nil, fmt.Errorf("torrent data directory required")
+	}
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		return nil, fmt.Errorf("failed to create torrent data directory: %w", err)
+	}
+
+	originalName := filepath.Base(strings.TrimSpace(header.Filename))
+	if originalName == "" || originalName == "." || originalName == string(filepath.Separator) {
+		originalName = "upload.bin"
+	}
+	storedName := fmt.Sprintf("upload_%d_%s", time.Now().UnixNano(), originalName)
+	storedPath := filepath.Join(dataDir, storedName)
+
+	out, err := os.Create(storedPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create upload destination: %w", err)
+	}
+	size, copyErr := io.Copy(out, file)
+	closeErr := out.Close()
+	if copyErr != nil {
+		_ = os.Remove(storedPath)
+		return nil, fmt.Errorf("failed to persist uploaded file: %w", copyErr)
+	}
+	if closeErr != nil {
+		_ = os.Remove(storedPath)
+		return nil, fmt.Errorf("failed to finalize uploaded file: %w", closeErr)
+	}
+
+	info := metainfo.Info{PieceLength: metainfo.ChoosePieceLength(size)}
+	if err := info.BuildFromFilePath(storedPath); err != nil {
+		_ = os.Remove(storedPath)
+		return nil, fmt.Errorf("failed to build torrent metadata: %w", err)
+	}
+	infoBytes, err := bencode.Marshal(info)
+	if err != nil {
+		_ = os.Remove(storedPath)
+		return nil, fmt.Errorf("failed to encode torrent info: %w", err)
+	}
+
+	mi := &metainfo.MetaInfo{
+		CreationDate: time.Now().Unix(),
+		CreatedBy:    "Bobtorrent Go Supernode",
+		InfoBytes:    infoBytes,
+	}
+	mi.SetDefaults()
+	infoHash := mi.HashInfoBytes()
+	magnet := mi.Magnet(&infoHash, &info).String()
+
+	return &uploadedTorrentDescriptor{
+		MetaInfo:     mi,
+		InfoHash:     infoHash.HexString(),
+		Magnet:       magnet,
+		Size:         size,
+		StoredPath:   storedPath,
+		StoredName:   storedName,
+		OriginalName: originalName,
+	}, nil
+}
+
+func registerUploadedTorrent(uploaded *uploadedTorrentDescriptor) error {
+	if uploaded == nil || uploaded.MetaInfo == nil {
+		return fmt.Errorf("uploaded torrent metadata required")
+	}
+	if torrentClient == nil {
+		return fmt.Errorf("torrent client unavailable")
+	}
+	if _, exists := torrentClient.Torrent(uploaded.MetaInfo.HashInfoBytes()); exists {
+		return nil
+	}
+
+	t, err := torrentClient.AddTorrent(uploaded.MetaInfo)
+	if err != nil {
+		return fmt.Errorf("failed to register uploaded torrent: %w", err)
+	}
+	go func(target *anacrolixTorrent.Torrent) {
+		<-target.GotInfo()
+		target.DownloadAll()
+	}(t)
+	return nil
+}
+
+func handleUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"error": "No file uploaded"})
+		return
+	}
+	defer file.Close()
+
+	uploaded, err := buildUploadedTorrentFromMultipart(file, header, torrentDataDir)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to build uploaded torrent: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if err := registerUploadedTorrent(uploaded); err != nil {
+		_ = os.Remove(uploaded.StoredPath)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":    true,
+		"name":       uploaded.OriginalName,
+		"storedName": uploaded.StoredName,
+		"magnet":     uploaded.Magnet,
+		"infoHash":   uploaded.InfoHash,
+		"size":       uploaded.Size,
 	})
 }
 
