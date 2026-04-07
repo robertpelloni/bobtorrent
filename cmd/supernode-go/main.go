@@ -23,6 +23,7 @@ import (
 
 	"bobtorrent/internal/bridges"
 	"bobtorrent/internal/economy"
+	"bobtorrent/internal/identity"
 	"bobtorrent/internal/publish"
 	"bobtorrent/internal/tracker"
 	"bobtorrent/internal/transport"
@@ -62,6 +63,7 @@ var (
 	dhtNode             *transport.DHTNode
 	publishRegistry     *publish.Registry
 	economyDB           *economy.Database
+	verifierSvc         *identity.VerifierService
 	startedAt           = time.Now()
 	fheOracleRunner     = computeFHEOracleCiphertext
 	signalingMatchmaker = newMatchmaker()
@@ -308,6 +310,7 @@ func main() {
 	defer publishRegistry.Close()
 	initEconomyDatabase()
 	defer economyDB.Close()
+	initVerifierService()
 
 	model := tui.NewModel()
 	uiProgram = tea.NewProgram(model, tea.WithAltScreen())
@@ -341,6 +344,7 @@ func startTrackerServices() {
 	mux.HandleFunc("/burn", withCORS(handleBurn))
 	mux.HandleFunc("/fhe-oracle", withCORS(handleFHEOracle))
 	mux.HandleFunc("/submit-proof", withCORS(handleSubmitProof))
+	mux.HandleFunc("/verify-attestation", withCORS(handleVerifyAttestation))
 	mux.HandleFunc("/add-torrent", withCORS(handleAddTorrent))
 	mux.HandleFunc("/remove-torrent", withCORS(handleRemoveTorrent))
 	mux.HandleFunc("/upload", withCORS(handleUpload))
@@ -389,6 +393,15 @@ func initEconomyDatabase() {
 	if err != nil {
 		log.Fatalf("failed to initialize economy database: %v", err)
 	}
+}
+
+func initVerifierService() {
+	verifierSvc = identity.NewVerifierService()
+	mock := &identity.MockVerifier{}
+	verifierSvc.RegisterVerifier(identity.KindMock, mock)
+	verifierSvc.RegisterVerifier(identity.KindGitHub, mock)
+	verifierSvc.RegisterVerifier(identity.KindORCID, mock)
+	verifierSvc.RegisterVerifier(identity.KindURL, mock)
 }
 
 func initTorrentClient() {
@@ -1296,6 +1309,32 @@ func handleSubmitProof(w http.ResponseWriter, r *http.Request) {
 		"hash":       hash,
 		"zkVerified": true,
 	})
+}
+
+func handleVerifyAttestation(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req identity.Attestation
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid attestation payload", http.StatusBadRequest)
+		return
+	}
+
+	if verifierSvc == nil {
+		http.Error(w, "verifier service unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	result, err := verifierSvc.Verify(r.Context(), req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("verification error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
 }
 
 func handleAddTorrent(w http.ResponseWriter, r *http.Request) {

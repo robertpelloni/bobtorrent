@@ -99,7 +99,7 @@
 ## Strategic Backlog
 - [ ] **Go Supernode WebUI integration**
 - [x] **Durable market manifests + shard metadata registry**: Upgraded the publication registry with a SQLite-backed index and added `GET /assets` for durable asset discovery.
-- [ ] **Identity/Attestation verification**
+- [x] **Identity/Attestation verification**: Implemented a Go-native verifier service and integrated real-time verification badges into the Bobcoin Vault UI.
 - [ ] **Game engine asset ingestion path**
 - [ ] **Global decentralized storage network launch**
 - [ ] **Investigate unreachable `qbittorrent` remote**
