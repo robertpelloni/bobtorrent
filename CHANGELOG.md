@@ -1,3 +1,12 @@
+## [11.54.0] - 2026-04-06
+### Go Port: Durable Seeded Torrents Registry + Frontend Health
+- **Durable Seeding List**: Ported the `torrents.json` registry logic from Node `supertorrent` to `supernode-go`. The Go supernode now automatically persists and reloads its seeding queue (magnets and info-hashes), ensuring seeded assets survive restart.
+- **Magnet URI Tracking**: Added an internal map to track original magnet URIs by info-hash, guaranteeing that `torrents.json` remains consistent even when torrent metadata is not yet fully available locally.
+- **Registry Integration**: Hooked the durability logic into manual additions (`/add-torrent`), removals (`/remove-torrent`), operator uploads (`/upload`), and autonomous market bid acceptances.
+- **Frontend Performance Breakthrough**: Updated the `bobcoin` submodule to `v8.88.0`, where aggressive deferral of the heavy `three.js` topology visualization reduced the main application bundle from ~1.5MB to ~50kB.
+- **Test Hardening**: Stabilized the signaling matchmaker integration tests with a tiny connection-order delay to ensure deterministic role assignment during concurrent `FIND_MATCH` requests.
+- **Validation**: Re-validated `go test -buildvcs=false ./cmd/supernode-go` and `go build -buildvcs=false ./...` across the integrated workspace state.
+
 ## [11.53.0] - 2026-04-06
 ### Go Port: Consensus API Compatibility Regression Coverage
 - **WebSocket Feed Tests**: Added executable regression coverage for the `NEW_BLOCK` live feed, proving the Go lattice correctly upgrades the connection, emits `STATS` on join, and broadcasts correctly formatted `NEW_BLOCK` JSON messages when a new block is processed.

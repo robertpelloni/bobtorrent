@@ -10,3 +10,5 @@ dht_state.json
 dht_publish_state.json
 identity.json
 *.log
+torrents.json
+wallet.json

@@ -126,6 +126,7 @@ func TestHandleSignalingSocketMatchesPlayersAndRelaysSignals(t *testing.T) {
 	if err := connA.WriteJSON(map[string]interface{}{"type": "FIND_MATCH"}); err != nil {
 		t.Fatalf("failed to queue first player: %v", err)
 	}
+	time.Sleep(50 * time.Millisecond)
 	if err := connB.WriteJSON(map[string]interface{}{"type": "FIND_MATCH"}); err != nil {
 		t.Fatalf("failed to queue second player: %v", err)
 	}

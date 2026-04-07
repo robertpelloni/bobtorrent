@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.53.0
+## ✅ Completed Through v11.54.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -98,6 +98,7 @@
 
 ## Strategic Backlog
 - [ ] **Go Supernode WebUI integration**
+- [x] **Durable seeded torrents registry (Go)**: Ported `torrents.json` tracking to `supernode-go`, ensuring the seeding queue is persisted and reloaded across restarts.
 - [ ] **Durable market manifests + shard metadata registry**
 - [ ] **Game engine asset ingestion path**
 - [ ] **Global decentralized storage network launch**

@@ -47,6 +47,8 @@ const (
 	primaryCoreArcadeMagnet   = "magnet:?xt=urn:btih:1234567890abcdef1234567890abcdef12345678"
 	primaryCoreArcadeInfoHash = "1234567890abcdef1234567890abcdef12345678"
 	secondaryCoreArcadeMagnet = "magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12"
+
+	torrentsFile = "torrents.json"
 )
 
 var (
@@ -63,7 +65,14 @@ var (
 	startedAt           = time.Now()
 	fheOracleRunner     = computeFHEOracleCiphertext
 	signalingMatchmaker = newMatchmaker()
+	registryMu          sync.Mutex
+	magnetMap           = make(map[string]string) // infohash -> magnetURI
 )
+
+type torrentRecord struct {
+	Magnet   string `json:"magnet"`
+	InfoHash string `json:"infoHash"`
+}
 
 // matchPlayer tracks one websocket client participating in lightweight
 // matchmaking/signaling. The service intentionally stays small and protocol-
@@ -391,7 +400,80 @@ func initTorrentClient() {
 		log.Fatalf("failed to start torrent client: %v", err)
 	}
 
+	loadTorrentRegistry()
 	trackCoreArcadeAnchors()
+}
+
+func loadTorrentRegistry() {
+	if torrentClient == nil {
+		return
+	}
+
+	data, err := os.ReadFile(torrentsFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return
+		}
+		log.Printf("failed to read torrent registry: %v", err)
+		return
+	}
+
+	var records []torrentRecord
+	if err := json.Unmarshal(data, &records); err != nil {
+		log.Printf("failed to parse torrent registry: %v", err)
+		return
+	}
+
+	registryMu.Lock()
+	log.Printf("Loaded %d torrents from registry", len(records))
+	for _, record := range records {
+		if record.Magnet == "" {
+			continue
+		}
+		t, err := torrentClient.AddMagnet(record.Magnet)
+		if err != nil {
+			log.Printf("failed to reload torrent %s: %v", record.InfoHash, err)
+			continue
+		}
+		magnetMap[t.InfoHash().HexString()] = record.Magnet
+		go func(target *anacrolixTorrent.Torrent) {
+			<-target.GotInfo()
+			target.DownloadAll()
+		}(t)
+	}
+	registryMu.Unlock()
+}
+
+func saveTorrentRegistry() {
+	if torrentClient == nil {
+		return
+	}
+
+	registryMu.Lock()
+	defer registryMu.Unlock()
+
+	torrents := torrentClient.Torrents()
+	records := make([]torrentRecord, 0, len(torrents))
+	for _, t := range torrents {
+		ih := t.InfoHash().HexString()
+		magnet := magnetMap[ih]
+		if magnet == "" {
+			// Fallback to generating a magnet if we don't have the original URI
+			// though this might be incomplete if info isn't there yet.
+			mi := t.Metainfo()
+			magnet = mi.Magnet(nil, nil).String()
+		}
+
+		records = append(records, torrentRecord{
+			Magnet:   magnet,
+			InfoHash: ih,
+		})
+	}
+
+	data, _ := json.MarshalIndent(records, "", "  ")
+	if err := os.WriteFile(torrentsFile, data, 0644); err != nil {
+		log.Printf("failed to persist torrent registry: %v", err)
+	}
 }
 
 func loadOrCreateWallet() {
@@ -471,6 +553,11 @@ func pollMarket() {
 			log.Printf("failed to add magnet for bid %s: %v", bid.ID, err)
 			continue
 		}
+
+		registryMu.Lock()
+		magnetMap[t.InfoHash().HexString()] = bid.Magnet
+		registryMu.Unlock()
+		saveTorrentRegistry()
 
 		go func(target *anacrolixTorrent.Torrent, bidID string, amount int64, infoHash string) {
 			<-target.GotInfo()
@@ -641,11 +728,17 @@ func trackCoreArcadeAnchors() {
 			log.Printf("failed to track core arcade magnet %s: %v", spec.InfoHash.HexString(), err)
 			continue
 		}
+
+		registryMu.Lock()
+		magnetMap[t.InfoHash().HexString()] = magnetURI
+		registryMu.Unlock()
+
 		go func(target *anacrolixTorrent.Torrent) {
 			<-target.GotInfo()
 			target.DownloadAll()
 		}(t)
 	}
+	saveTorrentRegistry()
 }
 
 func primaryCoreArcadeTracked() bool {
@@ -1236,6 +1329,12 @@ func handleAddTorrent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("failed to add torrent: %v", err), http.StatusInternalServerError)
 		return
 	}
+
+	registryMu.Lock()
+	magnetMap[t.InfoHash().HexString()] = req.Magnet
+	registryMu.Unlock()
+	saveTorrentRegistry()
+
 	go func() {
 		<-t.GotInfo()
 		t.DownloadAll()
@@ -1273,6 +1372,11 @@ func handleRemoveTorrent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	t.Drop()
+
+	registryMu.Lock()
+	delete(magnetMap, req.InfoHash)
+	registryMu.Unlock()
+	saveTorrentRegistry()
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success":  true,
@@ -1374,6 +1478,12 @@ func registerUploadedTorrent(uploaded *uploadedTorrentDescriptor) error {
 	if err != nil {
 		return fmt.Errorf("failed to register uploaded torrent: %w", err)
 	}
+
+	registryMu.Lock()
+	magnetMap[t.InfoHash().HexString()] = uploaded.Magnet
+	registryMu.Unlock()
+	saveTorrentRegistry()
+
 	go func(target *anacrolixTorrent.Torrent) {
 		<-target.GotInfo()
 		target.DownloadAll()

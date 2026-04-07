@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.53.0`
+- **Root Version**: `11.54.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -38,7 +38,7 @@ bobtorrent/
 ## Submodule / External Status
 | Component | Location | Status | Notes |
 |---|---|---:|---|
-| Bobcoin | `bobcoin/` | Active | Frontend + game stack remains the primary UI reference; now includes Go storage WASM workbench, publication flow, browser-side retrieval/reconstruction, signed Go-lattice manifest anchoring, a searchable trust-aware Vault archive browser, archive reuse inside Market/Gallery flows, signed publisher provenance metadata, degraded recovery diagnostics, saved/grouped archive workflows, publisher profile/proof overlays, exportable recovery reports, failure/source attribution, portable preset/batch archive actions, long-horizon source reliability trends, structured publisher attestations, exportable + signed comparative source diagnostics with package comparison review, route-level lazy loading, manual vendor chunking, and Go-first HTTP + signaling routing (`v8.70.0`). |
+| Bobcoin | `bobcoin/` | Active | Frontend + game stack remains the primary UI reference; now includes Go storage WASM workbench, publication flow, browser-side retrieval/reconstruction, signed Go-lattice manifest anchoring, a searchable trust-aware Vault archive browser, archive reuse inside Market/Gallery flows, signed publisher provenance metadata, degraded recovery diagnostics, saved/grouped archive workflows, publisher profile/proof overlays, exportable recovery reports, failure/source attribution, portable preset/batch archive actions, long-horizon source reliability trends, structured publisher attestations, exportable + signed comparative source diagnostics with package comparison review, route-level lazy loading, manual vendor chunking, aggressive 3D deferral (50kB main bundle), and Go-first HTTP + signaling routing (`v8.88.0`). |
 | qBittorrent fork | `qbittorrent/` | Blocked | Local files exist, but remote repo reference remains unreachable. |
 | Forest research | `bobcoin/research/forest` | Blocked | Nested submodule metadata issue remains unresolved upstream/local. |
 | Solana research | `bobcoin/research/solana` | Blocked | Nested submodule metadata issue remains unresolved upstream/local. |
@@ -48,7 +48,7 @@ bobtorrent/
 |---|---|---:|---|
 | DHT Proxy | `build/dht-proxy` | Buildable | Privacy-preserving peer discovery with GeoIP sorting |
 | Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, ordered confirmed-block catch-up, `GET /blocks` + `GET/POST /bootstrap` peer sync support, `POST /reconcile` analysis + `POST /reconcile/apply` execution support, duplicate-aware block ingestion to reduce looped broadcast noise, per-peer sync/broadcast telemetry, bounded retry handling for bootstrap/fan-out paths, cooldown-based peer suppression, divergence suspicion on missing-cursor peers, operator-tunable snapshot cadence/retention, persistence verification/repair endpoints, backup/export controls, import/restore controls, signed/encrypted operator backup bundle workflows, and broader mixed-transition replay regression coverage, including websocket live feed integration tests |
-| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation compatibility, websocket matchmaking/signaling with liveness telemetry, Lotus Filecoin bridge status/deal endpoints, WASM artifact serving, manifest/shard publication registry, and durable local transaction logging |
+| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation compatibility, websocket matchmaking/signaling with liveness telemetry, durable `torrents.json` seeding registry, Lotus Filecoin bridge status/deal endpoints, WASM artifact serving, manifest/shard publication registry, and durable local transaction logging |
 | Storage WASM | `build/storage.wasm` | Buildable | Browser-side Go storage kernel |
 | Go WASM Runtime | `build/wasm_exec.js` | Packaged | Required runtime bridge for browser execution |
 
