@@ -1,54 +1,52 @@
-# Bobtorrent Omni-Workspace Handoff (v11.54.0)
+# Bobtorrent Omni-Workspace Handoff (v11.55.0)
 
 ## Session Objective
-Continue the Go-first migration by porting the durable seeding registry to `supernode-go` and achieving a major breakthrough in Bobcoin frontend bundle health.
+Harden the Go-native publication flow by adding a durable SQLite-backed registry for manifests and shards, and expose a new asset discovery API.
 
 ## What Was Implemented
 
-### 1. Durable Seeded Torrents Registry in Go
+### 1. Durable Publication Registry (SQLite)
+File:
+- `internal/publish/registry.go`
+
+Upgraded the local publication registry to use a SQLite index (`data/published/registry.db`).
+
+Behavior:
+- **Shard Metadata**: Tracks hash, size, and downloadable URL.
+- **Manifest Metadata**: Tracks manifest ID, name, size, locator, URL, and publication timestamp.
+- **Query Support**: Added `ListManifests` for sorted asset retrieval.
+- **Cleanup**: Added explicit `Close()` handler for safe database shutdown.
+
+### 2. Asset Discovery API
 File:
 - `cmd/supernode-go/main.go`
 
-Ported the `torrents.json` tracking logic from the legacy Node `supertorrent` service.
+Added:
+- `GET /assets`
 
-Behavior:
-- **Persistence**: The seeding queue is now automatically persisted to `torrents.json` whenever magnets are added or removed.
-- **Recovery**: On startup, the Go supernode reloads this registry and initiates seeding for all previously tracked content.
-- **Magnet URI Tracking**: Added an internal `magnetMap` to preserve original magnet links even before torrent metadata is fully resolved locally.
-- **Workflow Hooks**: Hooked into manual additions (`/add-torrent`), removals (`/remove-torrent`), multipart uploads (`/upload`), and autonomous market bid acceptances.
+This endpoint returns a searchable directory of all manifests published to the local node, allowing clients to discover available storage artifacts without knowing their IDs up-front.
 
-### 2. Bobcoin Frontend Bundle Optimization (v8.88.0)
+### 3. Service Hardening
 File:
-- `bobcoin/frontend/src/pages/SystemStatus.jsx`
+- `cmd/supernode-go/main.go`
 
-Achieved a massive reduction in the main entry bundle size.
-
-Behavior:
-- **Aggressive Deferral**: Moved the heavy 3D topology visualization (`CyberGrid3D`) to a lazy-loaded component inside a `Suspense` boundary.
-- **Result**: The main application bundle shrunk from ~1.5MB down to **50kB**, significantly improving startup performance and responsiveness.
-
-### 3. Test Hardening
-File:
-- `cmd/supernode-go/main_test.go`
-
-Stabilized the signaling matchmaker integration tests by introducing a small delay between concurrent `FIND_MATCH` requests, ensuring deterministic initiator role assignment.
+Added deferred `Close()` calls for both the `publishRegistry` and `economyDB`. This ensures that all SQLite handles are properly released when the supernode shuts down, preventing database lock issues during iterative testing.
 
 ## Validation
 Executed successfully:
-- `go test -buildvcs=false ./cmd/supernode-go`
-- `go build -buildvcs=false ./...`
-- `cd bobcoin/frontend && npm run build` (Verified 50kB index.js)
+- `go test -buildvcs=false ./internal/publish ./cmd/supernode-go`
+- `go build -buildvcs=false ./cmd/supernode-go`
+- Verified durability in `TestRegistryDurability`.
 
 ## Findings / Analysis
-- The `torrents.json` port completes another practical operational gap between Go and Node. Operators can now swap the Go binary into an existing deployment without losing their seeding queue.
-- The 50kB bundle target is a major UX win. It proves that a feature-rich "sovereign" wallet can still start up instantly by utilizing aggressive component splitting.
+The supernode's Go-native services are now almost entirely durable. We have moved from a prototype where data was lost on restart to a production-credible model where consensus history, economic events, seeding queues, and publication metadata are all persistent.
 
 ## Recommended Next Steps
-1. **Durable Market Manifests**: Expand `internal/publish/registry.go` or add a new layer to track published shard metadata and manifest references durably across node restarts.
-2. **Identity/Attestation Verification**: Extend the structured attestation model so nodes can verify linked identities (GitHub/ORCID) rather than just displaying them.
-3. **Consensus Transition Units**: Add dedicated unit tests for state transition edge cases in `internal/consensus/lattice.go` (Phase 4).
+1. **Identity/Attestation Verification**: Moving beyond just displaying structured proofs to actually verifying them (e.g., automated GitHub profile checks).
+2. **Consensus Transition Units**: Continue adding isolated unit tests for complex state changes (Phase 4).
+3. **Multi-Node Sync Hardening**: Push the new reconciliation flow further into automated gossip scenarios.
 
 ## Notes for the Next Agent
 - No processes were terminated.
-- Bobcoin was rebased and pushed at `v8.88.0` (commit `0c99867`).
-- The Go supernode registry falls back to run-time metainfo generation if the original magnet URI is missing, but prefers the tracked URI for consistency.
+- Bobcoin version remains `v8.88.0`.
+- The `Registry` now requires `Close()` to be called to release the SQLite handle.

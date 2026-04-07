@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.54.0`
+- **Root Version**: `11.55.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -48,7 +48,7 @@ bobtorrent/
 |---|---|---:|---|
 | DHT Proxy | `build/dht-proxy` | Buildable | Privacy-preserving peer discovery with GeoIP sorting |
 | Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, ordered confirmed-block catch-up, `GET /blocks` + `GET/POST /bootstrap` peer sync support, `POST /reconcile` analysis + `POST /reconcile/apply` execution support, duplicate-aware block ingestion to reduce looped broadcast noise, per-peer sync/broadcast telemetry, bounded retry handling for bootstrap/fan-out paths, cooldown-based peer suppression, divergence suspicion on missing-cursor peers, operator-tunable snapshot cadence/retention, persistence verification/repair endpoints, backup/export controls, import/restore controls, signed/encrypted operator backup bundle workflows, and broader mixed-transition replay regression coverage, including websocket live feed integration tests |
-| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation compatibility, websocket matchmaking/signaling with liveness telemetry, durable `torrents.json` seeding registry, Lotus Filecoin bridge status/deal endpoints, WASM artifact serving, manifest/shard publication registry, and durable local transaction logging |
+| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation compatibility, websocket matchmaking/signaling with liveness telemetry, durable `torrents.json` seeding registry, durable manifest/shard publication registry via SQLite, `GET /assets` discovery API, and Lotus Filecoin bridge status/deal endpoints |
 | Storage WASM | `build/storage.wasm` | Buildable | Browser-side Go storage kernel |
 | Go WASM Runtime | `build/wasm_exec.js` | Packaged | Required runtime bridge for browser execution |
 

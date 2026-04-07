@@ -8,14 +8,14 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - operator experience
 
 ## Current Release Train
-- **Current Version**: `11.54.0`
+- **Current Version**: `11.55.0`
 - **Primary Runtime Targets**:
   - `lattice-go` — block lattice consensus node
   - `supernode-go` — torrent seeding, market polling, TUI operations
   - `dht-proxy` — privacy-preserving peer discovery utility
   - `storage.wasm` — browser-side Go storage kernel
 
-## ✅ Completed Through v11.54.0
+## ✅ Completed Through v11.55.0
 
 ### 1. Go Consensus Node
 - Ported the Bobcoin asynchronous block lattice to Go.
@@ -82,6 +82,7 @@ Bobtorrent is evolving from a mixed Node.js / Java / prototype stack into a unif
 - Tightened the Go SPoRA compatibility surface so attestation now requires a valid challenge and a tracked Core Arcade anchor instead of returning an unconditional placeholder proof.
 - Added a durable SQLite-backed economy transaction log for those compatibility endpoints.
 - Added a durable JSON-backed torrent registry (`torrents.json`) so the seeding list survives node restart.
+- Added a durable SQLite-backed publication registry for manifests and shards, plus a new `GET /assets` discovery API.
 - Ported the lightweight proof-submission orchestration path into Go using deterministic mock verification plus reward mint recording.
 - Ported the homomorphic-oracle HTTP surface into Go while isolating the specialized SEAL arithmetic behind a dedicated helper bridge.
 - Added static serving for:

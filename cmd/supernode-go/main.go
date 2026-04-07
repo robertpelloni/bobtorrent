@@ -305,7 +305,9 @@ func main() {
 
 	fcBridge = bridges.NewFilecoinBridge("f1bobtorrentnode")
 	initPublishRegistry()
+	defer publishRegistry.Close()
 	initEconomyDatabase()
+	defer economyDB.Close()
 
 	model := tui.NewModel()
 	uiProgram = tea.NewProgram(model, tea.WithAltScreen())
@@ -344,6 +346,7 @@ func startTrackerServices() {
 	mux.HandleFunc("/upload", withCORS(handleUpload))
 	mux.HandleFunc("/upload-shard", withCORS(handleUploadShard))
 	mux.HandleFunc("/publish-manifest", withCORS(handlePublishManifest))
+	mux.HandleFunc("/assets", withCORS(handleGetAssets))
 	mux.HandleFunc("/manifests/", withCORS(handleGetManifest))
 	mux.HandleFunc("/shards/", withCORS(handleGetShard))
 	mux.HandleFunc("/storage.wasm", withCORS(serveStorageWASM))
@@ -1587,6 +1590,24 @@ func handlePublishManifest(w http.ResponseWriter, r *http.Request) {
 		"locator":     stored.Locator,
 		"manifestUrl": stored.ManifestURL,
 		"manifest":    stored.Manifest,
+	})
+}
+
+func handleGetAssets(w http.ResponseWriter, r *http.Request) {
+	limit := 100
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		fmt.Sscanf(raw, "%d", &limit)
+	}
+
+	assets, err := publishRegistry.ListManifests(limit)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to list assets: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"assets":  assets,
 	})
 }
 

@@ -2,13 +2,17 @@ package publish
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	_ "modernc.org/sqlite"
 )
 
 // Registry persists uploaded storage shards and published manifests to disk.
@@ -35,6 +39,7 @@ type Registry struct {
 	baseDir      string
 	shardsDir    string
 	manifestsDir string
+	db           *sql.DB
 	mu           sync.Mutex
 }
 
@@ -64,11 +69,49 @@ func NewRegistry(baseDir string) (*Registry, error) {
 		}
 	}
 
+	dbPath := filepath.Join(baseDir, "registry.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open registry database: %w", err)
+	}
+
+	// Create tables if they don't exist.
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS shards (
+			hash TEXT PRIMARY KEY,
+			size INTEGER NOT NULL,
+			url TEXT NOT NULL,
+			created_at INTEGER NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS manifests (
+			id TEXT PRIMARY KEY,
+			name TEXT,
+			size INTEGER,
+			locator TEXT NOT NULL,
+			url TEXT NOT NULL,
+			published_at INTEGER NOT NULL
+		);
+	`)
+	if err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to initialize registry schema: %w", err)
+	}
+
 	return &Registry{
 		baseDir:      baseDir,
 		shardsDir:    shardsDir,
 		manifestsDir: manifestsDir,
+		db:           db,
 	}, nil
+}
+
+func (r *Registry) Close() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.db == nil {
+		return nil
+	}
+	return r.db.Close()
 }
 
 // StoreShard validates the claimed hash against the provided bytes and stores
@@ -98,6 +141,11 @@ func (r *Registry) StoreShard(hash string, data []byte, publicBaseURL string) (*
 
 	if err := os.WriteFile(path, data, 0644); err != nil {
 		return nil, fmt.Errorf("failed to write shard %s: %w", hash, err)
+	}
+
+	if _, err := r.db.Exec(`INSERT OR IGNORE INTO shards (hash, size, url, created_at) VALUES (?, ?, ?, ?)`,
+		hash, int64(len(data)), fmt.Sprintf("%s/shards/%s", publicBaseURL, hash), time.Now().UnixMilli()); err != nil {
+		log.Printf("failed to index shard %s: %v", hash, err)
 	}
 
 	return &StoredShard{
@@ -150,6 +198,17 @@ func (r *Registry) PublishManifest(manifest map[string]interface{}, publicBaseUR
 		return nil, fmt.Errorf("failed to write manifest %s: %w", manifestID, err)
 	}
 
+	name, _ := manifest["name"].(string)
+	var size int64
+	if s, ok := manifest["size"].(float64); ok {
+		size = int64(s)
+	}
+
+	if _, err := r.db.Exec(`INSERT OR REPLACE INTO manifests (id, name, size, locator, url, published_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		manifestID, name, size, fmt.Sprintf("bobtorrent://manifest/%s", manifestID), fmt.Sprintf("%s/manifests/%s", publicBaseURL, manifestID), publishedAt); err != nil {
+		log.Printf("failed to index manifest %s: %v", manifestID, err)
+	}
+
 	return &StoredManifest{
 		ID:          manifestID,
 		Locator:     fmt.Sprintf("bobtorrent://manifest/%s", manifestID),
@@ -166,6 +225,39 @@ func (r *Registry) ManifestPath(id string) string {
 
 func (r *Registry) ShardPath(hash string) string {
 	return filepath.Join(r.shardsDir, hash+".bin")
+}
+
+func (r *Registry) ListManifests(limit int) ([]StoredManifest, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	rows, err := r.db.Query(`SELECT id, name, size, locator, url, published_at FROM manifests ORDER BY published_at DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query manifests: %w", err)
+	}
+	defer rows.Close()
+
+	var results []StoredManifest
+	for rows.Next() {
+		var m StoredManifest
+		var name sql.NullString
+		var size sql.NullInt64
+		if err := rows.Scan(&m.ID, &name, &size, &m.Locator, &m.ManifestURL, &m.PublishedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan manifest: %w", err)
+		}
+		
+		// Load the full manifest from disk for each entry.
+		// In a production scenario with many manifests, we might want to 
+		// store more fields in the DB or use a summary structure.
+		data, err := os.ReadFile(r.ManifestPath(m.ID))
+		if err == nil {
+			_ = json.Unmarshal(data, &m.Manifest)
+		}
+		m.Path = r.ManifestPath(m.ID)
+		results = append(results, m)
+	}
+	return results, nil
 }
 
 func deriveManifestID(manifest map[string]interface{}) string {

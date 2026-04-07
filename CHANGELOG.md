@@ -1,3 +1,10 @@
+## [11.55.0] - 2026-04-06
+### Go Port: Durable Market Manifests + Asset Discovery
+- **Durable Manifest Index**: Upgraded the Go publication registry with a SQLite-backed index. Published manifests and shards are now tracked in `data/published/registry.db`, ensuring uploader metadata and asset references survive node restarts.
+- **Asset Discovery API**: Added a new `GET /assets` endpoint to the Go supernode, providing a searchable directory of all manifests published to the local node.
+- **Resource Lifecycle**: Integrated explicit `Close()` handlers for the publication registry and economy database, ensuring clean shutdowns and preventing database lock issues during multi-node development and testing.
+- **Validation**: Re-validated `go test -buildvcs=false ./internal/publish ./cmd/supernode-go` and confirmed durability across restart in regression tests.
+
 ## [11.54.0] - 2026-04-06
 ### Go Port: Durable Seeded Torrents Registry + Frontend Health
 - **Durable Seeding List**: Ported the `torrents.json` registry logic from Node `supertorrent` to `supernode-go`. The Go supernode now automatically persists and reloads its seeding queue (magnets and info-hashes), ensuring seeded assets survive restart.
