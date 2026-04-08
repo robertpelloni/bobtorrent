@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.55.0
+## ✅ Completed Through v11.57.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -88,7 +88,7 @@
 ## Important Compatibility / Cleanup Tasks
 - [ ] **Remove temporary legacy block shim** once bobcoin frontend includes explicit `height` and `staked_balance`
 - [ ] **Unify block hashing rules** between Go and browser-side block construction
-- [ ] **Add tests** for consensus transitions:
+- [x] **Add tests** for consensus transitions:
   - send/receive
   - NFT mint/transfer
   - stake/unstake

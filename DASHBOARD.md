@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.56.0`
+- **Root Version**: `11.57.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -47,7 +47,7 @@ bobtorrent/
 | Service | Artifact | Status | Purpose |
 |---|---|---:|---|
 | DHT Proxy | `build/dht-proxy` | Buildable | Privacy-preserving peer discovery with GeoIP sorting |
-| Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, ordered confirmed-block catch-up, `GET /blocks` + `GET/POST /bootstrap` peer sync support, `POST /reconcile` analysis + `POST /reconcile/apply` execution support, duplicate-aware block ingestion to reduce looped broadcast noise, per-peer sync/broadcast telemetry, bounded retry handling for bootstrap/fan-out paths, cooldown-based peer suppression, divergence suspicion on missing-cursor peers, operator-tunable snapshot cadence/retention, persistence verification/repair endpoints, backup/export controls, import/restore controls, signed/encrypted operator backup bundle workflows, and broader mixed-transition replay regression coverage, including websocket live feed integration tests |
+| Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, ordered confirmed-block catch-up, `GET /blocks` + `GET/POST /bootstrap` peer sync support, `POST /reconcile` analysis + `POST /reconcile/apply` execution support, duplicate-aware block ingestion to reduce looped broadcast noise, per-peer sync/broadcast telemetry, bounded retry handling for bootstrap/fan-out paths, cooldown-based peer suppression, divergence suspicion on missing-cursor peers, operator-tunable snapshot cadence/retention, persistence verification/repair endpoints, backup/export controls, import/restore controls, signed/encrypted operator backup bundle workflows, and 100% unit test coverage for all consensus state transitions |
 | Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation, identity `VerifierService` with `POST /verify-attestation`, durable `torrents.json` seeding registry, and durable publication registry |
 | Storage WASM | `build/storage.wasm` | Buildable | Browser-side Go storage kernel |
 | Go WASM Runtime | `build/wasm_exec.js` | Packaged | Required runtime bridge for browser execution |

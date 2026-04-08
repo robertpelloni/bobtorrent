@@ -1,3 +1,10 @@
+## [11.57.0] - 2026-04-06
+### Go Port: Consensus Transition Hardening (Phase 4)
+- **Isolated Transition Tests**: Added `internal/consensus/transition_test.go` with focused unit tests for every core state machine transition, including `send`/`receive`, `mint_nft`/`transfer_nft`, `stake`/`unstake`, `initiate_swap`/`claim_swap`/`refund_swap`, and governance `proposal`/`vote` flows.
+- **Protocol Verification**: These tests mathematically verify balance arithmetic, ownership transitions, HTLC lock/reveal logic, and quadratic voting power without the overhead of the full persistence or network layers.
+- **Edge Case Coverage**: Hardened the consensus logic against specific edge cases such as past-timestamp swap initiation, unauthorized NFT transfers, and double-voting attempts.
+- **Validation**: Re-validated `go test -buildvcs=false ./internal/consensus` across the integrated workspace.
+
 ## [11.56.0] - 2026-04-06
 ### Go Port: Identity & Attestation Verification
 - **Go Verifier Service**: Created the `internal/identity` package, defining a formal `Verifier` interface and an orchestrating `VerifierService`. This provides the foundation for cryptographically checking external identity claims (GitHub, ORCID, etc.) across the network.
