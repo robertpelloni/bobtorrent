@@ -15,7 +15,7 @@
   - some pages still omit explicit `height` and `staked_balance`
   - NFT transfer UI currently uses `recipient` naming, while newer Go code preferred `newOwner`
 - The Go lattice now includes compatibility handling for all of the above, but this is a temporary bridge, not the final state.
-- Multi-node sync is no longer just best-effort fan-out: the lattice now preserves confirmed global block order for catch-up, exposes `GET /blocks`, can bootstrap from peers while merging discovered peer lists, tracks per-peer sync/broadcast telemetry with bounded retries, suppresses repeated attempts through cooldown windows, treats missing-cursor peers as divergence suspicion, and now provides an operator workflow for safe reconciliation analysis and guided execution. Every core consensus state transition (send, receive, nft, stake, swap, governance) is now verified by dedicated unit tests.
+- Multi-node sync is no longer just best-effort fan-out: the lattice now preserves confirmed global block order for catch-up, exposes `GET /blocks`, and provides an autonomous background sync loop that periodically reconciles state with peers. The system can now automatically resolve lag and detect divergence without manual operator intervention. Every core consensus state transition is now verified by dedicated unit tests.
 
 ## Build / Toolchain Findings
 - `anacrolix/dht` API drift required moving from an imagined `Addr` field to explicit `net.ListenPacket` wiring through `ServerConfig.Conn`.

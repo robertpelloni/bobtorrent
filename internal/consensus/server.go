@@ -31,6 +31,8 @@ type Server struct {
 	upgrader     websocket.Upgrader
 	peerStatusMu sync.RWMutex
 	peerStatus   map[string]*PeerStatus
+	syncStop     chan struct{}
+	syncInterval time.Duration
 }
 
 // NewServer creates a lattice server with a fresh in-memory consensus state.
@@ -51,9 +53,10 @@ func NewPersistentServer(path string) (*Server, error) {
 
 func newServerWithLattice(lattice *Lattice) *Server {
 	return &Server{
-		lattice:    lattice,
-		hub:        NewHub(),
-		peerStatus: make(map[string]*PeerStatus),
+		lattice:      lattice,
+		hub:          NewHub(),
+		peerStatus:   make(map[string]*PeerStatus),
+		syncInterval: 30 * time.Second, // Default sync check every 30s
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
@@ -109,6 +112,68 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc("/ws", s.handleWebSocket)
 
 	return mux
+}
+
+// StopBackgroundSync terminates the autonomous peer synchronization loop.
+func (s *Server) StopBackgroundSync() {
+	if s.syncStop != nil {
+		close(s.syncStop)
+		s.syncStop = nil
+	}
+}
+
+// StartBackgroundSync initiates the autonomous peer synchronization loop,
+// which periodically analyzes and catches up with the network.
+func (s *Server) StartBackgroundSync(interval time.Duration) {
+	if interval > 0 {
+		s.syncInterval = interval
+	}
+	if s.syncStop != nil {
+		return
+	}
+	s.syncStop = make(chan struct{})
+	go s.syncLoop()
+}
+
+func (s *Server) syncLoop() {
+	ticker := time.NewTicker(s.syncInterval)
+	defer ticker.Stop()
+
+	log.Printf("[Consensus] Starting autonomous peer sync loop (interval: %v)", s.syncInterval)
+
+	for {
+		select {
+		case <-s.syncStop:
+			return
+		case <-ticker.C:
+			s.performAutonomousSync()
+		}
+	}
+}
+
+func (s *Server) performAutonomousSync() {
+	peers := s.lattice.GetPeers()
+	if len(peers) == 0 {
+		return
+	}
+
+	for _, peer := range peers {
+		// Only sync from one peer per loop iteration to avoid overwhelming 
+		// the node or network.
+		report, err := s.analyzePeerReconciliation(peer)
+		if err != nil {
+			// Telemetry is updated inside analyze/sync methods via mark helpers.
+			continue
+		}
+
+		if report.Relationship == "remote_ahead" || report.Relationship == "local_empty_remote_has_state" {
+			log.Printf("[Consensus] Autonomous sync: Peer %s is ahead. Catching up...", peer)
+			// Apply reconciliation safely.
+			_, _, _ = s.applyPeerReconciliation(peer, false)
+			// Stop after first successful catch-up attempt this cycle.
+			return
+		}
+	}
 }
 
 func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {

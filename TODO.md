@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.57.0
+## ✅ Completed Through v11.58.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -80,7 +80,8 @@
   - added safe `POST /reconcile/apply` execution for remote-to-local catch-up syncs
   - execution policy refuses `divergent`, `remote_empty`, and `partially_overlapping` cases to preserve chain safety
   - supports `force` parameter to bypass cooldown while still enforcing relationship safety
-- [ ] **Consensus peer sync improvements (Phase 4)**
+- [x] **Consensus peer sync improvements (Phase 4)**: Integrated an autonomous background sync loop into the Go lattice server for automated, self-healing peer synchronization.
+- [ ] **Consensus peer sync improvements (Phase 5)**
   - more advanced reconciliation (e.g., selective rollbacks or side-chain preservation) for divergent cases
   - deeper peer-gossip policy tuning and backoff refinements
   - richer sync dashboards / operator visualizers

@@ -612,3 +612,29 @@ func TestHandleReconcileApplyRefusesDivergentPeer(t *testing.T) {
 		t.Fatalf("expected refused execution mode, got %#v", apply)
 	}
 }
+
+func TestAutonomousSyncLoop(t *testing.T) {
+	origin := NewServer()
+	wallet := mustGenerateKeypair(t)
+	genesis := torrent.NewBlock("open", wallet.PublicKey, nil, 1000, 0, 0, "SYSTEM_GENESIS", nil, nil)
+	mustSignBlock(t, genesis, wallet.PrivateKey)
+	if err := origin.lattice.ProcessBlock(genesis); err != nil {
+		t.Fatalf("origin genesis failed: %v", err)
+	}
+	originHTTP := httptest.NewServer(origin.HTTPHandler())
+	defer originHTTP.Close()
+
+	joiner := NewServer()
+	joiner.lattice.AddPeer(originHTTP.URL)
+
+	// Start loop with very short interval for testing
+	joiner.StartBackgroundSync(100 * time.Millisecond)
+	defer joiner.StopBackgroundSync()
+
+	// Wait for sync
+	time.Sleep(500 * time.Millisecond)
+
+	if len(joiner.lattice.blocks) != 1 {
+		t.Fatalf("expected autonomous sync to catch up 1 block, got %d", len(joiner.lattice.blocks))
+	}
+}

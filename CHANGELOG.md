@@ -1,3 +1,11 @@
+## [11.58.0] - 2026-04-06
+### Go Port: Autonomous Peer Synchronization
+- **Self-Healing Sync Loop**: Integrated a background synchronization loop into the Go lattice server. Nodes now periodically scan their registered peer list, analyze relationships via the reconciliation layer, and automatically execute safe catch-up syncs.
+- **Configurable Sync Cadence**: The autonomous sync interval is now configurable (defaults to 30 seconds), ensuring that late-joining or temporarily offline nodes can eventually rejoin the network frontier without manual operator intervention.
+- **Resource Management**: Added explicit `StopBackgroundSync()` and `StartBackgroundSync()` handlers to the lattice server for clean lifecycle management during shutdown.
+- **Regression Coverage**: Added `TestAutonomousSyncLoop` proving that a lagging joiner can automatically discover an ahead peer and catch up history within the background loop.
+- **Validation**: Re-validated `go test -buildvcs=false ./internal/consensus` across the integrated workspace.
+
 ## [11.57.0] - 2026-04-06
 ### Go Port: Consensus Transition Hardening (Phase 4)
 - **Isolated Transition Tests**: Added `internal/consensus/transition_test.go` with focused unit tests for every core state machine transition, including `send`/`receive`, `mint_nft`/`transfer_nft`, `stake`/`unstake`, `initiate_swap`/`claim_swap`/`refund_swap`, and governance `proposal`/`vote` flows.
