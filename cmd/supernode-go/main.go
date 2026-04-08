@@ -398,8 +398,9 @@ func initEconomyDatabase() {
 func initVerifierService() {
 	verifierSvc = identity.NewVerifierService()
 	mock := &identity.MockVerifier{}
+	github := identity.NewGitHubVerifier()
 	verifierSvc.RegisterVerifier(identity.KindMock, mock)
-	verifierSvc.RegisterVerifier(identity.KindGitHub, mock)
+	verifierSvc.RegisterVerifier(identity.KindGitHub, github)
 	verifierSvc.RegisterVerifier(identity.KindORCID, mock)
 	verifierSvc.RegisterVerifier(identity.KindURL, mock)
 }

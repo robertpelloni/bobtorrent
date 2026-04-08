@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.58.0`
+- **Root Version**: `11.59.0`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -48,7 +48,7 @@ bobtorrent/
 |---|---|---:|---|
 | DHT Proxy | `build/dht-proxy` | Buildable | Privacy-preserving peer discovery with GeoIP sorting |
 | Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, autonomous background peer sync loop, ordered confirmed-block catch-up, `GET /blocks` + `GET/POST /bootstrap` sync support, `POST /reconcile` analysis + `POST /reconcile/apply` execution, per-peer sync/broadcast telemetry, bounded retry handling, and 100% unit test coverage for consensus transitions |
-| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation, identity `VerifierService` with `POST /verify-attestation`, durable `torrents.json` seeding registry, and durable publication registry |
+| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation, identity `VerifierService` with real `GitHubVerifier`, durable `torrents.json` seeding registry, and durable publication registry |
 | Storage WASM | `build/storage.wasm` | Buildable | Browser-side Go storage kernel |
 | Go WASM Runtime | `build/wasm_exec.js` | Packaged | Required runtime bridge for browser execution |
 

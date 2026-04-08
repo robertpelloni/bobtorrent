@@ -1,6 +1,6 @@
 # TODO (Autonomous Development Backlog)
 
-## ✅ Completed Through v11.58.0
+## ✅ Completed Through v11.59.0
 - Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
 - Go-native block lattice consensus engine
 - P2P lattice block broadcast
@@ -101,6 +101,7 @@
 - [ ] **Go Supernode WebUI integration**
 - [x] **Durable market manifests + shard metadata registry**: Upgraded the publication registry with a SQLite-backed index and added `GET /assets` for durable asset discovery.
 - [x] **Identity/Attestation verification**: Implemented a Go-native verifier service and integrated real-time verification badges into the Bobcoin Vault UI.
+- [x] **Real identity verifiers**: Replaced the `MockVerifier` with a production-ready `GitHubVerifier` that validates Gist attestations via the GitHub API.
 - [ ] **Game engine asset ingestion path**
 - [ ] **Global decentralized storage network launch**
 - [ ] **Investigate unreachable `qbittorrent` remote**

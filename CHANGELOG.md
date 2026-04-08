@@ -1,3 +1,11 @@
+## [11.59.0] - 2026-04-07
+### Go Port: Real GitHub Identity Verification
+- **GitHub Verifier Implementation**: Replaced the mock GitHub verification logic with a real `GitHubVerifier` in `internal/identity/github.go`. The Go supernode now actually fetches GitHub Gist content via the GitHub API and confirms it contains the publisher's Bobcoin public key.
+- **URL Transformation**: Added support for standard GitHub Gist URLs, automatically transforming them to raw content URLs for verification.
+- **Verification Service Hardening**: Registered the real `GitHubVerifier` in the `VerifierService` orchestrator, providing a production-ready path for publisher identity checks.
+- **Regression Coverage**: Added `TestGitHubVerifier` with a mock HTTP server to verify success and failure paths for the real GitHub logic.
+- **Validation**: Re-validated `go test -buildvcs=false ./internal/identity ./cmd/supernode-go` and confirmed production build remains clean.
+
 ## [11.58.0] - 2026-04-06
 ### Go Port: Autonomous Peer Synchronization
 - **Self-Healing Sync Loop**: Integrated a background synchronization loop into the Go lattice server. Nodes now periodically scan their registered peer list, analyze relationships via the reconciliation layer, and automatically execute safe catch-up syncs.
