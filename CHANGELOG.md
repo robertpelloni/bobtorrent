@@ -2,7 +2,7 @@
 ### Go Port: Identity & Attestation Verification
 - **Go Verifier Service**: Created the `internal/identity` package, defining a formal `Verifier` interface and an orchestrating `VerifierService`. This provides the foundation for cryptographically checking external identity claims (GitHub, ORCID, etc.) across the network.
 - **Identity Verification Endpoint**: Added `POST /verify-attestation` to the Go supernode. This endpoint accepts structured publisher proofs and returns executable verification results, moving beyond advisory strings to real "Zero-Trust" evidence.
-- **Vault Verification UI**: Updated the Bobcoin Vault (`Vault.jsx` and `Vault.css`) with a new `PublisherProofEntry` component. Users can now trigger real-time identity checks and see "VERIFIED" or "FAILED" badges directly on publisher archive cards.
+- **Vault Verification UI**: Updated the `bobcoin` submodule to `v8.89.0`, introducing a new `PublisherProofEntry` component in the Vault. Users can now trigger real-time identity checks and see "VERIFIED" or "FAILED" badges directly on publisher archive cards.
 - **Validation**: Re-validated `go test -buildvcs=false ./internal/identity ./cmd/supernode-go` and confirmed that the Bobcoin production build remains highly optimized (~50kB main bundle).
 
 ## [11.55.0] - 2026-04-06
