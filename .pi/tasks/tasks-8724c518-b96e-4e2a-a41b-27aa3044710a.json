@@ -1,0 +1,17 @@
+{
+  "nextId": 2,
+  "tasks": [
+    {
+      "id": "1",
+      "subject": "Comprehensive Go Porting and Workspace Stabilization",
+      "description": "Perform a deep audit of the current Go vs Node.js feature parity, resolve the qbittorrent submodule issue, and prioritize remaining service porting (game-server, supertorrent, tracker) for a robust Go-first architecture. This includes verifying the current Go build, stabilizing the workspace, and documenting a detailed execution plan based on TODO, ROADMAP, and VISION.",
+      "status": "in_progress",
+      "activeForm": "Establishing Project Context and Porting Strategy",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1775792407504,
+      "updatedAt": 1775792408932
+    }
+  ]
+}

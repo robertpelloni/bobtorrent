@@ -898,18 +898,6 @@ func (l *Lattice) processBlockLockedDetailed(b *torrent.Block, persist bool) (bo
 	// ── 3. Chain Integrity ──
 	frontier := l.GetFrontier(b.Account)
 
-	// Backward-compatibility shim for the existing bobcoin frontend:
-	// several UI pages still construct blocks without explicit height and
-	// staked_balance fields. When omitted, we infer them from the frontier.
-	if frontier != nil {
-		if b.Height == 0 {
-			b.Height = frontier.Height + 1
-		}
-		if b.Type != "stake" && b.Type != "unstake" && b.StakedBalance == 0 {
-			b.StakedBalance = frontier.StakedBalance
-		}
-	}
-
 	if b.Type == "open" {
 		if frontier != nil {
 			return false, fmt.Errorf("account %s already open", b.Account[:16])

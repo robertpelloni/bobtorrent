@@ -1,0 +1,27 @@
+{
+  "nextId": 3,
+  "tasks": [
+    {
+      "id": "1",
+      "subject": "Fix qbittorrent submodule checkout error",
+      "description": "Diagnose and fix the submodule checkout issue for 'qbittorrent' which fails with 'fatal: remote error: upload-pack: not our ref'. This usually happens when the submodule pointer in the main repo refers to a commit that doesn't exist in the submodule's remote (possibly due to a rebase or force push in the submodule repo).",
+      "status": "completed",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1775793698954,
+      "updatedAt": 1775793826148
+    },
+    {
+      "id": "2",
+      "subject": "Fix bobtrader submodule checkout error (nested submodule)",
+      "description": "Diagnose and fix the nested submodule checkout issue for 'bobtrader'. The error 'fatal: No url found for submodule path ... in .gitmodules' indicates a broken submodule configuration in 'submodules/page-03/ericjang__cryptocurrency_arbitrage', likely due to a missing or misconfigured .gitmodules file within that submodule.",
+      "status": "completed",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1775794796705,
+      "updatedAt": 1775794872183
+    }
+  ]
+}
