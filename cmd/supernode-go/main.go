@@ -331,7 +331,7 @@ func startTrackerServices() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/announce", withCORS(trackerCore.HTTPHandler()))
-	mux.HandleFunc("/", handleSignalingSocket)
+	mux.Handle("/", http.FileServer(http.Dir("web/ui")))
 	mux.HandleFunc("/matchmaking", handleSignalingSocket)
 	mux.HandleFunc("/spora/", withCORS(handleSpora))
 	mux.HandleFunc("/status", withCORS(handleServiceStatus))
@@ -348,7 +348,13 @@ func startTrackerServices() {
 	mux.HandleFunc("/add-torrent", withCORS(handleAddTorrent))
 	mux.HandleFunc("/remove-torrent", withCORS(handleRemoveTorrent))
 	mux.HandleFunc("/upload", withCORS(handleUpload))
+	mux.HandleFunc("/ingest", withCORS(handleIngest))
 	mux.HandleFunc("/upload-shard", withCORS(handleUploadShard))
+	mux.HandleFunc("/blobs", withCORS(handleGetAssets))
+	mux.HandleFunc("/key/generate", withCORS(handleKeyGenerate))
+	mux.HandleFunc("/subscriptions", withCORS(handleGetSubscriptions))
+	mux.HandleFunc("/subscribe", withCORS(handleSubscribe))
+	mux.HandleFunc("/publish", withCORS(handlePublish))
 	mux.HandleFunc("/publish-manifest", withCORS(handlePublishManifest))
 	mux.HandleFunc("/assets", withCORS(handleGetAssets))
 	mux.HandleFunc("/manifests/", withCORS(handleGetManifest))
@@ -890,7 +896,7 @@ func processMintCompatibility(amount float64, reason, address string) (string, s
 
 func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 	if !websocket.IsWebSocketUpgrade(r) {
-		if r.URL.Path != "/" && r.URL.Path != "/matchmaking" {
+		if r.URL.Path != "/matchmaking" {
 			http.NotFound(w, r)
 			return
 		}
