@@ -1,107 +1,16 @@
-# TODO (Autonomous Development Backlog)
+# BobTorrent TODO
 
-## ✅ Completed Through v11.59.0
-- Unified Go binaries for `dht-proxy`, `supernode-go`, and `lattice-go`
-- Go-native block lattice consensus engine
-- P2P lattice block broadcast
-- WebSocket live block feed for frontend and TUI consumers
-- Go supernode TUI with live market + block feed + network stats
-- Go storage layer with ChaCha20-Poly1305 + Reed-Solomon
-- WASM export of the Go storage kernel
-- Browser-side loader for `storage.wasm`
-- Bobcoin frontend Go WASM workbench for browser-side encryption + erasure preprocessing
-- Bobcoin frontend upload/publish flow for WASM-prepared shards and manifests
-- Bobcoin frontend retrieval/reconstruction/decryption flow for published manifests
-- Bobcoin frontend signed manifest anchoring on the Go lattice
-- Bobcoin Vault archive browser for personal and network manifest anchors
-- Bobcoin archive reuse across Storage Market and Gallery flows
-- Bobcoin Vault search/filter/discovery and provenance badging for archive intelligence
-- Bobcoin Vault owner trust scores, tiers, sorting modes, and sovereign publisher leaderboard
-- Bobcoin signed publisher alias/website/statement metadata on manifest anchors
-- Bobcoin degraded recovery diagnostics, parity sufficiency reporting, and manual shard-omission testing controls
-- Bobcoin saved archive presets and owner/type grouping modes in Vault
-- Bobcoin publisher avatar/profile/proof-link overlays in Vault archive cards
-- Bobcoin exportable JSON recovery reports from degraded recovery diagnostics
-- Bobcoin shard failure categorization and source host attribution in restore diagnostics
-- Bobcoin preset export/import and batch archive export/copy actions in Vault
-- Bobcoin host-level source reliability summaries derived from persisted recovery reports
-- Bobcoin long-horizon source reliability trends with week-over-week host comparisons
-- Go manifest anchors with typed publisher proof-kind metadata
-- Go manifest anchors with structured attestation labels and issuers
-- SQLite-backed durable lattice block log with replay-based cold-boot recovery
-- Materialized lattice snapshots with tail-replay recovery acceleration
-- Lattice persistence verification and conservative snapshot repair workflow
-- Lattice persistence JSON export and live SQLite backup workflow
-- Lattice persistence bundle import and backup restore workflow
-- Frontend compatibility endpoints for existing bobcoin pages
-- Go supernode compatibility endpoints for Bobcoin UI (`/status`, `/stats`, `/bankroll`, `/transactions`, `/mint`, `/burn`, `/fhe-oracle`, `/submit-proof`, `/add-torrent`, `/remove-torrent`, `/upload`, `/spora/:challenge`)
-- Go-native durable economy transaction log for supernode compatibility flows
-- Go supernode static serving for `storage.wasm` and `wasm_exec.js`
-- Go supernode publication registry for uploaded shards and manifests
-- Build pipeline packaging of `storage.wasm` and `wasm_exec.js`
-- Full repository compile validation with `go build -buildvcs=false ./...`
+## Immediate Tasks
+- [ ] Refine `anacrolix/torrent` instantiation to correctly manage our custom 1MB chunks mapping to standard BitTorrent piece sizes.
+- [ ] Connect the `ReadaheadBuffer` output directly to `http.ServeContent` in `StreamHandler` to properly respond to HTTP Range requests from the video player.
+- [ ] Ensure the Web UI interacts perfectly with the new Go backend (test Airdrop and streaming).
 
-## Highest Priority Next Steps
-- [ ] **Expand publication provenance beyond current publisher profile overlays**
-  - optional uploader profile / reputation layer
-  - external identity/attestation integrations beyond the new structured proof cards
-- [ ] **Expand per-source recovery analytics further**
-  - even longer-term source-path trend visibility
-  - broader multi-party diagnostics review/provenance workflows beyond the new signed package comparison layer
-- [ ] **Frontend bundle health follow-up**
-  - if needed, push chunking further so the `three` stack is deferred even more aggressively beyond the current route/vendor split
-- [ ] **Deepen lattice persistence hardening**
-  - signed/shareable operator diagnostics packaging beyond the new secure backup bundle support
-  - continue expanding persistence-aware replay coverage toward even larger multi-account mixed webs beyond the new snapshot-tail mixed transition regression
-  - decide whether snapshot controls should remain startup-config-only or gain runtime/API mutability
-- [ ] **Continue service-side Go migration**
-  - identify any remaining practical game-server/supertorrent responsibilities worth moving into Go now that `/upload` and stricter `/spora` compatibility behavior are also covered in `supernode-go`
-  - reduce Node-only orchestration dependencies further
-  - extend the hardened Go signaling path with richer session semantics (rooms, richer queue policy, explicit multiplayer diagnostics) if multiplayer becomes a first-class runtime surface
-- [x] **Real Filecoin bridge**
-  - replaced the fully mock bridge with a Lotus JSON-RPC integration path plus safe fallback behavior when Lotus is unconfigured
-  - persist and expose deal IDs through durable bridge records and supernode endpoints
-- [ ] **Deeper Filecoin ingestion hardening**
-  - add richer CAR/import orchestration when operators have fuller Lotus data-ingest pipelines
-  - surface more detailed deal lifecycle metadata in operator UIs
-- [x] **Consensus peer sync improvements (Phase 1)**
-  - added ordered confirmed-block catch-up via `GET /blocks`
-  - added duplicate-aware processing so duplicate deliveries do not trigger further broadcast fan-out
-  - added `GET/POST /bootstrap` and peer-registration-triggered late-join sync
-  - merged remote peer lists during bootstrap so nodes can learn additional fan-out targets
-- [x] **Consensus peer sync improvements (Phase 2A)**
-  - added bounded retry handling around bootstrap, ordered block-page sync, peer-list fetches, and fan-out delivery
-  - added per-peer operator-visible diagnostics for sync state, retries, lag, and broadcast failures
-- [x] **Consensus peer sync improvements (Phase 2B)**
-  - added cooldown/backoff behavior so repeated failures suppress immediate reattempts
-  - added divergence suspicion handling when a peer lacks the local ordered-history cursor
-  - fan-out now skips peers in cooldown and records those skips in telemetry
-- [x] **Consensus peer sync improvements (Phase 3B)**
-  - added safe `POST /reconcile/apply` execution for remote-to-local catch-up syncs
-  - execution policy refuses `divergent`, `remote_empty`, and `partially_overlapping` cases to preserve chain safety
-  - supports `force` parameter to bypass cooldown while still enforcing relationship safety
-- [x] **Consensus peer sync improvements (Phase 4)**: Integrated an autonomous background sync loop into the Go lattice server for automated, self-healing peer synchronization.
-- [ ] **Consensus peer sync improvements (Phase 5)**
-  - more advanced reconciliation (e.g., selective rollbacks or side-chain preservation) for divergent cases
-  - deeper peer-gossip policy tuning and backoff refinements
-  - richer sync dashboards / operator visualizers
+## Completed Tasks
+- [x] Phase 1: Initialize Go module, archive legacy code.
+- [x] Phase 2: DHT InfoHash mapping and Solana wallet porting.
+- [x] Phase 3: Manifest parsing, Detached AES-256-GCM encryption/decryption, Readahead streaming logic.
+- [x] Phase 3: Native Go I2P/SAM v3.1 integration framework.
 
-## Important Compatibility / Cleanup Tasks
-- [ ] **Remove temporary legacy block shim** once bobcoin frontend includes explicit `height` and `staked_balance`
-- [ ] **Unify block hashing rules** between Go and browser-side block construction
-- [x] **Add tests** for consensus transitions:
-  - send/receive
-  - NFT mint/transfer
-  - stake/unstake
-  - swaps
-  - proposals/votes
-- [x] **Add integration tests** for websocket live feed and wrapped-vs-raw block submission formats
-
-## Strategic Backlog
-- [ ] **Go Supernode WebUI integration**
-- [x] **Durable market manifests + shard metadata registry**: Upgraded the publication registry with a SQLite-backed index and added `GET /assets` for durable asset discovery.
-- [x] **Identity/Attestation verification**: Implemented a Go-native verifier service and integrated real-time verification badges into the Bobcoin Vault UI.
-- [x] **Real identity verifiers**: Replaced the `MockVerifier` with a production-ready `GitHubVerifier` that validates Gist attestations via the GitHub API.
-- [ ] **Game engine asset ingestion path**
-- [ ] **Global decentralized storage network launch**
-- [ ] **Investigate unreachable `qbittorrent` remote**
+## Ongoing Documentation Tasks
+- [ ] Continue updating `IDEAS.md` with potential improvements.
+- [ ] Log structural findings in `MEMORY.md`.
