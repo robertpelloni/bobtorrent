@@ -1,7 +1,9 @@
 package api
 
 import (
+	"embed"
 	"encoding/json"
+	"io/fs"
 	"net/http"
 
 	"github.com/bobtorrent/bobtorrent/internal/streaming"
@@ -9,6 +11,9 @@ import (
 	"github.com/bobtorrent/bobtorrent/pkg/dht"
 	"github.com/bobtorrent/bobtorrent/pkg/storage"
 )
+
+//go:embed web-ui/*
+var webUI embed.FS
 
 type Server struct {
 	Wallet         *wallet.Wallet
@@ -20,7 +25,6 @@ type Server struct {
 func (s *Server) SetupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// Initialize the streaming component with the unified BlobStore
 	store := storage.NewBlobStore(s.DataDir, s.Engine.Client)
 	s.StreamServer = streaming.NewServer(s.DataDir, store)
 
@@ -29,11 +33,15 @@ func (s *Server) SetupRoutes() *http.ServeMux {
 	mux.HandleFunc("/api/wallet", s.handleWallet)
 	mux.HandleFunc("/api/wallet/airdrop", s.handleWalletAirdrop)
 	mux.HandleFunc("/api/stream/", s.StreamServer.StreamHandler)
-	mux.HandleFunc("/api/channels/browse", s.handleBrowseChannels) // Mock for UI
+	mux.HandleFunc("/api/channels/browse", s.handleBrowseChannels)
+	mux.HandleFunc("/api/ingest", s.handleIngest)
 
-	// Serve the static Web UI for everything else
-	fs := http.FileServer(http.Dir("./web-ui"))
-	mux.Handle("/", fs)
+	// Serve the embedded static Web UI
+	subFS, err := fs.Sub(webUI, "web-ui")
+	if err != nil {
+		panic("Failed to initialize embedded web-ui: " + err.Error())
+	}
+	mux.Handle("/", http.FileServer(http.FS(subFS)))
 
 	return mux
 }
@@ -81,7 +89,6 @@ func (s *Server) handleWalletAirdrop(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleBrowseChannels(w http.ResponseWriter, r *http.Request) {
-	// Stub to satisfy the UI's Channels tab until DHT discovery is fully hooked in
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode([]map[string]interface{}{
 		{

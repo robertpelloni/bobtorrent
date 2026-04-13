@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Megatorrent Reference Client</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Megatorrent <span class="badge">Reference Client</span></h1>
+            <div id="status-bar" class="status-bar">
+                <span id="dht-status" class="status-item">DHT: <span class="value">Loading...</span></span>
+                <span id="network-status" class="status-item">Network: <span class="value">Loading...</span></span>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-btn" data-tab="identity">Identity</button>
+            <button class="tab-btn" data-tab="publish">Publish</button>
+            <button class="tab-btn" data-tab="subscribe">Subscribe</button>
+            <button class="tab-btn" data-tab="downloads">Downloads</button>
+        </nav>
+
+        <main class="content">
+            <!-- Dashboard Tab -->
+            <section id="dashboard" class="tab-content active">
+                <h2>System Status</h2>
+                <div class="card-grid">
+                    <div class="card">
+                        <h3>Storage</h3>
+                        <div class="stat-row">
+                            <label>Blobs:</label> <span id="dash-blobs">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Size:</label> <span id="dash-size">0 MB</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Max:</label> <span id="dash-max">0 GB</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Utilization:</label> <span id="dash-util">0%</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>Network</h3>
+                        <div class="stat-row">
+                            <label>DHT Nodes:</label> <span id="dash-dht">Unknown</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Tracker:</label> <span id="dash-tracker">Connected</span>
+                        </div>
+                        <div class="stat-row">
+                            <label>Subscriptions:</label> <span id="dash-subs">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Recent Blobs</h3>
+                <div class="table-container">
+                    <table id="blobs-table">
+                        <thead>
+                            <tr>
+                                <th>Blob ID</th>
+                                <th>Size</th>
+                                <th>Added</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="3">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Identity Tab -->
+            <section id="identity" class="tab-content">
+                <h2>Identity Management</h2>
+                <p class="description">Your identity consists of a Public/Private keypair used to sign manifests.</p>
+
+                <div class="card">
+                    <h3>Current Identity</h3>
+                    <div class="form-group">
+                        <label for="id-pub">Public Key</label>
+                        <input type="text" id="id-pub" readonly placeholder="Not generated yet">
+                        <small>Share this key with others so they can subscribe to your channel.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="id-priv">Private Key</label>
+                        <input type="password" id="id-priv" readonly placeholder="Not generated yet">
+                        <small>Keep this secret! It allows publishing updates.</small>
+                    </div>
+                    <div class="actions">
+                        <button id="btn-generate-key" class="primary-btn">Generate New Identity</button>
+                        <button id="btn-save-key" class="secondary-btn" disabled>Save to File</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Publish Tab -->
+            <section id="publish" class="tab-content">
+                <h2>Publish Content</h2>
+                <p class="description">Ingest files to create encrypted blobs, then publish a manifest to the network.</p>
+
+                <div class="card">
+                    <h3>1. Ingest File</h3>
+                    <div class="form-group">
+                        <label for="ingest-path">File Path (Local System)</label>
+                        <input type="text" id="ingest-path" placeholder="/path/to/file.mkv">
+                        <small>Enter the absolute path to the file on the server machine.</small>
+                    </div>
+                    <button id="btn-ingest" class="primary-btn">Ingest File</button>
+                    <div id="ingest-result" class="result-box hidden">
+                        <h4>Ingestion Result</h4>
+                        <pre id="ingest-json"></pre>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>2. Publish Manifest</h3>
+                    <div class="form-group">
+                        <label>Identity</label>
+                        <span id="pub-identity-status">Checking...</span>
+                    </div>
+                    <button id="btn-publish" class="primary-btn" disabled>Publish Manifest</button>
+                    <div id="publish-result" class="result-box hidden">
+                        <h4>Publish Result</h4>
+                        <pre id="publish-json"></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Subscribe Tab -->
+            <section id="subscribe" class="tab-content">
+                <h2>Subscriptions</h2>
+                <p class="description">Follow channels by their Public Key to receive updates automatically.</p>
+
+                <div class="card">
+                    <h3>Add Subscription</h3>
+                    <div class="form-group">
+                        <label for="sub-key">Channel Public Key</label>
+                        <input type="text" id="sub-key" placeholder="Enter 64-character hex key">
+                    </div>
+                    <button id="btn-subscribe" class="primary-btn">Subscribe</button>
+                </div>
+
+                <h3>Active Subscriptions</h3>
+                <div class="table-container">
+                    <table id="subs-table">
+                        <thead>
+                            <tr>
+                                <th>Channel Key</th>
+                                <th>Last Sequence</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4">No subscriptions yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Downloads Tab -->
+            <section id="downloads" class="tab-content">
+                <h2>Downloads</h2>
+                <p class="description">Monitor active downloads and reassembly status.</p>
+
+                <div class="table-container">
+                    <table id="downloads-table">
+                        <thead>
+                            <tr>
+                                <th>File Name</th>
+                                <th>Progress</th>
+                                <th>Status</th>
+                                <th>Speed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4">No active downloads.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
