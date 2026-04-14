@@ -19,7 +19,8 @@ type ReadaheadBuffer struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	mu        sync.Mutex
-	position  int64 // Track absolute offset in the virtual file
+	position  int64
+	ready     chan struct{}
 }
 
 func NewReadaheadBuffer(manifest *storage.Manifest, store *storage.BlobStore) *ReadaheadBuffer {
@@ -31,22 +32,22 @@ func NewReadaheadBuffer(manifest *storage.Manifest, store *storage.BlobStore) *R
 		ctx:      ctx,
 		cancel:   cancel,
 		position: 0,
+		ready:    make(chan struct{}, 1),
 	}
 }
 
 func (r *ReadaheadBuffer) StartPrefetch() {
 	log.Println("Starting predictive readahead for manifest:", r.manifest.OriginalFilename)
-	go r.fetchLoop()
+	go r.fetchLoop(r.current)
 }
 
-func (r *ReadaheadBuffer) fetchLoop() {
-	for i := r.current; i < len(r.manifest.Chunks); i++ {
+func (r *ReadaheadBuffer) fetchLoop(startIndex int) {
+	for i := startIndex; i < len(r.manifest.Chunks); i++ {
 		select {
 		case <-r.ctx.Done():
 			return
 		default:
 			chunk := r.manifest.Chunks[i]
-			log.Printf("Prefetching chunk %d (BlobID: %s)", chunk.Order, chunk.BlobID)
 
 			plaintext, err := r.store.FetchAndDecryptBlob(chunk)
 			if err != nil {
@@ -57,33 +58,80 @@ func (r *ReadaheadBuffer) fetchLoop() {
 			r.mu.Lock()
 			if r.current == i {
 				r.buffer = bytes.NewReader(plaintext)
+
+				var cumulative int64 = 0
+				for j := 0; j < i; j++ {
+				    cumulative += r.manifest.Chunks[j].Size
+				}
+				chunkOffset := r.position - cumulative
+				if chunkOffset > 0 {
+				    r.buffer.Seek(chunkOffset, io.SeekStart)
+				}
+
+				select {
+				case r.ready <- struct{}{}:
+				default:
+				}
 			}
 			r.mu.Unlock()
+			return
 		}
 	}
 }
 
-func (r *ReadaheadBuffer) Read(p []byte) (n int, err error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (r *ReadaheadBuffer) Read(p []byte) (int, error) {
+    if len(p) == 0 {
+        return 0, nil
+    }
 
-	if r.buffer == nil {
-		return 0, fmt.Errorf("buffer not ready (waiting for fetch)")
-	}
+	for {
+		r.mu.Lock()
+		buf := r.buffer
+		r.mu.Unlock()
 
-	n, err = r.buffer.Read(p)
-	if n > 0 {
-		r.position += int64(n)
-	}
+		if buf == nil {
+		    select {
+		    case <-r.ready:
+		    case <-r.ctx.Done():
+			    return 0, io.EOF
+		    }
+            continue
+        }
 
-	if err == io.EOF {
-		r.current++
-		r.buffer = nil
+		r.mu.Lock()
+        if r.buffer == nil {
+            r.mu.Unlock()
+            continue
+        }
+
+		n, err := r.buffer.Read(p)
+        if n > 0 {
+		    r.position += int64(n)
+        }
+
+        if err == io.EOF {
+            if r.current >= len(r.manifest.Chunks)-1 {
+                r.mu.Unlock()
+                return n, io.EOF // Stop timeout loops here
+            }
+
+            r.current++
+            r.buffer = nil
+            r.mu.Unlock()
+
+            go r.fetchLoop(r.current)
+
+            if n > 0 {
+                return n, nil
+            }
+            continue
+        }
+
+        r.mu.Unlock()
+		return n, err
 	}
-	return n, err
 }
 
-// Seek implements io.Seeker to support HTTP Range requests for video players
 func (r *ReadaheadBuffer) Seek(offset int64, whence int) (int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -104,7 +152,12 @@ func (r *ReadaheadBuffer) Seek(offset int64, whence int) (int64, error) {
 		return 0, fmt.Errorf("seek position out of bounds")
 	}
 
-	// Calculate which chunk the absolute byte offset falls into
+	if newPosition == r.manifest.FileSize {
+		r.position = newPosition
+		r.buffer = bytes.NewReader([]byte{})
+		return r.position, nil
+	}
+
 	var cumulative int64 = 0
 	targetChunkIndex := -1
 	var chunkOffset int64 = 0
@@ -118,29 +171,22 @@ func (r *ReadaheadBuffer) Seek(offset int64, whence int) (int64, error) {
 		cumulative += chunk.Size
 	}
 
-	// If seeking beyond the last chunk boundary but exactly to FileSize
-	if newPosition == r.manifest.FileSize {
-		r.position = newPosition
-		r.buffer = bytes.NewReader([]byte{})
-		return r.position, nil
-	}
-
 	if targetChunkIndex == -1 {
 		return 0, fmt.Errorf("could not resolve seek to chunk")
 	}
 
-	// If we are jumping to a new chunk, force a re-fetch
 	if targetChunkIndex != r.current {
-		log.Printf("Seeking to chunk %d, byte offset %d", targetChunkIndex, chunkOffset)
 		r.current = targetChunkIndex
-		r.buffer = nil // Buffer will be populated by the fetch loop
-		// We would ideally restart the fetchLoop here to prioritize the new index.
+		r.position = newPosition
+		r.buffer = nil
+		go r.fetchLoop(r.current)
 	} else if r.buffer != nil {
-		// We are in the same chunk, just adjust the internal reader
 		r.buffer.Seek(chunkOffset, io.SeekStart)
+		r.position = newPosition
+	} else {
+	    r.position = newPosition
 	}
 
-	r.position = newPosition
 	return r.position, nil
 }
 

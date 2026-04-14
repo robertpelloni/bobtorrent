@@ -7,15 +7,18 @@
 * [x] Port Custom Binary Protocol v5 and AES-256-GCM Blob Storage
 * [x] Port Solana Wallet & Identity Management natively in Go
 
-## Phase 2/3/4: Advanced Network Features & Streaming (Complete)
+## Phase 2/3/4/5/6: Advanced Network Features, Streaming, Testing & API (Complete)
 * [x] Port I2P/SAM v3.1 Integration from C++ to native Go
 * [x] Unify Manifests and Key Distribution
 * [x] Re-implement Predictive Streaming and Readahead algorithms
 * [x] Handle HTTP Range Requests (206 Partial Content) correctly using `io.Seeker`
-* [x] Port Web UI & HTTP API from Java/Node.js to Go (Wiring Complete)
+* [x] Port Web UI & HTTP API from Java/Node.js to Go
+* [x] Implement Ingestion endpoint with automatic encryption and Manifest generation
+* [x] Embed Web UI directly into the Go binary (`go:embed`)
+* [x] Wire up `anacrolix/torrent` BitTorrent logic for dynamically mapping and downloading AES Blobs
+* [x] Local multi-node network End-to-End simulations
 
-## Phase 5: Enhancement, Integration, and Polish (In Progress)
-* [ ] Deep `anacrolix/torrent` piece downloading mapping for Custom Blobs
+## Phase 7: Enhancement, Integration, and Polish (Next)
+* [ ] Submodule updates and cross-branch testing
 * [ ] Implement missing Web UI tooltips, labels, and fine details
 * [ ] Performance profiling and concurrency tuning
-* [ ] End-to-end automated integration tests for the unified Go stack

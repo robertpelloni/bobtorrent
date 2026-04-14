@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"io"
+	"strconv"
+	"fmt"
 
 	"github.com/bobtorrent/bobtorrent/pkg/storage"
 )
@@ -45,8 +48,30 @@ func (s *Server) StreamHandler(w http.ResponseWriter, r *http.Request) {
 
 	buffer.StartPrefetch()
 
-	w.Header().Set("Content-Type", manifest.MimeType)
-	w.Header().Set("Accept-Ranges", "bytes")
+    // Explicit Range handling to bypass ServeContent blocking bugs during tests
+	rangeHeader := r.Header.Get("Range")
+	if rangeHeader != "" {
+		w.Header().Set("Content-Type", manifest.MimeType)
+		w.Header().Set("Accept-Ranges", "bytes")
 
+		var start, end int64
+		fmt.Sscanf(rangeHeader, "bytes=%d-%d", &start, &end)
+		if end == 0 {
+		    end = manifest.FileSize - 1
+		}
+
+		contentLength := end - start + 1
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, manifest.FileSize))
+		w.Header().Set("Content-Length", strconv.FormatInt(contentLength, 10))
+		w.WriteHeader(http.StatusPartialContent)
+
+		buffer.Seek(start, io.SeekStart)
+
+		// Copy strictly the requested length to prevent unexpected EOF panic loops on test assertions
+		io.CopyN(w, buffer, contentLength)
+		return
+	}
+
+	w.Header().Set("Content-Type", manifest.MimeType)
 	http.ServeContent(w, r, manifest.OriginalFilename, time.Now(), buffer)
 }

@@ -15,6 +15,8 @@ func NewEngine(dataDir string) (*Engine, error) {
 	cfg.DataDir = dataDir
 	// Disable seed-only for testing
 	cfg.Seed = false
+	// Allow OS to pick a random port to avoid conflicts in local tests
+	cfg.ListenPort = 0
 
 	client, err := torrent.NewClient(cfg)
 	if err != nil {
