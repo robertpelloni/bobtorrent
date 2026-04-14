@@ -356,6 +356,13 @@
 - **Round-Trip Milestone**: The storage flow now supports the full operator round-trip: preprocess → publish → fetch manifest → fetch shards → reconstruct → decrypt → download.
 - **Validation**: Re-validated the Bobcoin frontend production build after retrieval-flow wiring while preserving the root Go workspace stability.
 
+## [11.60.0] - 2026-04-10
+### Go Port: Web UI Integration
+- **Static Server**: Ported the `reference-client/web-ui` frontend directly into the Go supernode under `web/ui` and configured `supernode-go` to serve it natively on `/`.
+- **API Parity**: Stripped `/api/` prefixes from the Web UI's network calls and implemented the required endpoints natively in Go: `/blobs` (aliasing `/assets`), `/key/generate` (using ed25519), `/subscriptions` and `/subscribe` (in-memory mock store), and `/publish`.
+- **Ingest Shim**: Bridged the Web UI's upload mechanism via a `/ingest` shim that leverages the existing Go `buildUploadedTorrentFromMultipartWithFile` logic and returns proper blob descriptors.
+- **Validation**: Compiled and tested the updated `supernode-go` with no regressions, fully unifying the reference client UI within the Go backend.
+
 ## [11.8.0] - 2026-04-03
 ### Go Port: Real Shard Upload + Manifest Publication Flow
 - **Publication Registry**: Added `internal/publish` with durable shard + manifest persistence for supernode-hosted Bobtorrent assets, including a tested content-addressed shard store and manifest registry.

@@ -98,7 +98,7 @@
 - [x] **Add integration tests** for websocket live feed and wrapped-vs-raw block submission formats
 
 ## Strategic Backlog
-- [ ] **Go Supernode WebUI integration**
+- [x] **Go Supernode WebUI integration**: Ported `reference-client/web-ui` and implemented Go backend APIs for it.
 - [x] **Durable market manifests + shard metadata registry**: Upgraded the publication registry with a SQLite-backed index and added `GET /assets` for durable asset discovery.
 - [x] **Identity/Attestation verification**: Implemented a Go-native verifier service and integrated real-time verification badges into the Bobcoin Vault UI.
 - [x] **Real identity verifiers**: Replaced the `MockVerifier` with a production-ready `GitHubVerifier` that validates Gist attestations via the GitHub API.
