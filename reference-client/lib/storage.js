@@ -1,8 +1,12 @@
-import sodium from 'sodium-native'
 import crypto from 'crypto'
 import { EventEmitter } from 'events'
+import { Readable } from 'stream'
 
 const CHUNK_SIZE = 1024 * 1024
+const ALGORITHM = 'aes-256-gcm'
+const KEY_SIZE = 32 // 256 bits
+const NONCE_SIZE = 12 // 96 bits
+const OVERHEAD_SIZE = NONCE_SIZE + 16 // Tag size is 16
 
 function sha256 (buffer) {
   const hash = crypto.createHash('sha256')
@@ -20,22 +24,22 @@ export function ingest (fileBuffer, fileName) {
     const end = Math.min(offset + CHUNK_SIZE, totalSize)
     const chunkData = fileBuffer.slice(offset, end)
 
-    const key = Buffer.alloc(sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES)
-    const nonce = Buffer.alloc(sodium.crypto_aead_chacha20poly1305_ietf_NPUBBYTES)
-    sodium.randombytes_buf(key)
-    sodium.randombytes_buf(nonce)
+    // Generate random key
+    const key = crypto.randomBytes(KEY_SIZE)
 
-    const ciphertext = Buffer.alloc(chunkData.length + sodium.crypto_aead_chacha20poly1305_ietf_ABYTES)
-    sodium.crypto_aead_chacha20poly1305_ietf_encrypt(
-      ciphertext,
-      chunkData,
-      null,
-      null,
-      nonce,
-      key
-    )
+    // To match Java MuxEngine, we use a zero nonce for determinism per key
+    // (Note: Java generates a new key per session/file, or per chunk?
+    // MuxEngine encrypt(plaintext, key) uses zero nonce.
+    // Here we generate a UNIQUE random key for EVERY chunk, so zero nonce is safe.)
+    const nonce = Buffer.alloc(NONCE_SIZE) // Zeros
 
-    const blobBuffer = ciphertext
+    const cipher = crypto.createCipheriv(ALGORITHM, key, nonce)
+    const encrypted = Buffer.concat([cipher.update(chunkData), cipher.final()])
+    const tag = cipher.getAuthTag()
+
+    // Java MuxEngine format: Nonce (12) + Ciphertext (N) + Tag (16)
+
+    const blobBuffer = Buffer.concat([nonce, encrypted, tag])
     const blobId = sha256(blobBuffer)
 
     blobs.push({
@@ -71,29 +75,116 @@ export async function reassemble (fileEntry, getBlobFn) {
     const blobBuffer = await getBlobFn(chunkMeta.blobId)
     if (!blobBuffer) throw new Error(`Blob ${chunkMeta.blobId} not found`)
 
-    const ciphertext = blobBuffer.slice(chunkMeta.offset, chunkMeta.offset + chunkMeta.length)
+    // Extract parts based on Java format: Nonce (12) + Ciphertext + Tag (16)
+    const nonce = blobBuffer.slice(chunkMeta.offset, chunkMeta.offset + NONCE_SIZE)
+    const encryptedWithTag = blobBuffer.slice(chunkMeta.offset + NONCE_SIZE, chunkMeta.offset + chunkMeta.length)
+
+    const authTag = encryptedWithTag.slice(encryptedWithTag.length - 16)
+    const ciphertext = encryptedWithTag.slice(0, encryptedWithTag.length - 16)
 
     const key = Buffer.from(chunkMeta.key, 'hex')
-    const nonce = Buffer.from(chunkMeta.nonce, 'hex')
-    const plaintext = Buffer.alloc(ciphertext.length - sodium.crypto_aead_chacha20poly1305_ietf_ABYTES)
+    // We expect the stored nonce to match the one in metadata (if stored), or we just use the one in the blob
+    // Java MuxEngine puts nonce at start of blob.
+
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, nonce)
+    decipher.setAuthTag(authTag)
 
     try {
-      sodium.crypto_aead_chacha20poly1305_ietf_decrypt(
-        plaintext,
-        null,
-        ciphertext,
-        null,
-        nonce,
-        key
-      )
+      const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()])
+      parts.push(plaintext)
     } catch (err) {
-      throw new Error(`Decryption failed for blob ${chunkMeta.blobId}`)
+      throw new Error(`Decryption failed for blob ${chunkMeta.blobId}: ${err.message}`)
     }
-
-    parts.push(plaintext)
   }
 
   return Buffer.concat(parts)
+}
+
+export function createReadStream (fileEntry, getBlobFn, options = {}) {
+  const start = options.start || 0
+  const end = options.end || (fileEntry.size - 1)
+  const readahead = options.readahead || 3 // Number of chunks to pre-fetch
+
+  let cursor = start
+  let currentChunkIndex = 0
+  let chunkStartOffset = 0
+
+  // Fast-forward to start chunk
+  for (let i = 0; i < fileEntry.chunks.length; i++) {
+    const len = fileEntry.chunks[i].length - OVERHEAD_SIZE
+    if (cursor < chunkStartOffset + len) {
+      currentChunkIndex = i
+      break
+    }
+    chunkStartOffset += len
+  }
+
+  return new Readable({
+    async read (size) {
+      if (cursor > end) {
+        this.push(null)
+        return
+      }
+
+      if (currentChunkIndex >= fileEntry.chunks.length) {
+        this.push(null)
+        return
+      }
+
+      // Trigger predictive readahead
+      for (let i = 1; i <= readahead; i++) {
+        const nextIndex = currentChunkIndex + i
+        if (nextIndex < fileEntry.chunks.length) {
+          const nextChunk = fileEntry.chunks[nextIndex]
+          // We fire-and-forget the fetch request. The underlying blob store/network logic
+          // should handle deduplication of in-flight requests.
+          // Since getBlobFn is async, we don't await it here to avoid blocking the current read.
+          // This relies on getBlobFn caching the result or the network layer handling it.
+          getBlobFn(nextChunk.blobId).catch(() => {})
+        }
+      }
+
+      const chunkMeta = fileEntry.chunks[currentChunkIndex]
+      const plaintextSize = chunkMeta.length - OVERHEAD_SIZE
+      const chunkEndOffset = chunkStartOffset + plaintextSize - 1
+
+      const sliceStart = cursor
+      const sliceEnd = Math.min(end, chunkEndOffset)
+
+      const relStart = sliceStart - chunkStartOffset
+      const relEnd = sliceEnd - chunkStartOffset
+
+      try {
+        const blobBuffer = await getBlobFn(chunkMeta.blobId)
+        if (!blobBuffer) {
+          this.destroy(new Error(`Blob ${chunkMeta.blobId} missing`))
+          return
+        }
+
+        const nonce = blobBuffer.slice(chunkMeta.offset, chunkMeta.offset + NONCE_SIZE)
+        const encryptedWithTag = blobBuffer.slice(chunkMeta.offset + NONCE_SIZE, chunkMeta.offset + chunkMeta.length)
+        const authTag = encryptedWithTag.slice(encryptedWithTag.length - 16)
+        const ciphertext = encryptedWithTag.slice(0, encryptedWithTag.length - 16)
+        const key = Buffer.from(chunkMeta.key, 'hex')
+
+        const decipher = crypto.createDecipheriv(ALGORITHM, key, nonce)
+        decipher.setAuthTag(authTag)
+        const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()])
+
+        const data = plaintext.slice(relStart, relEnd + 1)
+        this.push(data)
+
+        cursor += data.length
+
+        if (cursor > chunkEndOffset) {
+          currentChunkIndex++
+          chunkStartOffset += plaintextSize
+        }
+      } catch (err) {
+        this.destroy(err)
+      }
+    }
+  })
 }
 
 export class BlobClient extends EventEmitter {
@@ -107,14 +198,14 @@ export class BlobClient extends EventEmitter {
 
   async seed (fileEntry) {
     const blobIds = fileEntry.chunks.map(c => c.blobId)
-    
+
     for (const blobId of blobIds) {
       if (this.store.has(blobId)) {
         this.tracker.announce(blobId)
         this.network.announceBlob(blobId)
       }
     }
-    
+
     this.emit('seeding', { blobIds })
     return blobIds
   }
@@ -124,14 +215,14 @@ export class BlobClient extends EventEmitter {
     const chunks = fileEntry.chunks
     const total = chunks.length
     let completed = 0
-    
+
     const getBlobFn = async (blobId) => {
       if (this.store.has(blobId)) {
         return this.store.get(blobId)
       }
-      
+
       const peers = await this.tracker.lookup(blobId)
-      
+
       for (const peer of peers) {
         try {
           await this.network.connect(peer.address)
@@ -139,19 +230,19 @@ export class BlobClient extends EventEmitter {
           continue
         }
       }
-      
+
       this.network.queryBlob(blobId)
-      
+
       await new Promise(resolve => setTimeout(resolve, 500))
-      
+
       const blob = await this.network.requestBlob(blobId)
-      
+
       completed++
       onProgress({ completed, total, blobId })
-      
+
       return blob
     }
-    
+
     return reassemble(fileEntry, getBlobFn)
   }
 

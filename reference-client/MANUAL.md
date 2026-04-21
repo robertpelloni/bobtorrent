@@ -84,6 +84,18 @@ On the **Publish** tab:
 
 On the **Subscribe** tab:
 1.  Enter the **Public Key** (64-character hex) of a publisher you want to follow.
+### 3. Discovery
+
+The **Discovery** tab allows you to browse the hierarchical topic network (similar to a filesystem).
+1.  Enter a topic path (e.g., `mp3/electronic`) or leave blank for root.
+2.  Click **Browse**.
+3.  Click on subtopics to navigate deeper.
+4.  If a publisher is active in a topic, they will appear in the list. Click **Sub** to subscribe to their channel.
+
+### 4. Subscribing
+
+On the **Subscribe** tab:
+1.  Enter the **Public Key** (64-character hex) of a publisher you want to follow (or use the **Discovery** tab to find one).
 2.  Click **Subscribe**.
 3.  The client will connect to the tracker and listen for updates from that key.
 4.  When an update is received, it will appear in the "Active Subscriptions" list.
@@ -95,11 +107,55 @@ On the **Downloads** tab, you can view the status of active file downloads.
 *   *Note: In this reference implementation, manual fetching via CLI `blob-fetch` is sometimes required for advanced scenarios.*
 
 ### 5. Dashboard
+### 5. Files
+
+The **Files** tab lists all content you have ingested or are downloading.
+*   **Name**: File name.
+*   **Size**: Total size.
+*   **Progress**: Percentage of blobs available locally.
+*   **Status**: `Downloading` or `Complete`.
+
+### 6. Downloads
+
+On the **Downloads** tab, you can view the status of active file transfers.
+*   The client automatically attempts to download content from subscribed channels (in a full implementation).
+*   *Note: In this reference implementation, manual fetching via CLI `blob-fetch` is sometimes required for advanced scenarios.*
+
+### 7. Wallet
+
+The **Wallet** tab manages Bobcoin earnings from hosting content (Supernode feature).
+*   **Balance**: Confirmed and Pending earnings.
+*   **Address**: Your payout address.
+*   **Transactions**: History of payments and rewards.
+
+### 8. Remote Management
+
+You can use this Web UI to manage a remote Supernode (Java) or another Reference Client.
+1.  Use the selector in the top header (next to the logo) to switch between **Local Node** and **Remote Supernode**.
+2.  The UI will automatically proxy requests to the configured target.
+
+### 9. Dashboard
 
 The **Dashboard** provides an overview of:
 *   **Storage Usage**: Total size of blobs stored locally.
 *   **Network Status**: Connection to DHT and Tracker.
 *   **Recent Activity**: Recently added blobs.
+
+### 10. Network Health
+
+The **Network** tab provides deep insights into the node's connectivity and storage health.
+*   **Transport Protocols**: Real-time stats for each active transport (Clearnet, Tor, I2P, etc.), including connection counts, traffic, and error rates.
+*   **Storage Engine**: Configuration details for the underlying storage (e.g., Erasure Coding settings: 4 Data + 2 Parity).
+
+### 11. File Inspection
+
+In the **Files** tab, clicking the **Inspect (🔍)** button opens the **File Health Inspector**.
+*   **Visual Grid**: Displays a map of every chunk in the file.
+*   **Shard Status**: For Erasure Coded files (Java Supernode), each chunk block shows individual shards:
+    *   <span style="color:green">Green</span>: Present Data Shard.
+    *   <span style="color:blue">Blue</span>: Present Parity Shard.
+    *   <span style="color:red">Red</span>: Missing Shard.
+*   **Health Status**: Indicates if the file is "Healthy" (recoverable) or "Critical" (data loss possible).
 
 ## Troubleshooting
 

@@ -4,6 +4,9 @@ plugins {
 }
 
 group = "io.supernode"
+application {
+    mainClass.set("io.supernode.Supernode")
+}
 version = "0.1.0-SNAPSHOT"
 
 repositories {

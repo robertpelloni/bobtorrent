@@ -14,3 +14,4 @@ This is a monorepo that orchestrates the entire Bobtorrent ecosystem, including:
 
 Refer to `TODO.md` and `ROADMAP.md` in the root for active tasks.
 Always ensure versioning is synchronized with the root `VERSION` file.
+Please refer to `docs/UNIVERSAL_LLM_INSTRUCTIONS.md` for all instructions.

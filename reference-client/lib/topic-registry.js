@@ -4,15 +4,15 @@ import { sign, verify } from './crypto.js'
 
 /**
  * TopicRegistry - BEP 44 based topic registration and discovery
- * 
+ *
  * Topics use a hierarchical Usenet-style naming convention:
  *   mp3/spotify-rips/electronic
  *   software/windows/games
- * 
+ *
  * Each topic is addressed via DHT using:
  *   targetId = SHA1(registryPublicKey + topicSalt)
  *   where topicSalt = SHA256("supertorrent:topic:" + topicPath)
- * 
+ *
  * Registry entries contain publisher lists that point to their manifests.
  */
 
@@ -58,11 +58,11 @@ export function computeTargetId (publicKey, salt) {
  */
 export function createRegistryEntry (keypair, salt, seq, value) {
   const encodedValue = Buffer.from(JSON.stringify(value))
-  
+
   if (encodedValue.length > MAX_BEP44_VALUE_SIZE) {
     throw new Error(`Registry entry too large: ${encodedValue.length} > ${MAX_BEP44_VALUE_SIZE} bytes`)
   }
-  
+
   return {
     k: keypair.publicKey,
     v: encodedValue,
@@ -112,10 +112,10 @@ export class TopicRegistry extends EventEmitter {
 
     const salt = topicToSalt(topicPath)
     const existing = await this._dhtGet(salt)
-    
+
     let registry = existing?.value || { publishers: [], subtopics: [] }
-    let seq = (existing?.seq || 0) + 1
-    
+    const seq = (existing?.seq || 0) + 1
+
     if (Buffer.isBuffer(registry)) {
       try {
         registry = JSON.parse(registry.toString())
@@ -123,32 +123,32 @@ export class TopicRegistry extends EventEmitter {
         registry = { publishers: [], subtopics: [] }
       }
     }
-    
+
     const myPk = this.keypair.publicKey.toString('hex')
     const existingIdx = registry.publishers.findIndex(p => p.pk === myPk)
-    
+
     const publisherEntry = {
       pk: myPk,
       name: metadata.name || 'Anonymous',
       registered: Date.now(),
       ...metadata
     }
-    
+
     if (existingIdx >= 0) {
       registry.publishers[existingIdx] = publisherEntry
     } else {
       registry.publishers.push(publisherEntry)
     }
-    
+
     const parts = topicPath.split('/')
     if (parts.length > 1) {
       const parentPath = parts.slice(0, -1).join('/')
       await this._ensureSubtopicRegistered(parentPath, parts[parts.length - 1])
     }
-    
+
     await this._dhtPut(salt, seq, registry, existing?.seq)
     this._startRepublishing(topicPath, salt, registry)
-    
+
     this.emit('registered', { topicPath, metadata })
   }
 
@@ -163,20 +163,20 @@ export class TopicRegistry extends EventEmitter {
 
     const salt = topicToSalt(topicPath)
     const existing = await this._dhtGet(salt)
-    
+
     if (!existing?.value) return
-    
+
     let registry = existing.value
     if (Buffer.isBuffer(registry)) {
       registry = JSON.parse(registry.toString())
     }
-    
+
     const myPk = this.keypair.publicKey.toString('hex')
     registry.publishers = registry.publishers.filter(p => p.pk !== myPk)
-    
+
     await this._dhtPut(salt, existing.seq + 1, registry, existing.seq)
     this._stopRepublishing(topicPath)
-    
+
     this.emit('unregistered', { topicPath })
   }
 
@@ -189,43 +189,43 @@ export class TopicRegistry extends EventEmitter {
   async subscribe (topicPath, options = {}) {
     const salt = topicToSalt(topicPath)
     const pollInterval = options.pollInterval || DHT_POLL_INTERVAL_MS
-    
+
     const entry = await this._dhtGet(salt)
     let registry = { publishers: [], subtopics: [] }
-    
+
     if (entry?.value) {
-      registry = Buffer.isBuffer(entry.value) 
+      registry = Buffer.isBuffer(entry.value)
         ? JSON.parse(entry.value.toString())
         : entry.value
     }
-    
+
     const subscription = new TopicSubscription(this, topicPath, registry, entry?.seq || 0)
-    
+
     const intervalId = setInterval(async () => {
       if (this._destroyed) return
-      
+
       try {
         const updated = await this._dhtGet(salt)
         if (updated && updated.seq > subscription.seq) {
           const newRegistry = Buffer.isBuffer(updated.value)
             ? JSON.parse(updated.value.toString())
             : updated.value
-          
+
           subscription._update(newRegistry, updated.seq)
         }
       } catch (err) {
         this.emit('error', err)
       }
     }, pollInterval)
-    
-    this.subscriptions.set(topicPath, { 
-      intervalId, 
+
+    this.subscriptions.set(topicPath, {
+      intervalId,
       subscription,
-      salt 
+      salt
     })
-    
+
     this.emit('subscribed', { topicPath, publishers: registry.publishers })
-    
+
     return subscription
   }
 
@@ -250,13 +250,13 @@ export class TopicRegistry extends EventEmitter {
   async listPublishers (topicPath) {
     const salt = topicToSalt(topicPath)
     const entry = await this._dhtGet(salt)
-    
+
     if (!entry?.value) return []
-    
+
     const registry = Buffer.isBuffer(entry.value)
       ? JSON.parse(entry.value.toString())
       : entry.value
-    
+
     return registry.publishers || []
   }
 
@@ -268,13 +268,13 @@ export class TopicRegistry extends EventEmitter {
   async listSubtopics (topicPath) {
     const salt = topicToSalt(topicPath)
     const entry = await this._dhtGet(salt)
-    
+
     if (!entry?.value) return []
-    
+
     const registry = Buffer.isBuffer(entry.value)
       ? JSON.parse(entry.value.toString())
       : entry.value
-    
+
     return registry.subtopics || []
   }
 
@@ -288,11 +288,11 @@ export class TopicRegistry extends EventEmitter {
       this.listPublishers(topicPath),
       this.listSubtopics(topicPath)
     ])
-    
-    return { 
-      path: topicPath || '/', 
-      publishers, 
-      subtopics 
+
+    return {
+      path: topicPath || '/',
+      publishers,
+      subtopics
     }
   }
 
@@ -301,25 +301,24 @@ export class TopicRegistry extends EventEmitter {
    */
   destroy () {
     this._destroyed = true
-    
+
     for (const [, sub] of this.subscriptions) {
       clearInterval(sub.intervalId)
     }
     this.subscriptions.clear()
-    
+
     for (const [, intervalId] of this.republishIntervals) {
       clearInterval(intervalId)
     }
     this.republishIntervals.clear()
-    
+
     this.emit('destroyed')
   }
-
 
   async _dhtGet (salt) {
     return new Promise((resolve, reject) => {
       const targetKey = this.keypair?.publicKey || this._getWellKnownRegistryKey()
-      
+
       this.dht.get(targetKey, { salt }, (err, result) => {
         if (err) {
           if (err.message?.includes('not found')) {
@@ -339,13 +338,13 @@ export class TopicRegistry extends EventEmitter {
       if (!this.keypair) {
         return reject(new Error('Keypair required for DHT put'))
       }
-      
+
       const encodedValue = Buffer.from(JSON.stringify(value))
-      
+
       if (encodedValue.length > MAX_BEP44_VALUE_SIZE) {
         return reject(new Error(`Value too large: ${encodedValue.length} bytes`))
       }
-      
+
       const putOpts = {
         k: this.keypair.publicKey,
         v: encodedValue,
@@ -353,11 +352,11 @@ export class TopicRegistry extends EventEmitter {
         salt,
         sign: (buf) => sign(buf, this.keypair.secretKey)
       }
-      
+
       if (cas !== null) {
         putOpts.cas = cas
       }
-      
+
       this.dht.put(putOpts, (err, hash) => {
         if (err) reject(err)
         else resolve(hash)
@@ -367,10 +366,10 @@ export class TopicRegistry extends EventEmitter {
 
   _startRepublishing (topicPath, salt, registry) {
     this._stopRepublishing(topicPath)
-    
+
     const republish = async () => {
       if (this._destroyed) return
-      
+
       try {
         const existing = await this._dhtGet(salt)
         const seq = (existing?.seq || 0) + 1
@@ -379,7 +378,7 @@ export class TopicRegistry extends EventEmitter {
         this.emit('error', err)
       }
     }
-    
+
     const intervalId = setInterval(republish, DHT_REPUBLISH_INTERVAL_MS)
     this.republishIntervals.set(topicPath, intervalId)
   }
@@ -396,16 +395,16 @@ export class TopicRegistry extends EventEmitter {
     try {
       const salt = topicToSalt(parentPath)
       const existing = await this._dhtGet(salt)
-      
+
       let registry = existing?.value || { publishers: [], subtopics: [] }
       if (Buffer.isBuffer(registry)) {
         registry = JSON.parse(registry.toString())
       }
-      
+
       if (!registry.subtopics.includes(subtopic)) {
         registry.subtopics.push(subtopic)
         registry.subtopics.sort()
-        
+
         await this._dhtPut(salt, (existing?.seq || 0) + 1, registry, existing?.seq)
       }
     } catch (err) {
@@ -416,11 +415,11 @@ export class TopicRegistry extends EventEmitter {
   _getWellKnownRegistryKey () {
     const seed = Buffer.alloc(32)
     sodium.crypto_generichash(seed, Buffer.from('supertorrent:global-registry'))
-    
+
     const pk = Buffer.alloc(sodium.crypto_sign_PUBLICKEYBYTES)
     const sk = Buffer.alloc(sodium.crypto_sign_SECRETKEYBYTES)
     sodium.crypto_sign_seed_keypair(pk, sk)
-    
+
     return pk
   }
 }
@@ -474,22 +473,22 @@ export class TopicSubscription extends EventEmitter {
   _update (newRegistry, newSeq) {
     const oldPublishers = new Set(this.publishers.map(p => p.pk))
     const newPublishers = new Set(newRegistry.publishers.map(p => p.pk))
-    
+
     const added = newRegistry.publishers.filter(p => !oldPublishers.has(p.pk))
     const removed = this.publishers.filter(p => !newPublishers.has(p.pk))
-    
+
     this.publishers = newRegistry.publishers
     this.subtopics = newRegistry.subtopics || []
     this.seq = newSeq
-    
+
     if (added.length > 0) {
       this.emit('publisher-added', added)
     }
-    
+
     if (removed.length > 0) {
       this.emit('publisher-removed', removed)
     }
-    
+
     this.emit('updated', { publishers: this.publishers, subtopics: this.subtopics })
   }
 }

@@ -1,14 +1,26 @@
 # Project Vision: Universal Sovereign Distribution Mesh (Bobtorrent)
+# Megatorrent Vision
 
-## 🌟 Ultimate Goal
-To build a **Production-Grade, Autonomous P2P Storage Supernode Network** that bridges the gap between traditional BitTorrent swarms and incentivized blockchain storage (Filecoin/Bobcoin). The system is designed to be self-healing, high-performance, and fully autonomous, capable of managing petabytes of data with "Zero Data Loss" guarantees via advanced erasure coding and redundancy.
+## The Mission
+To create a truly decentralized, censorship-resistant content distribution platform that incentivizes storage and bandwidth sharing through a novel "Proof-of-Storage" mechanism on the **Bobcoin** blockchain.
 
-## 🏗️ Architectural Pillars
+## Phase 1: Foundation (Completed)
+*   **Protocol v1.0**: Stable Blob/Manifest format using AES-GCM encryption.
+*   **Reference Client**: Functional Node.js client with Web UI.
+*   **Supernode (Java)**: High-performance backend with Reed-Solomon Erasure Coding.
+*   **Unified Interface**: Single Web UI controlling both Node.js and Java backends.
+*   **Observability**: Real-time Network Topology, Peer Metrics, and System Resources.
 
-1.  **Autonomous Supernodes**
-    -   Nodes that self-manage, self-heal, and optimize their own resources.
-    -   **Predictive Resource Allocation**: AI-driven bandwidth and storage scaling.
-    -   **Health-Aware**: Integrated circuit breakers (`BobcoinBridge`) and reputation systems (`DHTDiscovery`) to isolate faulty peers instantly.
+## Phase 2: Optimization & Intelligence (Active)
+*   **Smart Ingest**: User-configurable redundancy (Erasure Coding vs. Replication).
+*   **Resource Management**: AI-driven capacity planning and load throttling.
+*   **Blockchain Integration**:
+    *   **Wallet**: Full integration with Bobcoin/Solana wallets.
+    *   **Incentives**: Automated storage deals and proof submission.
+    *   **Bridge**: Seamless interaction with Filecoin and EVM chains.
+*   **Transport Intelligence**:
+    *   **I2P/Tor**: Deep configuration and routing optimization.
+    *   **Multiplexing**: Efficient connection reuse.
 
 2.  **Hybrid Storage Layer**
     -   **MuxEngine**: An encryption-first storage engine using AES/GCM for confidentiality.
@@ -62,3 +74,12 @@ The project is currently undergoing a complete architectural modernization throu
 -   **"Code is Law, Performance is King"**: No compromise on security or speed.
 -   **"Verify, Don't Trust"**: Every block, every peer, and every proof is cryptographically verified (libsodium Ed25519 signatures).
 -   **"Autonomous by Default"**: The system should run for months without human intervention, automatically recovering from failures.
+## Phase 3: Cluster & Scale (Future)
+*   **Supernode Clusters**: Automated clustering of Java nodes for massive scale.
+*   **Geo-Distribution**: Smart placement of shards based on latency and cost.
+*   **Content Addressing**: Full IPFS compatibility layer.
+
+## Core Values
+1.  **Privacy**: Default encryption and optional anonymity (Tor/I2P).
+2.  **Performance**: High-throughput I/O and low-latency peering.
+3.  **Usability**: "It just works" UI for end-users, powerful APIs for devs.
