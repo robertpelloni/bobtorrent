@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/bobtorrent/bobtorrent/pkg/dht"
 	"io"
 	"net/http"
 	"os"
@@ -71,7 +72,8 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Save encrypted blob to disk
-		blobPath := filepath.Join(s.DataDir, blobID)
+		infoHashHex, _ := dht.MapBlobIDToInfoHash(blobID)
+		blobPath := filepath.Join(s.DataDir, infoHashHex)
 		if err := os.WriteFile(blobPath, ciphertext, 0644); err != nil {
 			http.Error(w, "Failed to save blob", http.StatusInternalServerError)
 			return

@@ -9,9 +9,9 @@ import (
 
 // Manifest represents the structure of a BobTorrent v3 detached-key file descriptor.
 type Manifest struct {
-	OriginalFilename string `json:"originalFilename"`
-	FileSize         int64  `json:"fileSize"`
-	MimeType         string `json:"mimeType"`
+	OriginalFilename string  `json:"originalFilename"`
+	FileSize         int64   `json:"fileSize"`
+	MimeType         string  `json:"mimeType"`
 	Chunks           []Chunk `json:"chunks"`
 }
 

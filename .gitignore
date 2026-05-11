@@ -5,7 +5,7 @@ build/
 node_modules/
 package-lock.json
 data/
-storage/
+/storage/
 dht_state.json
 dht_publish_state.json
 identity.json

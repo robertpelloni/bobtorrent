@@ -218,3 +218,23 @@ small {
 .hidden {
     display: none;
 }
+
+
+/* Tooltip Polish */
+[title] {
+    cursor: help;
+    border-bottom: 1px dotted #888;
+}
+
+label[title] {
+    border-bottom: none;
+    text-decoration: underline dotted #666;
+}
+
+button[title]:hover {
+    filter: brightness(1.1);
+}
+
+.status-item[title] {
+    border-bottom: none;
+}

@@ -1,3 +1,133 @@
+## [11.60.21] - 2026-04-21
+### Added
+- Added /api/lattice endpoint to BobTorrent API
+- Completed Web UI integration for Bobcoin wallet display and lattice visualization.
+
+## [11.60.20] - 2026-04-20
+### Added
+- Added missing Web UI tooltips and labels to complete the embedded interface polish.
+
+## [11.60.19] - 2026-04-20
+### Added
+- Added ORCID and URL verification interface logic to the Web UI.
+
+## [11.60.18] - 2026-04-20
+### Added
+- Complete Web UI /api/status endpoint integration with real-time stats
+
+## [11.60.17] - 2026-04-20
+### Added
+- Added ORCID and custom signed-message URL verifiers to the identity API endpoint to expand trust layer options.
+
+## [11.60.16] - 2026-04-19
+### Added
+- Added Bobcoin wallet integration and lattice visualization mock to Web UI
+
+## [11.60.15] - 2026-04-19
+### Added
+- Added Web UI integration for Bobcoin Solana wallet display, airdrop requests, and lattice visualization mock
+
+## [11.60.14] - 2026-04-19
+### Added
+- Added BEP 44 Mutable DHT targets logic for subscribing to channels
+- Wired up the backend API publisher loop
+
+## [11.60.13] - 2026-04-19
+### Added
+- Complete Web UI UX polish, tooltips, and labels.
+- Finalized BEP 44 implementation logic stubbing for Tracker interactions.
+
+## [11.60.12] - 2026-04-19
+### Added
+- Upgraded asset discovery to use SQLite-backed durable market manifest registry
+
+## [11.60.11] - 2026-04-18
+### Added
+- Added BEP 44 Mutable DHT target calculation stub for Subscriptions
+
+## [11.60.10] - 2026-04-17
+### Fixed
+- Restored  logic completely, properly mapped the  endpoint without stripping critical logic.
+
+## [11.60.9] - 2026-04-17
+### Fixed
+- Stripped legacy /api/ prefixes from Web UI client configuration for seamless native Go routing compatibility
+
+## [11.60.8] - 2026-04-17
+### Added
+- Wired /api/publish and /api/subscribe to BEP 44 Mutable DHT Items engine implementations
+
+## [11.60.7] - 2026-04-17
+### Added
+- Added ORCID Verifier and Custom Signed-Message URL Verifiers to Identity Trust Layer
+
+## [11.60.6] - 2026-04-17
+### Added
+- Upgraded DHT engine with standalone server instance to support BEP44 mutable item broadcasting
+- Unify block hashing rules and cleanup old TODO tasks
+
+## [11.60.5] - 2026-04-17
+### Added
+- Added missing Web UI tooltips, clear labels, and UI polish
+
+## [11.60.4] - 2026-04-17
+### Added
+- Added /api/assets endpoint to serve durable manifest registry
+- Implemented missing Web UI tooltips, labels, and polish
+- ReadaheadBuffer.Seek EOF exact test
+
+# Changelog
+
+## [11.60.3] - 2026-04-16
+### Added
+- Added Go-native `/api/key/generate` endpoint to support secure Ed25519 channel identity creation.
+- Implemented `/api/publish` endpoint to cryptographically sign generated manifests with the publisher's Ed25519 private key prior to DHT propagation.
+- Added `/api/subscribe` and `/api/subscriptions` endpoints for monitoring peer channels in the Go backend.
+- Integrated `/api/blobs` mock response to fulfill Web UI lifecycle polling.
+
+## [11.60.2] - 2026-04-16
+### Fixed
+- Resolved compilation error with `anacrolix/torrent` DHT node count stats.
+- Fixed race condition and deadlocks in `ReadaheadBuffer.Read()` which caused E2E tests to timeout and fail.
+- Corrected Ingest endpoint to store encrypted blobs correctly mapped to InfoHash locally, replicating DHT expectations.
+### Added
+- Setup Build Flags (`-ldflags`) to securely inject global `VERSION` string into compiled Go binary.
+- Added explicit exact-EOF handling logic and boundary test for Readahead streaming edge cases.
+- Added `/health` endpoint to Go supernode for operator monitoring.
+### Improved
+- Swept and polished embedded Web UI interface with descriptive tooltips and unified network status UI representations.
+- Updated ROADMAP, TODO, and VISION based on deep submodule analysis against legacy reference clients.
+
+## [11.60.0] - 2026-04-15
+### Added
+- **Centralized Versioning**: Setup global VERSION file and injected string into the Go binary at compile-time via `-ldflags`.
+- **E2E Stability**: Fixed deadlock in Readahead buffer causing random EOFs in streaming. 
+- **Ingestion Consistency**: Ingestion API now writes blobs using standard 20-byte InfoHash representation.
+- **Go API Core Fixes**: Fixed compilation errors resulting from `anacrolix/dht/v2` usage inside `internal/api`.
+- **Project Reanalysis**: Deeply re-analyzed submodules and planned Phase 7 roadmap priorities for Identity and Pub/Sub.
+
+
+# Changelog
+All notable changes to this project will be documented in this file.
+
+## [3.0.0] - 2026-04-14
+### Changed
+- Massive architectural shift: Replaced the fragmented Node.js/Java/C++ monorepo with a single, unified, natively-compiled Go "ultra-project" (`bobtorrent/`).
+- Moved all legacy code (v2.2.0 and prior) to `archive/` directory.
+
+### Added
+- Integrated `anacrolix/torrent` as the pure Go BitTorrent engine, natively replacing `libtorrent`.
+- Implemented DHT InfoHash mapping translating 32-byte BobTorrent keys to 20-byte standard InfoHashes.
+- Ported Solana Wallet management to Go using `github.com/gagliardetto/solana-go`.
+- Implemented AES-256-GCM Detached Key Storage Protocol natively in Go.
+- Added `storage.Manifest` struct for parsing JSON descriptors and detached decryption keys.
+- Scaffolded I2P/SAM v3.1 integration using `github.com/go-i2p/sam3`.
+- Implemented `ReadaheadBuffer` for predictive streaming and pre-fetching encrypted blobs via DHT.
+- Hooked `io.Seeker` interface into the streaming buffer, allowing Go's native `http.ServeContent` to seamlessly handle 206 Partial Content Range requests for HTML5 video playback.
+- Added `/api/ingest` multipart file endpoint which encrypts files into 1MB chunks and dynamically announces them to the torrent network on the fly.
+- Embedded the React Web UI directly into the compiled Go binary utilizing the `go:embed` directive.
+- Automated end-to-end multi-node HTTP and chunk prefetching test logic.
+
 ## [11.59.0] - 2026-04-07
 ### Go Port: Real GitHub Identity Verification
 - **GitHub Verifier Implementation**: Replaced the mock GitHub verification logic with a real `GitHubVerifier` in `internal/identity/github.go`. The Go supernode now actually fetches GitHub Gist content via the GitHub API and confirms it contains the publisher's Bobcoin public key.
@@ -464,71 +594,3 @@
 ## [11.2.1] - 2025-08-15
 ### Initial Supernode Beta Integration
 - Integrated Java Supernode capabilities alongside standard Node.js tracker.
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-## [2.3.0] - 2026-02-12
-### Added
--   **Network Health Dashboard**: Added a comprehensive "Network" tab to the Web UI, displaying real-time status of all transport protocols (Clearnet, Tor, I2P, etc.) and storage engine configuration.
--   **Detailed Java Stats**: Updated `supernode-java` API (`/api/status`) to expose granular metrics for `TransportManager` (connections, traffic, errors per transport) and `SupernodeStorage` (erasure coding shards).
--   **Node.js Parity**: Updated `reference-client/web-server.js` to provide compatible network statistics, ensuring a consistent UI experience across both implementations.
--   **Test Fixes**: Fixed `SupernodeStorageTest` to properly clean up persistence directories between runs.
-
-## [2.2.0] - 2024-05-24
-### Added
--   **Java Metadata Persistence**: Implemented file-based persistence for manifests in `SupernodeStorage`. Manifests are now saved to `supernode_storage/manifests/`, ensuring file listings survive node restarts.
--   **Persistence Verification**: Confirmed that both blobs (via `FileBlobStore`) and metadata (via `manifestStore`) are persisted and reloaded correctly.
-
-## [2.1.0] - 2024-05-24
-### Added
--   **Predictive Readahead (Node.js)**: Optimized streaming performance by pre-fetching subsequent chunks (`readahead` option in `createReadStream`).
--   **Java Wallet Persistence**: `supernode-java` now attempts to load wallet address from `wallet.json`, persisting identity across restarts.
--   **Documentation**: Comprehensive ROADMAP.md and TODO.md for Phase 2 development.
--   **Vision Alignment**: Updated VISION.md to reflect the completion of Phase 1.
-
-## [2.0.0] - 2024-05-24
-### Added
--   **Real Solana Wallet (Node.js)**: Implemented full wallet functionality using `@solana/web3.js` in the Reference Client.
-    -   Auto-generation of keypairs (`wallet.json`).
-    -   Real balance checking on Solana Devnet.
-    -   "Request Airdrop" feature in Web UI to fund the wallet for testing.
--   **Wallet API**: New endpoints `/api/wallet` (live data) and `/api/wallet/airdrop`.
-
-## [1.9.0] - 2024-05-24
-### Added
--   **Real DHT Integration in API**: The `/api/channels/browse` endpoint now queries the live `DHTDiscovery` component for peers, replacing the previous mock simulation.
--   **Encryption Compatibility Verified**: Validated that `MuxEngine` (Java) uses standard AES-GCM protocols compatible with the Node.js reference client's crypto implementation.
--   **Java Interoperability Tests**: Added `InteropTest.java` to verify cross-language blob decryption (verifies `Nonce + Ciphertext + Tag` format).
-
-## [1.8.0] - 2024-05-24
-### Added
--   **Full Supernode Web API Coverage**: Expanded `supernode-java` to include endpoints for Identity, Publishing, Subscriptions, Discovery, and Wallet.
--   **API Parity**: Java Supernode now fully mimics the Reference Client API, enabling seamless Web UI usage.
--   **Component Integration**: `UnifiedNetwork` now exposes `DHTDiscovery` and `ManifestDistributor` for API consumption.
-
-## [1.7.0] - 2024-05-23
-### Added
--   **Supernode-Java Web API**: Implemented a Netty-based HTTP Controller in `supernode-java` to support the Web UI via `WebController`.
--   **Cross-Client Compatibility**: Verified `ingest`, `retrieve`, `status`, and `files` endpoints work seamlessly between Node.js Web UI and Java Supernode backend.
--   **Java Streaming**: Added HTTP Range request support to Java Supernode for video playback.
--   **Standalone Supernode**: Created `io.supernode.Supernode` main class and updated Gradle build to produce a runnable application.
-
-## [1.6.0] - 2024-05-23
-### Added
--   **Streaming Support**: Added HTTP Range request support to `reference-client/web-server.js` and `lib/storage.js` for streaming video playback.
--   **Web UI Player**: Added "Play" button for video files in the "Files" tab.
--   **Documentation**: Consolidated all agent instructions into `docs/UNIVERSAL_LLM_INSTRUCTIONS.md`.
--   **Dashboard**: Updated `DASHBOARD.md` with full directory structure explanation including `supernode-java`.
-
-### Changed
--   **Encryption**: Standardized on AES-256-GCM (Node `crypto`) in previous release (v1.5.0/v11.2.5).
--   **Web UI**: Refined "Remote Node Selector" UI in previous release.
-
-## [1.5.0] - 2024-05-22
--   Feature Freeze for v1.x series.
--   Implemented Web UI.
--   Added `cpp-reference/` stubs.
-
-## [1.0.0] - Initial Release
--   Core Megatorrent Protocol.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -10,8 +11,18 @@ import (
 	"github.com/bobtorrent/bobtorrent/pkg/dht"
 )
 
+var Version = "dev"
+
 func main() {
-	log.Println("Starting BobTorrent v3.0.0...")
+	versionFlag := flag.Bool("version", false, "Print version and exit")
+	flag.Parse()
+
+	if *versionFlag {
+		log.Printf("BobTorrent v%s\n", Version)
+		return
+	}
+
+	log.Printf("Starting BobTorrent v%s...\n", Version)
 
 	dataDir := "./data"
 	err := os.MkdirAll(dataDir, 0755)

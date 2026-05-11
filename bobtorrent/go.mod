@@ -3,11 +3,13 @@ module github.com/bobtorrent/bobtorrent
 go 1.26.1
 
 require (
+	github.com/anacrolix/dht/v2 v2.23.0
 	github.com/anacrolix/torrent v1.61.0
 	github.com/gagliardetto/solana-go v1.17.0
 	github.com/go-i2p/i2pkeys v0.33.92
 	github.com/go-i2p/sam3 v0.33.92
 	github.com/stretchr/testify v1.11.1
+	zombiezen.com/go/sqlite v0.13.1
 )
 
 require (
@@ -16,7 +18,6 @@ require (
 	github.com/alecthomas/atomic v0.1.0-alpha2 // indirect
 	github.com/anacrolix/btree v0.0.0-20251201064447-d86c3fa41bd8 // indirect
 	github.com/anacrolix/chansync v0.7.0 // indirect
-	github.com/anacrolix/dht/v2 v2.23.0 // indirect
 	github.com/anacrolix/envpprof v1.4.0 // indirect
 	github.com/anacrolix/generics v0.1.1-0.20251125230353-15d98d46693b // indirect
 	github.com/anacrolix/go-libutp v1.3.2 // indirect
@@ -117,5 +118,4 @@ require (
 	modernc.org/mathutil v1.5.0 // indirect
 	modernc.org/memory v1.5.0 // indirect
 	modernc.org/sqlite v1.21.1 // indirect
-	zombiezen.com/go/sqlite v0.13.1 // indirect
 )

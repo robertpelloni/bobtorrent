@@ -89,20 +89,23 @@ func TestE2E_IngestAndStream(t *testing.T) {
 	manifestBytes, err := os.ReadFile(dirA + "/manifests/" + fileID + ".json")
 	require.NoError(t, err)
 
-	err = os.MkdirAll(dirB + "/manifests", 0755)
+	err = os.MkdirAll(dirB+"/manifests", 0755)
 	require.NoError(t, err)
-	err = os.WriteFile(dirB + "/manifests/" + fileID + ".json", manifestBytes, 0644)
+	err = os.WriteFile(dirB+"/manifests/"+fileID+".json", manifestBytes, 0644)
 	require.NoError(t, err)
 
 	var manifest struct {
-		Chunks []struct{ BlobID string `json:"blobId"` } `json:"chunks"`
+		Chunks []struct {
+			BlobID string `json:"blobId"`
+		} `json:"chunks"`
 	}
 	json.Unmarshal(manifestBytes, &manifest)
 	blobID := manifest.Chunks[0].BlobID
 
-	blobBytes, err := os.ReadFile(dirA + "/" + blobID)
+	infoHashHex, _ := dht.MapBlobIDToInfoHash(blobID)
+	blobBytes, err := os.ReadFile(dirA + "/" + infoHashHex)
 	require.NoError(t, err)
-	err = os.WriteFile(dirB + "/" + blobID, blobBytes, 0644)
+	err = os.WriteFile(dirB+"/"+infoHashHex, blobBytes, 0644)
 	require.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)

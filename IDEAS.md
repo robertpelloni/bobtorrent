@@ -24,3 +24,12 @@ Rename the monorepo from `bobtorrent` to **OmniMesh**.
 Implement **Steganographic Swarms** for extreme censorship resistance.
 *   **Mechanism**: Embed encrypted BitTorrent traffic within standard HTTPS or VoIP streams.
 *   **Impact**: Makes the Bobtorrent network indistinguishable from regular web traffic to ISP deep-packet inspection.
+- **Native UI Porting**: While the Web UI embedded in Go is nice, we should investigate a native cross-platform GUI using `wails` or `fyne` in Go for the Phase 8+ roadmap.
+- **Go Multi-Tracker Pub/Sub**: Replace Node.js Tracker/WebSocket reliance with native libp2p pubsub or mainline DHT Put/Get arbitrary data extensions.
+- **Refactor Readahead Buffer**: The `io.Seeker` implementation is stable but could be optimized by pre-allocating an `mmap` backing file rather than buffering completely in memory if files exceed a gigabyte.
+
+## BobTorrent Protocol Improvements
+- **Pub/Sub Tracker Evolution**: Once BEP 44 (Mutable DHT Items) is wired, consider creating a dedicated network overlay protocol specifically optimized for real-time manifest broadcasts to drastically reduce polling latency.
+- **Smart Chunk Caching**: Implement adaptive `ReadaheadBuffer` memory constraints that auto-scale based on the host OS memory availability (e.g. reserving 512MB for predictive video streaming).
+- **Federated Node Discovery**: Replace hardcoded bootstrapper nodes with a dynamic decentralized node list queried from the Bobcoin Solana smart contract state.
+

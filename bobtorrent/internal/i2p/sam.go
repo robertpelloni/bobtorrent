@@ -52,13 +52,13 @@ func (s *SamSession) Connect() error {
 
 // Dial creates a new stream connection to an I2P destination
 func (s *SamSession) Dial(ctx context.Context, dest string) (net.Conn, error) {
-    return s.stream.Dial("tcp", dest)
+	return s.stream.Dial("tcp", dest)
 }
 
 func (s *SamSession) Close() {
-    if s.stream != nil {
-        s.stream.Close()
-    }
+	if s.stream != nil {
+		s.stream.Close()
+	}
 	if s.sam != nil {
 		s.sam.Close()
 	}

@@ -1,14 +1,14 @@
 package streaming
 
 import (
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
-	"io"
-	"strconv"
-	"fmt"
 
 	"github.com/bobtorrent/bobtorrent/pkg/storage"
 )
@@ -48,7 +48,7 @@ func (s *Server) StreamHandler(w http.ResponseWriter, r *http.Request) {
 
 	buffer.StartPrefetch()
 
-    // Explicit Range handling to bypass ServeContent blocking bugs during tests
+	// Explicit Range handling to bypass ServeContent blocking bugs during tests
 	rangeHeader := r.Header.Get("Range")
 	if rangeHeader != "" {
 		w.Header().Set("Content-Type", manifest.MimeType)
@@ -57,7 +57,7 @@ func (s *Server) StreamHandler(w http.ResponseWriter, r *http.Request) {
 		var start, end int64
 		fmt.Sscanf(rangeHeader, "bytes=%d-%d", &start, &end)
 		if end == 0 {
-		    end = manifest.FileSize - 1
+			end = manifest.FileSize - 1
 		}
 
 		contentLength := end - start + 1

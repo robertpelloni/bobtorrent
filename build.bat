@@ -10,7 +10,8 @@ mkdir build 2>nul
 go build -buildvcs=false -o build/dht-proxy cmd/dht-proxy/main.go
 if errorlevel 1 exit /b 1
 
-go build -buildvcs=false -o build/supernode-go cmd/supernode-go/main.go
+set /p VERSION=<VERSION
+go build -ldflags="-X main.Version=%VERSION%" -buildvcs=false -o build/supernode-go cmd/supernode-go/main.go
 if errorlevel 1 exit /b 1
 
 go build -buildvcs=false -o build/lattice-go cmd/lattice-go/main.go

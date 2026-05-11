@@ -80,7 +80,7 @@ func (w *Wallet) loadOrGenerate() error {
 
 	w.Account, err = solana.WalletFromPrivateKeyBase58(privKey.String())
 	if err != nil {
-	    return err
+		return err
 	}
 
 	log.Printf("Wallet loaded. Public Key: %s", w.Account.PublicKey().String())

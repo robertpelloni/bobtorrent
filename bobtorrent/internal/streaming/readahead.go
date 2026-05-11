@@ -12,18 +12,22 @@ import (
 )
 
 type ReadaheadBuffer struct {
-	manifest  *storage.Manifest
-	store     *storage.BlobStore
-	current   int
-	buffer    *bytes.Reader
-	ctx       context.Context
-	cancel    context.CancelFunc
-	mu        sync.Mutex
-	position  int64
-	ready     chan struct{}
+	manifest *storage.Manifest
+	store    BlobFetcher
+	current  int
+	buffer   *bytes.Reader
+	ctx      context.Context
+	cancel   context.CancelFunc
+	mu       sync.Mutex
+	position int64
+	ready    chan struct{}
 }
 
-func NewReadaheadBuffer(manifest *storage.Manifest, store *storage.BlobStore) *ReadaheadBuffer {
+type BlobFetcher interface {
+	FetchAndDecryptBlob(chunk storage.Chunk) ([]byte, error)
+}
+
+func NewReadaheadBuffer(manifest *storage.Manifest, store BlobFetcher) *ReadaheadBuffer {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &ReadaheadBuffer{
 		manifest: manifest,
@@ -52,7 +56,17 @@ func (r *ReadaheadBuffer) fetchLoop(startIndex int) {
 			plaintext, err := r.store.FetchAndDecryptBlob(chunk)
 			if err != nil {
 				log.Printf("Failed to fetch chunk %d: %v", i, err)
-				continue
+
+				r.mu.Lock()
+				if r.current == i {
+					r.buffer = bytes.NewReader([]byte{})
+					select {
+					case r.ready <- struct{}{}:
+					default:
+					}
+				}
+				r.mu.Unlock()
+				return
 			}
 
 			r.mu.Lock()
@@ -61,11 +75,11 @@ func (r *ReadaheadBuffer) fetchLoop(startIndex int) {
 
 				var cumulative int64 = 0
 				for j := 0; j < i; j++ {
-				    cumulative += r.manifest.Chunks[j].Size
+					cumulative += r.manifest.Chunks[j].Size
 				}
 				chunkOffset := r.position - cumulative
 				if chunkOffset > 0 {
-				    r.buffer.Seek(chunkOffset, io.SeekStart)
+					r.buffer.Seek(chunkOffset, io.SeekStart)
 				}
 
 				select {
@@ -80,9 +94,9 @@ func (r *ReadaheadBuffer) fetchLoop(startIndex int) {
 }
 
 func (r *ReadaheadBuffer) Read(p []byte) (int, error) {
-    if len(p) == 0 {
-        return 0, nil
-    }
+	if len(p) == 0 {
+		return 0, nil
+	}
 
 	for {
 		r.mu.Lock()
@@ -90,44 +104,44 @@ func (r *ReadaheadBuffer) Read(p []byte) (int, error) {
 		r.mu.Unlock()
 
 		if buf == nil {
-		    select {
-		    case <-r.ready:
-		    case <-r.ctx.Done():
-			    return 0, io.EOF
-		    }
-            continue
-        }
+			select {
+			case <-r.ready:
+			case <-r.ctx.Done():
+				return 0, io.EOF
+			}
+			continue
+		}
 
 		r.mu.Lock()
-        if r.buffer == nil {
-            r.mu.Unlock()
-            continue
-        }
+		if r.buffer == nil {
+			r.mu.Unlock()
+			continue
+		}
 
 		n, err := r.buffer.Read(p)
-        if n > 0 {
-		    r.position += int64(n)
-        }
+		if n > 0 {
+			r.position += int64(n)
+		}
 
-        if err == io.EOF {
-            if r.current >= len(r.manifest.Chunks)-1 {
-                r.mu.Unlock()
-                return n, io.EOF // Stop timeout loops here
-            }
+		if err == io.EOF {
+			if r.current >= len(r.manifest.Chunks)-1 {
+				r.mu.Unlock()
+				return n, io.EOF // Stop timeout loops here
+			}
 
-            r.current++
-            r.buffer = nil
-            r.mu.Unlock()
+			r.current++
+			r.buffer = nil
+			r.mu.Unlock()
 
-            go r.fetchLoop(r.current)
+			go r.fetchLoop(r.current)
 
-            if n > 0 {
-                return n, nil
-            }
-            continue
-        }
+			if n > 0 {
+				return n, nil
+			}
+			continue
+		}
 
-        r.mu.Unlock()
+		r.mu.Unlock()
 		return n, err
 	}
 }
@@ -184,7 +198,7 @@ func (r *ReadaheadBuffer) Seek(offset int64, whence int) (int64, error) {
 		r.buffer.Seek(chunkOffset, io.SeekStart)
 		r.position = newPosition
 	} else {
-	    r.position = newPosition
+		r.position = newPosition
 	}
 
 	return r.position, nil
