@@ -23,7 +23,7 @@
 * [x] Implement Channel Subscriptions (`/api/subscribe`, `/api/subscriptions`)
 * [x] Implement Local Blob listing (`/api/blobs`)
 * [x] Port Tracker Pub/Sub or DHT Put/Get for decentralized manifest propagation
-* [ ] Update the UI to fully reflect active Pub/Sub status and real-time incoming manifests
+* [x] Update the UI to fully reflect active Pub/Sub status and real-time incoming manifests
 
 ## Phase 8: Enhancement, Integration, and Polish (Upcoming)
 * [ ] Integrate native I2P/SAM Datagrams directly into the core networking layer

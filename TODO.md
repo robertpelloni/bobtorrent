@@ -13,6 +13,7 @@
 - [x] Implement `/api/blobs` endpoint for UI blob storage overview.
 - [x] Integrate Pub/Sub tracking layer into the Go daemon to listen for newly published manifests.
 - [x] Ensure all new API endpoints are fully integrated with the embedded Web UI.
+- [x] Update the UI to fully reflect active Pub/Sub status and real-time incoming manifests
 
 # BobTorrent TODO
 

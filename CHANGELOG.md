@@ -493,6 +493,12 @@ All notable changes to this project will be documented in this file.
 - **Ingest Shim**: Bridged the Web UI's upload mechanism via a `/ingest` shim that leverages the existing Go `buildUploadedTorrentFromMultipartWithFile` logic and returns proper blob descriptors.
 - **Validation**: Compiled and tested the updated `supernode-go` with no regressions, fully unifying the reference client UI within the Go backend.
 
+## [11.60.22] - 2026-05-19
+### UI Pub/Sub Tracking Integration
+- **Subscriptions Tracking**: Added backend logic `getSubscriptionCount()` to surface the active count of tracking/publishing channels from the `subscriptionStore`.
+- **Dashboard Telemetry**: Updated `handleStats` to embed `subscriptions` and correct `network.status` into its standard `/stats` endpoint.
+- **WebUI Unification**: Patched `web/ui/app.js` to correctly point its main `updateStatus` polling routine toward `/stats` instead of the incomplete stub `/status`, successfully hydrating the main Dashboard UI with live active Pub/Sub telemetry.
+
 ## [11.8.0] - 2026-04-03
 ### Go Port: Real Shard Upload + Manifest Publication Flow
 - **Publication Registry**: Added `internal/publish` with durable shard + manifest persistence for supernode-hosted Bobtorrent assets, including a tested content-addressed shard store and manifest registry.
