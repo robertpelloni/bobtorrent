@@ -33,3 +33,9 @@ Implement **Steganographic Swarms** for extreme censorship resistance.
 - **Smart Chunk Caching**: Implement adaptive `ReadaheadBuffer` memory constraints that auto-scale based on the host OS memory availability (e.g. reserving 512MB for predictive video streaming).
 - **Federated Node Discovery**: Replace hardcoded bootstrapper nodes with a dynamic decentralized node list queried from the Bobcoin Solana smart contract state.
 
+
+## Post-Phase 7 Analysis & Architectural Thoughts
+- **Game Engine Asset Ingestion**: To achieve the "Game engine asset ingestion path" listed in the `TODO.md` Strategic Backlog, we should consider developing a dedicated Unity/Unreal native plugin (or C# wrapper over our WASM/Go artifacts) that intercepts standard asset load calls and redirects them through the BobTorrent/Megatorrent local proxy for decentralized streaming.
+- **Global Decentralized Storage Network Launch**: This will require a coordinated deployment of bootstrapper nodes, tracker nodes, and perhaps an initial airdrop or incentive campaign via the `bobcoin` lattice to bootstrap the storage market. A dedicated "Mainnet Launch" checklist document should be created to track devops, DNS, and infra readiness.
+- **I2P/SAM Datagrams**: Integrating native I2P/SAM Datagrams directly into the core networking layer (from `ROADMAP.md` Phase 8) will require refactoring the transport layer to support hybrid clear-net/dark-net peer connections, likely utilizing `github.com/eyedeekay/sam3` or similar.
+- **Performance Profiling**: As requested in Phase 8, a systematic profiling pass using `pprof` (cpu, memory, mutex) under high simulated load (e.g. 10k concurrent simulated swarms and block arrivals) is needed before public mainnet.

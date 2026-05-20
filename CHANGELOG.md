@@ -493,6 +493,12 @@ All notable changes to this project will be documented in this file.
 - **Ingest Shim**: Bridged the Web UI's upload mechanism via a `/ingest` shim that leverages the existing Go `buildUploadedTorrentFromMultipartWithFile` logic and returns proper blob descriptors.
 - **Validation**: Compiled and tested the updated `supernode-go` with no regressions, fully unifying the reference client UI within the Go backend.
 
+## [11.60.23] - 2026-05-19
+### Documentation & Phase 8 Planning
+- **Roadmap Assessment**: Re-analyzed remaining TODO items, halting code execution due to the ambiguous nature of Phase 8 tasks (e.g. Game Engine Ingestion, Global Launch).
+- **Ideation**: Expanded `IDEAS.md` with concrete architectural directions for tackling the remaining Phase 8 backlog.
+- **Handoff**: Updated `HANDOFF.md` to clearly signal the completion of Phase 7 (Pub/Sub Identity) and outline the required design work for Phase 8.
+
 ## [11.60.22] - 2026-05-19
 ### UI Pub/Sub Tracking Integration
 - **Subscriptions Tracking**: Added backend logic `getSubscriptionCount()` to surface the active count of tracking/publishing channels from the `subscriptionStore`.
