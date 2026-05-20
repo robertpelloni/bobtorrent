@@ -12,3 +12,6 @@ identity.json
 *.log
 torrents.json
 wallet.json
+
+# Jules AI session logs (auto-generated, not needed in repo)
+.jules/sessions/
