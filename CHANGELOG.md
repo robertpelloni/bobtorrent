@@ -1,3 +1,25 @@
+## [11.60.25] - 2026-05-19
+### Mega-Messenger Bridge Scaffold
+- **Control Plane API**: Created `cmd/supernode-go/mega_messenger_bridge.go` exposing the `/mega-bridge` WebSocket endpoint.
+- **Light Node Architecture**: This bridge serves as the foundation for the Phase 8 decoupled UI layer, allowing a standalone React/Flutter frontend (derived from the new `element-web` submodule) to proxy blinded Protobuf envelopes to the Heavy Go Node without participating directly in P2P mesh logic.
+
+## [11.60.24] - 2026-05-19
+### Mega-Messenger Architecture & Element Submodule
+- **Submodule Integration**: Added `element-web` as a git submodule to serve as the reference frontend and porting target for the decentralized chat/storefront platform.
+- **Architectural Planning**: Updated `IDEAS.md`, `ROADMAP.md`, and `TODO.md` with the "Control Plane" architectural pattern, enforcing a strict separation between Light Mobile Nodes (UI/State) and Heavy Go Nodes (libp2p routing, Tor, Bobcoin).
+
+## [11.60.23] - 2026-05-19
+### Documentation & Phase 8 Planning
+- **Roadmap Assessment**: Re-analyzed remaining TODO items, halting code execution due to the ambiguous nature of Phase 8 tasks (e.g. Game Engine Ingestion, Global Launch).
+- **Ideation**: Expanded `IDEAS.md` with concrete architectural directions for tackling the remaining Phase 8 backlog.
+- **Handoff**: Updated `HANDOFF.md` to clearly signal the completion of Phase 7 (Pub/Sub Identity) and outline the required design work for Phase 8.
+
+## [11.60.22] - 2026-05-19
+### UI Pub/Sub Tracking Integration
+- **Subscriptions Tracking**: Added backend logic `getSubscriptionCount()` to surface the active count of tracking/publishing channels from the `subscriptionStore`.
+- **Dashboard Telemetry**: Updated `handleStats` to embed `subscriptions` and correct `network.status` into its standard `/stats` endpoint.
+- **WebUI Unification**: Patched `web/ui/app.js` to correctly point its main `updateStatus` polling routine toward `/stats` instead of the incomplete stub `/status`, successfully hydrating the main Dashboard UI with live active Pub/Sub telemetry.
+
 ## [11.60.21] - 2026-04-21
 ### Added
 - Added /api/lattice endpoint to BobTorrent API
@@ -492,23 +514,6 @@ All notable changes to this project will be documented in this file.
 - **API Parity**: Stripped `/api/` prefixes from the Web UI's network calls and implemented the required endpoints natively in Go: `/blobs` (aliasing `/assets`), `/key/generate` (using ed25519), `/subscriptions` and `/subscribe` (in-memory mock store), and `/publish`.
 - **Ingest Shim**: Bridged the Web UI's upload mechanism via a `/ingest` shim that leverages the existing Go `buildUploadedTorrentFromMultipartWithFile` logic and returns proper blob descriptors.
 - **Validation**: Compiled and tested the updated `supernode-go` with no regressions, fully unifying the reference client UI within the Go backend.
-
-## [11.60.24] - 2026-05-19
-### Mega-Messenger Architecture & Element Submodule
-- **Submodule Integration**: Added `element-web` as a git submodule to serve as the reference frontend and porting target for the decentralized chat/storefront platform.
-- **Architectural Planning**: Updated `IDEAS.md`, `ROADMAP.md`, and `TODO.md` with the "Control Plane" architectural pattern, enforcing a strict separation between Light Mobile Nodes (UI/State) and Heavy Go Nodes (libp2p routing, Tor, Bobcoin).
-
-## [11.60.23] - 2026-05-19
-### Documentation & Phase 8 Planning
-- **Roadmap Assessment**: Re-analyzed remaining TODO items, halting code execution due to the ambiguous nature of Phase 8 tasks (e.g. Game Engine Ingestion, Global Launch).
-- **Ideation**: Expanded `IDEAS.md` with concrete architectural directions for tackling the remaining Phase 8 backlog.
-- **Handoff**: Updated `HANDOFF.md` to clearly signal the completion of Phase 7 (Pub/Sub Identity) and outline the required design work for Phase 8.
-
-## [11.60.22] - 2026-05-19
-### UI Pub/Sub Tracking Integration
-- **Subscriptions Tracking**: Added backend logic `getSubscriptionCount()` to surface the active count of tracking/publishing channels from the `subscriptionStore`.
-- **Dashboard Telemetry**: Updated `handleStats` to embed `subscriptions` and correct `network.status` into its standard `/stats` endpoint.
-- **WebUI Unification**: Patched `web/ui/app.js` to correctly point its main `updateStatus` polling routine toward `/stats` instead of the incomplete stub `/status`, successfully hydrating the main Dashboard UI with live active Pub/Sub telemetry.
 
 ## [11.8.0] - 2026-04-03
 ### Go Port: Real Shard Upload + Manifest Publication Flow

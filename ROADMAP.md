@@ -25,8 +25,11 @@
 * [x] Port Tracker Pub/Sub or DHT Put/Get for decentralized manifest propagation
 * [x] Update the UI to fully reflect active Pub/Sub status and real-time incoming manifests
 
-## Phase 8: Enhancement, Integration, and Polish (Upcoming)
-* [ ] Design and scaffold the Mega-Messenger architecture (Light Mobile Clients proxied to Heavy Go Nodes) utilizing the `element-web` reference frontend.
+## Phase 8: Mega-Messenger & Control Plane Bridge (Upcoming)
+* [ ] Design and compile the Protobuf `envelope.proto` format for unified cross-network routing.
+* [ ] Integrate `go-libp2p-pubsub` into `supernode-go` to establish the decentralized message mesh.
+* [ ] Implement local WebSocket/RPC bridge inside `supernode-go` to accept payloads from Light Node frontends.
+* [ ] Scaffold the Mega-Messenger frontend (extracting concepts from `element-web`) designed strictly as a Light Node UI.
 * [ ] Integrate native I2P/SAM Datagrams directly into the core networking layer
 * [ ] Submodule updates and cross-branch testing
 * [x] Implement missing Web UI tooltips, labels, and fine details
