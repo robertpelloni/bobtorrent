@@ -13,6 +13,7 @@
 - [x] Implement `/api/blobs` endpoint for UI blob storage overview.
 - [x] Integrate Pub/Sub tracking layer into the Go daemon to listen for newly published manifests.
 - [x] Ensure all new API endpoints are fully integrated with the embedded Web UI.
+- [x] Update the UI to fully reflect active Pub/Sub status and real-time incoming manifests
 
 # BobTorrent TODO
 
@@ -40,6 +41,7 @@
 - [x] **Add integration tests** for websocket live feed and wrapped-vs-raw block submission formats
 
 ## Strategic Backlog
+- [ ] **Mega-Messenger Integration**: Analyze and extract UI/messaging paradigms from the `element-web` submodule. Design a libp2p pubsub bridge connecting a lightweight chat frontend to the heavy `supernode-go` backend.
 - [x] **Go Supernode WebUI integration**: Ported `reference-client/web-ui` and implemented Go backend APIs for it.
 - [x] **Durable market manifests + shard metadata registry**: Upgraded the publication registry with a SQLite-backed index and added `GET /assets` for durable asset discovery.
 - [x] **Identity/Attestation verification**: Implemented a Go-native verifier service and integrated real-time verification badges into the Bobcoin Vault UI.

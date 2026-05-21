@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dashboard Status
     async function updateStatus() {
         try {
-            const res = await fetch('/status');
+            const res = await fetch('/stats');
             const data = await res.json();
 
             document.getElementById('dash-blobs').textContent = data.storage.blobs;
@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('dash-subs').textContent = data.subscriptions;
 
             document.getElementById('dht-status').querySelector('.value').textContent = data.dht;
-            document.getElementById('network-status').querySelector('.value').textContent = data.network;
+            document.getElementById('network-status').querySelector('.value').textContent = data.status || "online";
         } catch (e) {}
     }
 

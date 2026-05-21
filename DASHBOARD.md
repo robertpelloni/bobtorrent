@@ -102,3 +102,6 @@ bobtorrent/
 *   **Node.js**: Passing (CI)
 *   **Java**: Gradle Build (Manual)
 *   **C++**: CMake Configuration (Manual)
+
+### Mega-Messenger Integration Submodules
+- **`element-web`**: (Added 2026-05-19) The flagship Matrix web client. This is included as a reference and porting target to build the UI layer for the decentralized Bobtorrent messaging app. Mobile clients will run a lightweight version of this frontend and proxy to the Heavy Go Node control plane for P2P network routing.

@@ -997,6 +997,12 @@ func handleServiceStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func getSubscriptionCount() int {
+	subStoreMutex.RLock()
+	defer subStoreMutex.RUnlock()
+	return len(subscriptionStore)
+}
+
 func handleStats(w http.ResponseWriter, r *http.Request) {
 	uptimeSeconds := time.Since(startedAt).Seconds()
 	if uptimeSeconds <= 0 {
@@ -1059,7 +1065,13 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		"storage": map[string]interface{}{
 			"totalSize": totalSize,
 			"torrents":  storageEntries,
+			"blobs":     len(storageEntries),
+			"size":      totalSize,
+			"max":       0,
+			"utilization": 0,
 		},
+		"dht":           peerCount,
+		"subscriptions": getSubscriptionCount(),
 	})
 }
 
