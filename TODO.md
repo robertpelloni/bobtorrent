@@ -41,7 +41,14 @@
 - [x] **Add integration tests** for websocket live feed and wrapped-vs-raw block submission formats
 
 ## Strategic Backlog
-- [ ] **Mega-Messenger Integration**: Analyze and extract UI/messaging paradigms from the `element-web` submodule. Design a libp2p pubsub bridge connecting a lightweight chat frontend to the heavy `supernode-go` backend.
+- [ ] **Mega-Messenger Integration**:
+  - [ ] Initialize `libp2p` host in `internal/transport/messenger.go`.
+  - [ ] Implement `GossipSub` topic management for rooms/channels.
+  - [ ] Add `WS_GOSSIP` handler to `supernode-go` for UI interaction.
+  - [ ] Scaffold `element-web` bridge logic to proxy Matrix-like events to libp2p.
+- [ ] **I2P Native Datagrams**:
+  - [ ] Research `github.com/eyedeekay/sam3` datagram support.
+  - [ ] Implement `I2PDatagramTransport` in `internal/transport/i2p_datagram.go`.
 - [x] **Go Supernode WebUI integration**: Ported `reference-client/web-ui` and implemented Go backend APIs for it.
 - [x] **Durable market manifests + shard metadata registry**: Upgraded the publication registry with a SQLite-backed index and added `GET /assets` for durable asset discovery.
 - [x] **Identity/Attestation verification**: Implemented a Go-native verifier service and integrated real-time verification badges into the Bobcoin Vault UI.

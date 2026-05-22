@@ -1,7 +1,7 @@
 # Module & Submodule Dashboard (Omni-Workspace)
 
 ## Version Snapshot
-- **Root Version**: `11.59.0`
+- **Root Version**: `11.60.25`
 - **Workspace Root**: `bobtorrent/`
 - **Primary Branch**: `master`
 - **Build Status**: Go workspace compile validated with `go build -buildvcs=false ./...`
@@ -25,7 +25,7 @@ bobtorrent/
 │   ├── dhtproxy/             # DHT proxy crawler/db/API
 │   ├── publish/              # Published shard + manifest persistence registry
 │   ├── tracker/              # HTTP + UDP tracker implementation
-│   ├── transport/            # DHT transport node wrapper
+│   ├── transport/            # DHT, libp2p messenger, and I2P datagram transports
 │   └── tui/                  # Bubble Tea operator dashboard
 ├── pkg/
 │   ├── storage/              # Encryption + erasure coding
@@ -48,7 +48,7 @@ bobtorrent/
 |---|---|---:|---|
 | DHT Proxy | `build/dht-proxy` | Buildable | Privacy-preserving peer discovery with GeoIP sorting |
 | Lattice Node | `build/lattice-go` | Buildable | Go asynchronous block lattice + websocket event feed with SQLite-backed replay persistence, autonomous background peer sync loop, ordered confirmed-block catch-up, `GET /blocks` + `GET/POST /bootstrap` sync support, `POST /reconcile` analysis + `POST /reconcile/apply` execution, per-peer sync/broadcast telemetry, bounded retry handling, and 100% unit test coverage for consensus transitions |
-| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation, identity `VerifierService` with real `GitHubVerifier`, durable `torrents.json` seeding registry, and durable publication registry |
+| Supernode | `build/supernode-go` | Buildable | Tracker, DHT, seeding, market automation, TUI, Bobcoin UI-compatible status/economy/proof/FHE-oracle/control endpoints, real multipart `/upload` torrent registration, stricter `/spora/:challenge` storage attestation, identity `VerifierService` with real `GitHubVerifier`, durable `torrents.json` seeding registry, and durable publication registry. Includes `/ws-messenger` for decentralized gossip. |
 | Storage WASM | `build/storage.wasm` | Buildable | Browser-side Go storage kernel |
 | Go WASM Runtime | `build/wasm_exec.js` | Packaged | Required runtime bridge for browser execution |
 
@@ -61,6 +61,8 @@ bobtorrent/
 - WebSocket live block feed
 - Terminal operations dashboard
 - Browser-consumable storage WASM runtime
+- libp2p GossipSub decentralized messaging
+- I2P/SAM Datagram anonymous signaling
 
 ## Current Known Gaps
 - Lattice peer sync now has bootstrap/catch-up, health/retry telemetry, cooldown suppression, divergence suspicion, and analysis/apply workflows, but richer reconciliation execution for divergence and heavier policy tuning still remain open

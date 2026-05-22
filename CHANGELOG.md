@@ -493,6 +493,14 @@ All notable changes to this project will be documented in this file.
 - **Ingest Shim**: Bridged the Web UI's upload mechanism via a `/ingest` shim that leverages the existing Go `buildUploadedTorrentFromMultipartWithFile` logic and returns proper blob descriptors.
 - **Validation**: Compiled and tested the updated `supernode-go` with no regressions, fully unifying the reference client UI within the Go backend.
 
+## [11.60.25] - 2026-05-21
+### Mega-Messenger Scaffolding & I2P Datagram Transport
+- **libp2p GossipSub**: Scaffolded a `libp2p` host and GossipSub engine in `internal/transport/messenger.go`.
+- **Messenger WebSocket**: Implemented a `/ws-messenger` endpoint in `cmd/supernode-go/main.go` to bridge the frontend to the gossip mesh.
+- **I2P Datagrams**: Scaffolded native I2P/SAM datagram support in `internal/transport/i2p_datagram.go` for low-latency anonymous signaling.
+- **Executive Protocol**: Performed a comprehensive repository sync, submodule refresh, and intelligent branch reconciliation.
+- **Build Infrastructure**: Updated `build.sh` to include all Go binaries and WASM artifacts.
+
 ## [11.60.24] - 2026-05-19
 ### Mega-Messenger Architecture & Element Submodule
 - **Submodule Integration**: Added `element-web` as a git submodule to serve as the reference frontend and porting target for the decentralized chat/storefront platform.

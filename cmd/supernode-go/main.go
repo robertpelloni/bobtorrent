@@ -36,6 +36,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/go-resty/resty/v2"
 	"github.com/gorilla/websocket"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 const (
@@ -61,6 +62,7 @@ var (
 	uiProgram           *tea.Program
 	fcBridge            *bridges.FilecoinBridge
 	dhtNode             *transport.DHTNode
+	messenger           *transport.Messenger
 	publishRegistry     *publish.Registry
 	economyDB           *economy.Database
 	verifierSvc         *identity.VerifierService
@@ -317,6 +319,8 @@ func main() {
 
 	startTrackerServices()
 	startDHT()
+	startMessenger()
+	defer messenger.Close()
 	go startMarketPoller()
 	go startLatticeFeedListener()
 
@@ -343,6 +347,7 @@ func startTrackerServices() {
 	mux.HandleFunc("/mint", withCORS(handleMint))
 	mux.HandleFunc("/burn", withCORS(handleBurn))
 	mux.HandleFunc("/fhe-oracle", withCORS(handleFHEOracle))
+	mux.HandleFunc("/ws-messenger", handleMessengerSocket)
 	mux.HandleFunc("/submit-proof", withCORS(handleSubmitProof))
 	mux.HandleFunc("/verify-attestation", withCORS(handleVerifyAttestation))
 	mux.HandleFunc("/add-torrent", withCORS(handleAddTorrent))
@@ -383,6 +388,69 @@ func startDHT() {
 		return
 	}
 	go dhtNode.Start()
+}
+
+func startMessenger() {
+	var err error
+	messenger, err = transport.NewMessenger("/ip4/0.0.0.0/tcp/6883")
+	if err != nil {
+		log.Printf("Messenger unavailable: %v", err)
+		return
+	}
+}
+
+func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
+	if messenger == nil {
+		http.Error(w, "Messenger unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Messenger websocket upgrade failed: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// In this scaffold, we just join one global topic for simplicity.
+	// Future: allow joining dynamic topics via a control message.
+	topicName := "bobtorrent-global-gossip"
+	err = messenger.JoinTopic(topicName, func(data []byte, from peer.ID) {
+		msg := map[string]interface{}{
+			"type": "GOSSIP",
+			"from": from.String(),
+			"data": string(data),
+		}
+		_ = conn.WriteJSON(msg)
+	})
+
+	if err != nil {
+		log.Printf("Failed to join messenger topic: %v", err)
+		return
+	}
+
+	for {
+		var req struct {
+			Type  string `json:"type"`
+			Topic string `json:"topic"`
+			Data  string `json:"data"`
+		}
+		if err := conn.ReadJSON(&req); err != nil {
+			break
+		}
+
+		if req.Type == "PUBLISH" && req.Data != "" {
+			targetTopic := req.Topic
+			if targetTopic == "" {
+				targetTopic = topicName
+			}
+			_ = messenger.Publish(targetTopic, []byte(req.Data))
+		}
+	}
 }
 
 func initPublishRegistry() {

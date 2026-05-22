@@ -26,9 +26,17 @@
 * [x] Update the UI to fully reflect active Pub/Sub status and real-time incoming manifests
 
 ## Phase 8: Enhancement, Integration, and Polish (Upcoming)
-* [ ] Design and scaffold the Mega-Messenger architecture (Light Mobile Clients proxied to Heavy Go Nodes) utilizing the `element-web` reference frontend.
-* [ ] Integrate native I2P/SAM Datagrams directly into the core networking layer
-* [ ] Submodule updates and cross-branch testing
+* [ ] **Mega-Messenger Architecture**
+  - [ ] Scaffold `libp2p` gossip mesh in `internal/transport/messenger.go`
+  - [ ] Implement GossipSub for decentralized message routing
+  - [ ] Create WebSocket API for frontend-to-gossip mesh bridging
+  - [ ] Analyze `element-web` integration path (Tauri/Electron wrapper vs embedded)
+* [ ] **Anonymity & Performance**
+  - [ ] Integrate native I2P/SAM Datagrams for low-latency anonymous signaling
+  - [ ] Optimize `ReadaheadBuffer` with `mmap` backing for large files
+* [ ] **Submodule & Cross-Branch Testing**
+  - [ ] Synchronize `bobcoin` and `element-web` submodules with latest Go core
+  - [ ] Perform cross-node consensus and messaging reliability tests
 * [x] Implement missing Web UI tooltips, labels, and fine details
 * [ ] Performance profiling and concurrency tuning
 
