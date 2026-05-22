@@ -1,26 +1,31 @@
 package streaming
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/bobtorrent/bobtorrent/pkg/storage"
+	"github.com/edsrzf/mmap-go"
 )
 
 type ReadaheadBuffer struct {
-	manifest *storage.Manifest
-	store    BlobFetcher
-	current  int
-	buffer   *bytes.Reader
-	ctx      context.Context
-	cancel   context.CancelFunc
-	mu       sync.Mutex
-	position int64
-	ready    chan struct{}
+	manifest    *storage.Manifest
+	store       BlobFetcher
+	current     int
+	ctx         context.Context
+	cancel      context.CancelFunc
+	mu          sync.Mutex
+	position    int64
+	cond        *sync.Cond
+	chunkStatus []bool  // true if chunk is downloaded and written to mmap
+	chunkError  []error // error if chunk fetch failed
+	tempFile    *os.File
+	mmap        mmap.MMap
+	closed      bool
 }
 
 type BlobFetcher interface {
@@ -29,15 +34,47 @@ type BlobFetcher interface {
 
 func NewReadaheadBuffer(manifest *storage.Manifest, store BlobFetcher) *ReadaheadBuffer {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &ReadaheadBuffer{
-		manifest: manifest,
-		store:    store,
-		current:  0,
-		ctx:      ctx,
-		cancel:   cancel,
-		position: 0,
-		ready:    make(chan struct{}, 1),
+
+	// Create a temporary file to back the mmap
+	f, err := os.CreateTemp("", "bobtorrent-readahead-*")
+	if err != nil {
+		log.Printf("Failed to create temp file for readahead: %v", err)
+		cancel()
+		return nil
 	}
+
+	// Pre-allocate file size
+	if err := f.Truncate(manifest.FileSize); err != nil {
+		log.Printf("Failed to truncate temp file: %v", err)
+		f.Close()
+		os.Remove(f.Name())
+		cancel()
+		return nil
+	}
+
+	m, err := mmap.Map(f, mmap.RDWR, 0)
+	if err != nil {
+		log.Printf("Failed to mmap temp file: %v", err)
+		f.Close()
+		os.Remove(f.Name())
+		cancel()
+		return nil
+	}
+
+	rb := &ReadaheadBuffer{
+		manifest:    manifest,
+		store:       store,
+		current:     0,
+		ctx:         ctx,
+		cancel:      cancel,
+		position:    0,
+		chunkStatus: make([]bool, len(manifest.Chunks)),
+		chunkError:  make([]error, len(manifest.Chunks)),
+		tempFile:    f,
+		mmap:        m,
+	}
+	rb.cond = sync.NewCond(&rb.mu)
+	return rb
 }
 
 func (r *ReadaheadBuffer) StartPrefetch() {
@@ -51,44 +88,36 @@ func (r *ReadaheadBuffer) fetchLoop(startIndex int) {
 		case <-r.ctx.Done():
 			return
 		default:
-			chunk := r.manifest.Chunks[i]
+			r.mu.Lock()
+			if r.chunkStatus[i] {
+				r.mu.Unlock()
+				continue
+			}
+			r.mu.Unlock()
 
+			chunk := r.manifest.Chunks[i]
 			plaintext, err := r.store.FetchAndDecryptBlob(chunk)
 			if err != nil {
 				log.Printf("Failed to fetch chunk %d: %v", i, err)
-
 				r.mu.Lock()
-				if r.current == i {
-					r.buffer = bytes.NewReader([]byte{})
-					select {
-					case r.ready <- struct{}{}:
-					default:
-					}
-				}
+				r.chunkError[i] = err
+				r.cond.Broadcast()
 				r.mu.Unlock()
 				return
 			}
 
 			r.mu.Lock()
-			if r.current == i {
-				r.buffer = bytes.NewReader(plaintext)
-
-				var cumulative int64 = 0
-				for j := 0; j < i; j++ {
-					cumulative += r.manifest.Chunks[j].Size
-				}
-				chunkOffset := r.position - cumulative
-				if chunkOffset > 0 {
-					r.buffer.Seek(chunkOffset, io.SeekStart)
-				}
-
-				select {
-				case r.ready <- struct{}{}:
-				default:
-				}
+			// Calculate offset for this chunk
+			var offset int64 = 0
+			for j := 0; j < i; j++ {
+				offset += r.manifest.Chunks[j].Size
 			}
+
+			// Copy plaintext to mmap
+			copy(r.mmap[offset:], plaintext)
+			r.chunkStatus[i] = true
+			r.cond.Broadcast()
 			r.mu.Unlock()
-			return
 		}
 	}
 }
@@ -98,51 +127,81 @@ func (r *ReadaheadBuffer) Read(p []byte) (int, error) {
 		return 0, nil
 	}
 
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	for {
-		r.mu.Lock()
-		buf := r.buffer
-		r.mu.Unlock()
+		if r.closed {
+			return 0, io.ErrClosedPipe
+		}
 
-		if buf == nil {
-			select {
-			case <-r.ready:
-			case <-r.ctx.Done():
-				return 0, io.EOF
+		if r.position >= r.manifest.FileSize {
+			return 0, io.EOF
+		}
+
+		// Check if the chunk containing the current position is ready
+		var cumulative int64 = 0
+		chunkIndex := -1
+		for i, chunk := range r.manifest.Chunks {
+			if r.position >= cumulative && r.position < cumulative+chunk.Size {
+				chunkIndex = i
+				break
 			}
-			continue
+			cumulative += chunk.Size
 		}
 
-		r.mu.Lock()
-		if r.buffer == nil {
-			r.mu.Unlock()
-			continue
+		if chunkIndex == -1 {
+			return 0, io.EOF
 		}
 
-		n, err := r.buffer.Read(p)
-		if n > 0 {
-			r.position += int64(n)
+		if r.chunkError[chunkIndex] != nil {
+			return 0, fmt.Errorf("chunk %d fetch failed: %w", chunkIndex, r.chunkError[chunkIndex])
 		}
 
-		if err == io.EOF {
-			if r.current >= len(r.manifest.Chunks)-1 {
-				r.mu.Unlock()
-				return n, io.EOF // Stop timeout loops here
+		if r.chunkStatus[chunkIndex] {
+			// Data is ready, read from mmap
+			remainingInFile := r.manifest.FileSize - r.position
+			toRead := int64(len(p))
+			if toRead > remainingInFile {
+				toRead = remainingInFile
 			}
 
-			r.current++
-			r.buffer = nil
-			r.mu.Unlock()
+			// How much can we read from the currently ready chunks?
+			// For simplicity, we just read as much as requested if it's within the file bounds,
+			// but we might need to block again if we cross into a non-ready chunk.
 
-			go r.fetchLoop(r.current)
+			// Let's see how much continuous data is ready from r.position
+			readyCumulative := cumulative + r.manifest.Chunks[chunkIndex].Size
+			for i := chunkIndex + 1; i < len(r.manifest.Chunks); i++ {
+				if r.chunkStatus[i] {
+					readyCumulative += r.manifest.Chunks[i].Size
+				} else {
+					break
+				}
+			}
 
-			if n > 0 {
+			available := readyCumulative - r.position
+			if available < toRead {
+				toRead = available
+			}
+
+			if toRead > 0 {
+				n := copy(p, r.mmap[r.position:r.position+toRead])
+				r.position += int64(n)
 				return n, nil
 			}
-			continue
+			// If toRead is 0 because only exactly up to r.position is ready, we wait.
 		}
 
-		r.mu.Unlock()
-		return n, err
+		// Not ready, wait for fetchLoop to signal
+		// If we are waiting for a chunk that is not the one currently being fetched by fetchLoop,
+		// we might want to restart fetchLoop from here.
+		if chunkIndex > r.current {
+			r.current = chunkIndex
+			go r.fetchLoop(r.current)
+		}
+
+		r.cond.Wait()
 	}
 }
 
@@ -166,45 +225,45 @@ func (r *ReadaheadBuffer) Seek(offset int64, whence int) (int64, error) {
 		return 0, fmt.Errorf("seek position out of bounds")
 	}
 
-	if newPosition == r.manifest.FileSize {
-		r.position = newPosition
-		r.buffer = bytes.NewReader([]byte{})
-		return r.position, nil
-	}
+	r.position = newPosition
 
+	// Find which chunk we are in now
 	var cumulative int64 = 0
 	targetChunkIndex := -1
-	var chunkOffset int64 = 0
-
 	for i, chunk := range r.manifest.Chunks {
 		if newPosition >= cumulative && newPosition < cumulative+chunk.Size {
 			targetChunkIndex = i
-			chunkOffset = newPosition - cumulative
 			break
 		}
 		cumulative += chunk.Size
 	}
 
-	if targetChunkIndex == -1 {
-		return 0, fmt.Errorf("could not resolve seek to chunk")
-	}
-
-	if targetChunkIndex != r.current {
-		r.current = targetChunkIndex
-		r.position = newPosition
-		r.buffer = nil
-		go r.fetchLoop(r.current)
-	} else if r.buffer != nil {
-		r.buffer.Seek(chunkOffset, io.SeekStart)
-		r.position = newPosition
-	} else {
-		r.position = newPosition
+	if targetChunkIndex != -1 && targetChunkIndex != r.current {
+		if !r.chunkStatus[targetChunkIndex] {
+			r.current = targetChunkIndex
+			go r.fetchLoop(r.current)
+		}
 	}
 
 	return r.position, nil
 }
 
 func (r *ReadaheadBuffer) Close() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed {
+		return nil
+	}
+	r.closed = true
 	r.cancel()
+	r.cond.Broadcast() // Wake up any waiting Read calls
+
+	if r.mmap != nil {
+		r.mmap.Unmap()
+	}
+	if r.tempFile != nil {
+		r.tempFile.Close()
+		os.Remove(r.tempFile.Name())
+	}
 	return nil
 }

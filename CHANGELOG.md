@@ -78,6 +78,13 @@
 
 # Changelog
 
+## [11.60.29] - 2026-05-22
+### Readahead Performance Optimization
+- **mmap Backing**: Transitioned `ReadaheadBuffer` to use memory-mapped files (`mmap`) for backing reconstructed streams.
+- **Efficient Seek/Read**: Improved random access performance and reduced memory pressure by writing decrypted chunks directly to `mmap`'ed disk-backed memory.
+- **Synchronization**: Implemented `sync.Cond` based coordination between chunk fetching and reading.
+- **Caching**: Verified data reuse upon seeking, eliminating redundant network fetches for cached chunks.
+
 ## [11.60.3] - 2026-04-16
 ### Added
 - Added Go-native `/api/key/generate` endpoint to support secure Ed25519 channel identity creation.
