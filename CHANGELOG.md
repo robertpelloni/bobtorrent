@@ -493,6 +493,13 @@ All notable changes to this project will be documented in this file.
 - **Ingest Shim**: Bridged the Web UI's upload mechanism via a `/ingest` shim that leverages the existing Go `buildUploadedTorrentFromMultipartWithFile` logic and returns proper blob descriptors.
 - **Validation**: Compiled and tested the updated `supernode-go` with no regressions, fully unifying the reference client UI within the Go backend.
 
+## [11.60.27] - 2026-05-23
+### Messenger Persistence & History Support
+- **SQLite Persistence**: Implemented `MessengerStore` in `internal/transport/store.go` for durable storage of GossipSub messages.
+- **Messenger Integration**: Wired the persistent store into the `libp2p` messenger to automatically save all outgoing and incoming gossip.
+- **History API**: Added `FETCH_HISTORY` control message and automatic history retrieval on topic join in the WebSocket bridge.
+- **Unit Testing**: Added regression tests for the messenger persistence layer.
+
 ## [11.60.26] - 2026-05-22
 ### Mega-Messenger Dynamic Topics & I2P Datagram Integration
 - **Dynamic Messenger**: Upgraded `libp2p` messenger to support multiple handlers and dynamic topic joining/leaving via unique handler IDs.

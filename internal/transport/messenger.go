@@ -29,10 +29,11 @@ type Messenger struct {
 	topics   map[string]*pubsub.Topic
 	subs     map[string]*pubsub.Subscription
 	handlers map[string]map[string]func([]byte, peer.ID) // topic -> handlerID -> handler
+	store    *MessengerStore
 }
 
 // NewMessenger initializes a libp2p host and a GossipSub engine.
-func NewMessenger(listenAddr string) (*Messenger, error) {
+func NewMessenger(listenAddr string, store *MessengerStore) (*Messenger, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	h, err := libp2p.New(
@@ -61,6 +62,7 @@ func NewMessenger(listenAddr string) (*Messenger, error) {
 		topics:   make(map[string]*pubsub.Topic),
 		subs:     make(map[string]*pubsub.Subscription),
 		handlers: make(map[string]map[string]func([]byte, peer.ID)),
+		store:    store,
 	}, nil
 }
 
@@ -129,7 +131,7 @@ func (m *Messenger) UnregisterAllHandlers(topicName string) {
 	// unless we really want to leave the mesh for this topic.
 }
 
-// Publish broadcasts a message to a GossipSub topic.
+// Publish broadcasts a message to a GossipSub topic and persists it if a store is configured.
 func (m *Messenger) Publish(topicName string, data []byte) error {
 	m.topicsMu.RLock()
 	t, exists := m.topics[topicName]
@@ -137,6 +139,12 @@ func (m *Messenger) Publish(topicName string, data []byte) error {
 
 	if !exists {
 		return fmt.Errorf("not joined to topic %s", topicName)
+	}
+
+	if m.store != nil {
+		if err := m.store.SaveMessage(topicName, m.host.ID().String(), string(data)); err != nil {
+			log.Printf("failed to persist published message: %v", err)
+		}
 	}
 
 	return t.Publish(m.ctx, data)
@@ -157,6 +165,12 @@ func (m *Messenger) readLoop(sub *pubsub.Subscription) {
 		// Don't echo back our own messages
 		if msg.ReceivedFrom == m.host.ID() {
 			continue
+		}
+
+		if m.store != nil {
+			if err := m.store.SaveMessage(topicName, msg.ReceivedFrom.String(), string(msg.Data)); err != nil {
+				log.Printf("failed to persist received message: %v", err)
+			}
 		}
 
 		m.topicsMu.RLock()
@@ -200,6 +214,14 @@ func (m *Messenger) PublishMatrixEvent(topicName string, event MatrixEvent) erro
 		return err
 	}
 	return m.Publish(topicName, data)
+}
+
+// GetHistory retrieves the last N messages for a topic from the persistent store.
+func (m *Messenger) GetHistory(topic string, limit int) ([]PersistedMessage, error) {
+	if m.store == nil {
+		return nil, fmt.Errorf("messenger store not configured")
+	}
+	return m.store.QueryHistory(topic, limit)
 }
 
 // Host returns the underlying libp2p host.

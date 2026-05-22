@@ -65,6 +65,7 @@ var (
 	fcBridge            *bridges.FilecoinBridge
 	dhtNode             *transport.DHTNode
 	messenger           *transport.Messenger
+	messengerStore      *transport.MessengerStore
 	i2pDatagram         *transport.I2PDatagramTransport
 	publishRegistry     *publish.Registry
 	economyDB           *economy.Database
@@ -402,7 +403,16 @@ func startDHT() {
 
 func startMessenger() {
 	var err error
-	messenger, err = transport.NewMessenger("/ip4/0.0.0.0/tcp/6883")
+	messengerDir := filepath.Join("data", "messenger")
+	if err := os.MkdirAll(messengerDir, 0755); err != nil {
+		log.Printf("Failed to create messenger data directory: %v", err)
+	}
+	messengerStore, err = transport.NewMessengerStore(filepath.Join(messengerDir, "messenger.db"))
+	if err != nil {
+		log.Printf("Messenger store unavailable: %v", err)
+	}
+
+	messenger, err = transport.NewMessenger("/ip4/0.0.0.0/tcp/6883", messengerStore)
 	if err != nil {
 		log.Printf("Messenger unavailable: %v", err)
 		return
@@ -422,7 +432,9 @@ func startI2PDatagram() {
 		log.Printf("Received I2P Datagram from %s: %s", from.String(), string(data))
 		// Handle anonymous "ping" or discovery here.
 		if string(data) == "PING" {
-			_ = i2pDatagram.SendTo([]byte("PONG"), from.(i2pkeys.I2PAddr))
+			if addr, ok := from.(i2pkeys.I2PAddr); ok {
+				_ = i2pDatagram.SendTo([]byte("PONG"), addr)
+			}
 		}
 	})
 }
@@ -521,6 +533,27 @@ func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 			if err := messenger.JoinTopic(topicName, handlerID, h); err == nil {
 				joinedTopics[topicName] = struct{}{}
 				_ = sendJSON(map[string]interface{}{"type": "JOINED", "topic": topicName})
+
+				// Send history on join
+				if history, err := messenger.GetHistory(topicName, 50); err == nil {
+					_ = sendJSON(map[string]interface{}{
+						"type":    "HISTORY",
+						"topic":   topicName,
+						"messages": history,
+					})
+				}
+			}
+
+		case "FETCH_HISTORY":
+			if req.Topic == "" {
+				continue
+			}
+			if history, err := messenger.GetHistory(req.Topic, 50); err == nil {
+				_ = sendJSON(map[string]interface{}{
+					"type":    "HISTORY",
+					"topic":   req.Topic,
+					"messages": history,
+				})
 			}
 
 		case "LEAVE_TOPIC":

@@ -46,7 +46,7 @@
   - [x] Implement `GossipSub` topic management for rooms/channels.
   - [x] Add `WS_GOSSIP` handler to `supernode-go` for UI interaction.
   - [x] Scaffold `element-web` bridge logic to proxy Matrix-like events to libp2p.
-  - [ ] Implement event persistence for missed gossip.
+  - [x] Implement event persistence for missed gossip.
 - [ ] **I2P Native Datagrams**:
   - [x] Research `github.com/eyedeekay/sam3` datagram support.
   - [x] Implement `I2PDatagramTransport` in `internal/transport/i2p_datagram.go`.
