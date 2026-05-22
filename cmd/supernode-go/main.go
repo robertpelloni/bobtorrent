@@ -377,6 +377,10 @@ func startTrackerServices() {
 	mux.HandleFunc("/shards/", withCORS(handleGetShard))
 	mux.HandleFunc("/storage.wasm", withCORS(serveStorageWASM))
 	mux.HandleFunc("/wasm_exec.js", withCORS(serveWASMExec))
+
+	// Mega-Messenger UI Bridge
+	mux.HandleFunc("/mega-bridge", handleMegaBridge)
+
 	go func() {
 		if err := http.ListenAndServe(":8000", mux); err != nil {
 			log.Printf("HTTP tracker failed: %v", err)

@@ -1,7 +1,9 @@
-# Project Vision: Universal Sovereign Distribution Mesh (Bobtorrent)
+# Project Vision: The Universal "Mega-Messenger" and Sovereign Distribution Mesh (Bobtorrent)
 
 ## 🌟 Ultimate Goal
-To build a **Production-Grade, Autonomous P2P Storage Supernode Network** that bridges the gap between traditional BitTorrent swarms and incentivized blockchain storage (Filecoin/Bobcoin). The system is designed to be self-healing, high-performance, and fully autonomous, capable of managing petabytes of data with "Zero Data Loss" guarantees via advanced erasure coding and redundancy.
+To build a **Unified Decentralized Ecosystem** that flawlessly integrates messaging, decentralized storefronts, and anonymous cryptocurrency transactions directly into a **Production-Grade, Autonomous P2P Storage Supernode Network**.
+
+Instead of isolating the BitTorrent swarm architecture, the goal has evolved into the **"Mega-Messenger"**: a Telegram/Matrix clone where Light Nodes (mobile devices) connect securely to Heavy Nodes (the Go backend). These Heavy Daemons handle the massive I/O of the P2P swarm, Tor routing, IPFS file sharing, and Bobcoin consensus, while providing a snappy, low-battery-drain chat interface for end users.
 
 ## 🏗️ Architectural Pillars
 
@@ -50,11 +52,11 @@ To build a **Production-Grade, Autonomous P2P Storage Supernode Network** that b
 
 ## 🛠️ The Go Port Vision (v11.5.0+)
 
-The project is currently undergoing a complete architectural modernization through a systematic port to Go. This "Go Port" is designed to achieve:
+The project is currently undergoing a complete architectural modernization through a systematic port to Go, structured around the **"Control Plane Pattern"**. This design achieves:
 
 1.  **Extreme Concurrency**: Utilizing goroutines to handle 10,000+ simultaneous BitTorrent swarms and lattice block arrivals without bottlenecking.
 2.  **Memory Safety**: Eliminating legacy vulnerabilities while maintaining high performance.
-3.  **Unified Ecosystem**: Consolidating Tracker, DHT, Supernode, and Consensus into a single performant codebase with specialized binaries (`supernode-go`, `lattice-go`, `dht-proxy`).
+3.  **Unified Control Plane**: Consolidating Tracker, DHT, Supernode, and Consensus into a single performant codebase with specialized binaries (`supernode-go`, `lattice-go`, `dht-proxy`). These act as the heavy lifting backbone for lightweight UI clients.
 4.  **Privacy-First Networking**: Deep integration of the DHT Proxy and multi-transport support directly into the core engine.
 
 ## 🧠 Design Philosophy
@@ -64,5 +66,5 @@ The project is currently undergoing a complete architectural modernization throu
 -   **"Autonomous by Default"**: The system should run for months without human intervention, automatically recovering from failures.
 
 
-### Native UI Frontends
-Once the Go core port is finalized, verified, and complete, the project will expand to offer **multiple native UI frontends** using desktop/mobile native frameworks (e.g., Qt, Swift, Kotlin, Fyne, Wails, or React Native/Flutter). This will provide high performance, deep OS integration, and superior user experience beyond the browser context.
+### The Mega-Messenger UI Integration
+The primary UI initiative is the **Mega-Messenger**. By porting and adapting features from the `element-web` reference frontend into native frameworks (React Native/Flutter for mobile, Wails/Tauri for desktop), the project will provide a highly responsive, user-friendly interface. This client will remain "light," avoiding direct participation in DHT routing or heavy blob storage, instead tunneling all chat, storefront requests, and Bobcoin transactions through an authenticated WebSocket/gRPC bridge to the user's trusted Heavy Go Node.
