@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -35,6 +36,7 @@ import (
 	"github.com/anacrolix/torrent/metainfo"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/go-resty/resty/v2"
+	"github.com/go-i2p/i2pkeys"
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -63,6 +65,7 @@ var (
 	fcBridge            *bridges.FilecoinBridge
 	dhtNode             *transport.DHTNode
 	messenger           *transport.Messenger
+	i2pDatagram         *transport.I2PDatagramTransport
 	publishRegistry     *publish.Registry
 	economyDB           *economy.Database
 	verifierSvc         *identity.VerifierService
@@ -320,7 +323,13 @@ func main() {
 	startTrackerServices()
 	startDHT()
 	startMessenger()
-	defer messenger.Close()
+	if messenger != nil {
+		defer messenger.Close()
+	}
+	startI2PDatagram()
+	if i2pDatagram != nil {
+		defer i2pDatagram.Close()
+	}
 	go startMarketPoller()
 	go startLatticeFeedListener()
 
@@ -348,6 +357,7 @@ func startTrackerServices() {
 	mux.HandleFunc("/burn", withCORS(handleBurn))
 	mux.HandleFunc("/fhe-oracle", withCORS(handleFHEOracle))
 	mux.HandleFunc("/ws-messenger", handleMessengerSocket)
+	mux.HandleFunc("/status/i2p", withCORS(handleI2PStatus))
 	mux.HandleFunc("/submit-proof", withCORS(handleSubmitProof))
 	mux.HandleFunc("/verify-attestation", withCORS(handleVerifyAttestation))
 	mux.HandleFunc("/add-torrent", withCORS(handleAddTorrent))
@@ -399,6 +409,41 @@ func startMessenger() {
 	}
 }
 
+func startI2PDatagram() {
+	// Try default SAM address
+	var err error
+	i2pDatagram, err = transport.NewI2PDatagramTransport("localhost:7656")
+	if err != nil {
+		log.Printf("I2P Datagram Transport unavailable (SAM not found): %v", err)
+		return
+	}
+
+	i2pDatagram.ReceiveLoop(func(data []byte, from net.Addr) {
+		log.Printf("Received I2P Datagram from %s: %s", from.String(), string(data))
+		// Handle anonymous "ping" or discovery here.
+		if string(data) == "PING" {
+			_ = i2pDatagram.SendTo([]byte("PONG"), from.(i2pkeys.I2PAddr))
+		}
+	})
+}
+
+func handleI2PStatus(w http.ResponseWriter, r *http.Request) {
+	if i2pDatagram == nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"enabled": false,
+			"status":  "SAM not connected",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"enabled":     true,
+		"status":      "online",
+		"localAddr":   i2pDatagram.LocalAddr().Base32(),
+		"destination": i2pDatagram.LocalAddr().String(),
+	})
+}
+
 func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 	if messenger == nil {
 		http.Error(w, "Messenger unavailable", http.StatusServiceUnavailable)
@@ -414,23 +459,36 @@ func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Messenger websocket upgrade failed: %v", err)
 		return
 	}
-	defer conn.Close()
 
-	// In this scaffold, we just join one global topic for simplicity.
-	// Future: allow joining dynamic topics via a control message.
-	topicName := "bobtorrent-global-gossip"
-	err = messenger.JoinTopic(topicName, func(data []byte, from peer.ID) {
-		msg := map[string]interface{}{
-			"type": "GOSSIP",
-			"from": from.String(),
-			"data": string(data),
+	writeMu := sync.Mutex{}
+	sendJSON := func(v interface{}) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		return conn.WriteJSON(v)
+	}
+
+	joinedTopics := make(map[string]struct{})
+	handlerID := fmt.Sprintf("ws-%d", time.Now().UnixNano())
+
+	defer func() {
+		for topic := range joinedTopics {
+			messenger.LeaveTopic(topic, handlerID)
 		}
-		_ = conn.WriteJSON(msg)
-	})
+		conn.Close()
+	}()
 
-	if err != nil {
-		log.Printf("Failed to join messenger topic: %v", err)
-		return
+	// Automatic join to global gossip topic
+	globalTopic := "bobtorrent-global-gossip"
+	handler := func(data []byte, from peer.ID) {
+		_ = sendJSON(map[string]interface{}{
+			"type":  "GOSSIP",
+			"topic": globalTopic,
+			"from":  from.String(),
+			"data":  string(data),
+		})
+	}
+	if err := messenger.JoinTopic(globalTopic, handlerID, handler); err == nil {
+		joinedTopics[globalTopic] = struct{}{}
 	}
 
 	for {
@@ -443,12 +501,43 @@ func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		if req.Type == "PUBLISH" && req.Data != "" {
-			targetTopic := req.Topic
-			if targetTopic == "" {
-				targetTopic = topicName
+		switch req.Type {
+		case "JOIN_TOPIC":
+			if req.Topic == "" {
+				continue
 			}
-			_ = messenger.Publish(targetTopic, []byte(req.Data))
+			if _, exists := joinedTopics[req.Topic]; exists {
+				continue
+			}
+			topicName := req.Topic
+			h := func(data []byte, from peer.ID) {
+				_ = sendJSON(map[string]interface{}{
+					"type":  "GOSSIP",
+					"topic": topicName,
+					"from":  from.String(),
+					"data":  string(data),
+				})
+			}
+			if err := messenger.JoinTopic(topicName, handlerID, h); err == nil {
+				joinedTopics[topicName] = struct{}{}
+				_ = sendJSON(map[string]interface{}{"type": "JOINED", "topic": topicName})
+			}
+
+		case "LEAVE_TOPIC":
+			if _, exists := joinedTopics[req.Topic]; exists {
+				messenger.LeaveTopic(req.Topic, handlerID)
+				delete(joinedTopics, req.Topic)
+				_ = sendJSON(map[string]interface{}{"type": "LEFT", "topic": req.Topic})
+			}
+
+		case "PUBLISH":
+			if req.Data != "" {
+				targetTopic := req.Topic
+				if targetTopic == "" {
+					targetTopic = globalTopic
+				}
+				_ = messenger.Publish(targetTopic, []byte(req.Data))
+			}
 		}
 	}
 }

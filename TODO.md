@@ -42,13 +42,15 @@
 
 ## Strategic Backlog
 - [ ] **Mega-Messenger Integration**:
-  - [ ] Initialize `libp2p` host in `internal/transport/messenger.go`.
-  - [ ] Implement `GossipSub` topic management for rooms/channels.
-  - [ ] Add `WS_GOSSIP` handler to `supernode-go` for UI interaction.
-  - [ ] Scaffold `element-web` bridge logic to proxy Matrix-like events to libp2p.
+  - [x] Initialize `libp2p` host in `internal/transport/messenger.go`.
+  - [x] Implement `GossipSub` topic management for rooms/channels.
+  - [x] Add `WS_GOSSIP` handler to `supernode-go` for UI interaction.
+  - [x] Scaffold `element-web` bridge logic to proxy Matrix-like events to libp2p.
+  - [ ] Implement event persistence for missed gossip.
 - [ ] **I2P Native Datagrams**:
-  - [ ] Research `github.com/eyedeekay/sam3` datagram support.
-  - [ ] Implement `I2PDatagramTransport` in `internal/transport/i2p_datagram.go`.
+  - [x] Research `github.com/eyedeekay/sam3` datagram support.
+  - [x] Implement `I2PDatagramTransport` in `internal/transport/i2p_datagram.go`.
+  - [x] Wire I2P datagrams to `supernode-go` with PING/PONG.
 - [x] **Go Supernode WebUI integration**: Ported `reference-client/web-ui` and implemented Go backend APIs for it.
 - [x] **Durable market manifests + shard metadata registry**: Upgraded the publication registry with a SQLite-backed index and added `GET /assets` for durable asset discovery.
 - [x] **Identity/Attestation verification**: Implemented a Go-native verifier service and integrated real-time verification badges into the Bobcoin Vault UI.

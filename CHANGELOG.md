@@ -493,6 +493,14 @@ All notable changes to this project will be documented in this file.
 - **Ingest Shim**: Bridged the Web UI's upload mechanism via a `/ingest` shim that leverages the existing Go `buildUploadedTorrentFromMultipartWithFile` logic and returns proper blob descriptors.
 - **Validation**: Compiled and tested the updated `supernode-go` with no regressions, fully unifying the reference client UI within the Go backend.
 
+## [11.60.26] - 2026-05-22
+### Mega-Messenger Dynamic Topics & I2P Datagram Integration
+- **Dynamic Messenger**: Upgraded `libp2p` messenger to support multiple handlers and dynamic topic joining/leaving via unique handler IDs.
+- **WebSocket Control**: Enhanced `/ws-messenger` with `JOIN_TOPIC` and `LEAVE_TOPIC` control messages.
+- **I2P Activation**: Instantiate `I2PDatagramTransport` in `main.go` and implemented a PING/PONG responder for anonymous signaling discovery.
+- **Matrix Bridge Scaffolding**: Added `MatrixEvent` JSON envelope to `messenger.go` based on `element-web` event architecture.
+- **I2P Status**: Added `/status/i2p` endpoint to report anonymous destination and connectivity.
+
 ## [11.60.25] - 2026-05-21
 ### Mega-Messenger Scaffolding & I2P Datagram Transport
 - **libp2p GossipSub**: Scaffolded a `libp2p` host and GossipSub engine in `internal/transport/messenger.go`.

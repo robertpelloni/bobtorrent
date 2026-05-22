@@ -97,7 +97,10 @@ func (t *I2PDatagramTransport) ReceiveLoop(handler func([]byte, net.Addr)) {
 				return
 			default:
 				if n > 0 {
-					handler(buf[:n], addr)
+					// Copy the buffer data to avoid corruption in async handlers
+					data := make([]byte, n)
+					copy(data, buf[:n])
+					handler(data, addr)
 				}
 			}
 		}

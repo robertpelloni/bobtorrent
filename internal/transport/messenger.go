@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -27,7 +28,7 @@ type Messenger struct {
 	topicsMu sync.RWMutex
 	topics   map[string]*pubsub.Topic
 	subs     map[string]*pubsub.Subscription
-	handlers map[string][]func([]byte, peer.ID)
+	handlers map[string]map[string]func([]byte, peer.ID) // topic -> handlerID -> handler
 }
 
 // NewMessenger initializes a libp2p host and a GossipSub engine.
@@ -59,17 +60,20 @@ func NewMessenger(listenAddr string) (*Messenger, error) {
 		cancel:   cancel,
 		topics:   make(map[string]*pubsub.Topic),
 		subs:     make(map[string]*pubsub.Subscription),
-		handlers: make(map[string][]func([]byte, peer.ID)),
+		handlers: make(map[string]map[string]func([]byte, peer.ID)),
 	}, nil
 }
 
 // JoinTopic joins a GossipSub topic and registers a handler for incoming messages.
-// Multiple handlers can be registered for the same topic.
-func (m *Messenger) JoinTopic(topicName string, handler func([]byte, peer.ID)) error {
+// Multiple handlers can be registered for the same topic using unique handlerIDs.
+func (m *Messenger) JoinTopic(topicName string, handlerID string, handler func([]byte, peer.ID)) error {
 	m.topicsMu.Lock()
 	defer m.topicsMu.Unlock()
 
-	m.handlers[topicName] = append(m.handlers[topicName], handler)
+	if m.handlers[topicName] == nil {
+		m.handlers[topicName] = make(map[string]func([]byte, peer.ID))
+	}
+	m.handlers[topicName][handlerID] = handler
 
 	if _, exists := m.topics[topicName]; exists {
 		return nil
@@ -92,6 +96,37 @@ func (m *Messenger) JoinTopic(topicName string, handler func([]byte, peer.ID)) e
 	go m.readLoop(sub)
 
 	return nil
+}
+
+// LeaveTopic unregisters a handler from a topic using its handlerID.
+func (m *Messenger) LeaveTopic(topicName string, handlerID string) {
+	m.topicsMu.Lock()
+	defer m.topicsMu.Unlock()
+
+	if m.handlers[topicName] != nil {
+		delete(m.handlers[topicName], handlerID)
+		if len(m.handlers[topicName]) == 0 {
+			delete(m.handlers, topicName)
+			// Optional: leave the topic if no handlers remain
+			if sub, ok := m.subs[topicName]; ok {
+				sub.Cancel()
+				delete(m.subs, topicName)
+			}
+			if topic, ok := m.topics[topicName]; ok {
+				topic.Close()
+				delete(m.topics, topicName)
+			}
+		}
+	}
+}
+
+// UnregisterAllHandlers removes all handlers for a specific topic for a given client identification (stub).
+func (m *Messenger) UnregisterAllHandlers(topicName string) {
+	m.topicsMu.Lock()
+	defer m.topicsMu.Unlock()
+	delete(m.handlers, topicName)
+	// We keep the topic joined to the mesh for other potential local handlers,
+	// unless we really want to leave the mesh for this topic.
 }
 
 // Publish broadcasts a message to a GossipSub topic.
@@ -146,6 +181,25 @@ func (m *Messenger) Close() error {
 	}
 	m.topicsMu.Unlock()
 	return m.host.Close()
+}
+
+// MatrixEvent represents a minimal Matrix-compatible event envelope for libp2p gossip.
+type MatrixEvent struct {
+	Type     string                 `json:"type"`
+	Sender   string                 `json:"sender"`
+	RoomID   string                 `json:"room_id"`
+	Content  map[string]interface{} `json:"content"`
+	EventID  string                 `json:"event_id,omitempty"`
+	OriginTS int64                  `json:"origin_server_ts,omitempty"`
+}
+
+// PublishMatrixEvent wraps a Matrix-style event into a GossipSub payload.
+func (m *Messenger) PublishMatrixEvent(topicName string, event MatrixEvent) error {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	return m.Publish(topicName, data)
 }
 
 // Host returns the underlying libp2p host.
