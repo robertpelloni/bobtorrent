@@ -78,6 +78,13 @@
 
 # Changelog
 
+## [11.60.30] - 2026-05-23
+### Integrated Decentralized Chat UI
+- **Embedded Web UI**: Added a dedicated "Chat" tab to the reference client interface.
+- **Messenger WebSocket Bridge**: Fully wired the frontend to the `/ws-messenger` GossipSub bridge.
+- **Topic Management**: Implemented dynamic topic joining and switching within the UI.
+- **Persistent History**: Enabled chat history hydration upon joining topics via the `FETCH_HISTORY` backend support.
+
 ## [11.60.29] - 2026-05-22
 ### Readahead Performance Optimization
 - **mmap Backing**: Transitioned `ReadaheadBuffer` to use memory-mapped files (`mmap`) for backing reconstructed streams.

@@ -21,6 +21,7 @@
             <button class="tab-btn" data-tab="identity">Identity</button>
             <button class="tab-btn" data-tab="publish">Publish</button>
             <button class="tab-btn" data-tab="subscribe">Subscribe</button>
+            <button class="tab-btn" data-tab="chat">Chat</button>
             <button class="tab-btn" data-tab="downloads">Downloads</button>
         </nav>
 
@@ -161,6 +162,34 @@
                             <tr><td colspan="4">No subscriptions yet.</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- Chat Tab -->
+            <section id="chat" class="tab-content">
+                <h2>Decentralized Chat</h2>
+                <p class="description">Chat with other nodes via libp2p GossipSub topics.</p>
+
+                <div class="chat-container">
+                    <div class="chat-sidebar">
+                        <h3>Topics</h3>
+                        <div class="form-group">
+                            <input type="text" id="new-topic-name" placeholder="topic-name">
+                            <button id="btn-join-topic" class="secondary-btn" style="width: 100%; margin-top: 5px;">Join Topic</button>
+                        </div>
+                        <ul id="topic-list" class="topic-list">
+                            <li class="active" data-topic="bobtorrent-global-gossip"># global-gossip</li>
+                        </ul>
+                    </div>
+                    <div class="chat-main">
+                        <div id="chat-messages" class="chat-messages">
+                            <div class="chat-notice">Welcome to the decentralized mesh.</div>
+                        </div>
+                        <div class="chat-input-area">
+                            <input type="text" id="chat-input" placeholder="Type a message...">
+                            <button id="btn-send-chat" class="primary-btn">Send</button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
