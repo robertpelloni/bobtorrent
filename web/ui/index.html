@@ -98,6 +98,37 @@
                         <button id="btn-save-key" class="secondary-btn" disabled>Save to File</button>
                     </div>
                 </div>
+
+                <div class="card">
+                    <h3>Verify External Attestation</h3>
+                    <div class="form-group">
+                        <label for="verify-provider">Provider</label>
+                        <select id="verify-provider">
+                            <option value="github">GitHub Gist</option>
+                            <option value="orcid">ORCID</option>
+                            <option value="url">URL-based</option>
+                            <option value="mock">Mock (test)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="verify-identifier">Identifier (e.g. username or ORCID ID)</label>
+                        <input type="text" id="verify-identifier" placeholder="robertpelloni">
+                    </div>
+                    <div class="form-group">
+                        <label for="verify-url">Attestation URL</label>
+                        <input type="text" id="verify-url" placeholder="https://gist.github.com/...">
+                    </div>
+                    <div class="form-group">
+                        <label for="verify-account">Bobcoin Public Key (Optional)</label>
+                        <input type="text" id="verify-account" placeholder="Your Public Key">
+                    </div>
+                    <button id="btn-verify-attestation" class="primary-btn">Verify Now</button>
+                    <div id="verify-result" class="result-box hidden">
+                        <h4>Verification Result</h4>
+                        <div id="verify-status-badge"></div>
+                        <pre id="verify-json"></pre>
+                    </div>
+                </div>
             </section>
 
             <!-- Publish Tab -->

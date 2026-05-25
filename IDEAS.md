@@ -41,10 +41,24 @@ Implement **Steganographic Swarms** for extreme censorship resistance.
 - **Performance Profiling**: As requested in Phase 8, a systematic profiling pass using `pprof` (cpu, memory, mutex) under high simulated load (e.g. 10k concurrent simulated swarms and block arrivals) is needed before public mainnet.
 
 ## Element/Matrix Integration & The "Mega-Messenger" Architecture
-- **The Concept**: The user intends to port `element-web` (the flagship Matrix client) to Go and bundle it within the `bobtorrent` daemon. The ultimate goal is a universal "mega-node" that provides decentralized chat (Telegram clone), an anonymous blockchain (`bobcoin`), storefronts, and multi-network file sharing (IPFS, Tor, Supertorrents).
-- **The Architectural Flaw (Monolithic Anti-Pattern)**: As discussed in the conversation logs, trying to directly compile the massive React/TypeScript `element-web` codebase or a full Matrix Homeserver specification natively into the exact same single Go process that runs torrent seeding and blockchain consensus is computationally dangerous.
+- **The Concept**: The overarching project goal is a universal "mega-node" providing decentralized chat (a Telegram/Matrix clone), an anonymous blockchain (`bobcoin`), storefronts, and multi-network file sharing (IPFS, Tor, Supertorrents).
+- **The Architectural Flaw (Monolithic Anti-Pattern)**: Trying to directly compile a massive React/TypeScript frontend (`element-web`), a Matrix Homeserver, a BitTorrent tracker, and a blockchain validator natively into the *exact same single execution process* is a critical anti-pattern. Tight coupling risks memory leaks crashing consensus and forces light mobile clients to perform massive I/O.
 - **The Refined Path (The Control Plane Pattern)**:
-  - Instead of a single monolithic process, `supernode-go` should become the **Local Control Plane**.
-  - For messaging, rather than porting all of Matrix, we should utilize **libp2p** (`go-libp2p-pubsub`) to create a lightweight, decentralized gossip mesh.
-  - The `element-web` repository (now added as a submodule) can serve as the **Frontend View**. It can be stripped down and wrapped in an Electron or Tauri shell (Go-based), communicating over a local WebSocket bridge to the `supernode-go` backend.
-  - **Light vs Heavy Nodes**: Mobile devices should run lightweight Flutter/React Native clients that do not participate in the DHT or mesh routing. They will securely proxy their blinded, encrypted payloads (like `bobcoin` transactions or chat messages) to a trusted Heavy Node (the Go daemon) which handles the heavy lifting of P2P routing and consensus.
+  - `supernode-go` is now officially the **Local Control Plane**.
+  - For messaging, rather than porting the entire Matrix specification, we will implement **libp2p** (`go-libp2p-pubsub`) within `supernode-go` to create a lightweight, decentralized gossip mesh.
+  - The `element-web` repository serves as the **Frontend View template**. We will extract its chat and storefront UI/UX, wrapping it in an Electron or Tauri shell for desktop, and Flutter/React Native for mobile.
+  - **Light vs Heavy Nodes**: Mobile devices ("Light Nodes") handle UI and local SQLite encryption via SQLCipher. They will strictly use WebSockets/RPC to push blinded envelopes to their trusted **Heavy Node** (the Go daemon), which executes the P2P mesh routing, DHT queries, Tor routing, and Bobcoin blockchain submissions.
+
+## Data Envelope Specification (Protocol Buffers)
+To achieve this, the next structural implementation phase will involve creating an `envelope.proto` format shared between the Light UI and the Heavy Node. All actions (Chat, Market, Blockchain) will be standardized as metadata-blinded payloads:
+```protobuf
+message Envelope {
+  bytes id = 1;          // Unique hash of the payload
+  bytes sender_pubkey = 2; // Public key of the sender
+  int64 timestamp = 3;   // Unix timestamp
+  bytes signature = 4;   // Sender's signature verifying the payload
+
+  Type payload_type = 5;
+  bytes encrypted_body = 6; // Encrypted using the recipient's public key (DH/AES-GCM)
+}
+```

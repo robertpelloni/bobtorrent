@@ -33,6 +33,55 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-save-key').disabled = false;
     });
 
+    // Verify Attestation
+    const btnVerify = document.getElementById('btn-verify-attestation');
+    const verifyResultBox = document.getElementById('verify-result');
+    const verifyJson = document.getElementById('verify-json');
+    const verifyBadge = document.getElementById('verify-status-badge');
+
+    btnVerify.addEventListener('click', async () => {
+        const provider = document.getElementById('verify-provider').value;
+        const identifier = document.getElementById('verify-identifier').value;
+        const url = document.getElementById('verify-url').value;
+        const account = document.getElementById('verify-account').value;
+
+        if (!identifier || !url) return alert('Missing required fields');
+
+        btnVerify.textContent = 'Verifying...';
+        btnVerify.disabled = true;
+
+        try {
+            const res = await fetch('/verify-attestation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    kind: provider,
+                    url: url,
+                    account: account
+                })
+            });
+
+            const data = await res.json();
+            verifyJson.textContent = JSON.stringify(data, null, 2);
+            verifyResultBox.classList.remove('hidden');
+
+            if (data.success) {
+                verifyBadge.textContent = 'VERIFIED';
+                verifyBadge.className = 'badge success';
+                verifyBadge.style.background = '#28a745';
+            } else {
+                verifyBadge.textContent = 'FAILED';
+                verifyBadge.className = 'badge danger';
+                verifyBadge.style.background = '#dc3545';
+            }
+        } catch (err) {
+            alert('Verification failed: ' + err.message);
+        } finally {
+            btnVerify.textContent = 'Verify Now';
+            btnVerify.disabled = false;
+        }
+    });
+
     // Publish
     const btnIngest = document.getElementById('btn-ingest');
     const inputPath = document.getElementById('ingest-path');
@@ -348,10 +397,38 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
     }
 
+    async function updateDownloads() {
+        try {
+            const res = await fetch('/stats');
+            const data = await res.json();
+            const table = document.getElementById('downloads-table').querySelector('tbody');
+
+            const torrents = data.storage.torrents || [];
+            table.innerHTML = torrents.length ? '' : '<tr><td colspan="4">No active downloads.</td></tr>';
+
+            torrents.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${t.name || t.infoHash}</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${t.progress * 100}%"></div>
+                        </div>
+                        <small>${(t.progress * 100).toFixed(1)}%</small>
+                    </td>
+                    <td><span class="badge success">Seeding</span></td>
+                    <td>${(data.network.downloadSpeed / 1024).toFixed(1)} KB/s</td>
+                `;
+                table.appendChild(tr);
+            });
+        } catch (e) {}
+    }
+
     // Polling
     setInterval(updateStatus, 2000);
     setInterval(refreshSubscriptions, 5000);
     setInterval(updateBlobs, 5000);
+    setInterval(updateDownloads, 3000);
 
     // Initial Load
     updateStatus();

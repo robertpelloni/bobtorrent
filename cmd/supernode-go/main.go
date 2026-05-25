@@ -304,7 +304,7 @@ func (m *matchmaker) disconnect(player *matchPlayer) *matchPlayer {
 //  3. Kademlia DHT node
 //  4. Lattice market poller + block feed listener
 //  5. Terminal dashboard (TUI)
-func main() {
+func realMain() {
 	log.SetOutput(os.Stderr)
 
 	loadOrCreateWallet()
@@ -377,6 +377,10 @@ func startTrackerServices() {
 	mux.HandleFunc("/shards/", withCORS(handleGetShard))
 	mux.HandleFunc("/storage.wasm", withCORS(serveStorageWASM))
 	mux.HandleFunc("/wasm_exec.js", withCORS(serveWASMExec))
+
+	// Mega-Messenger UI Bridge
+	mux.HandleFunc("/mega-bridge", handleMegaBridge)
+
 	go func() {
 		if err := http.ListenAndServe(":8000", mux); err != nil {
 			log.Printf("HTTP tracker failed: %v", err)
