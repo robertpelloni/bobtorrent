@@ -304,7 +304,7 @@ func (m *matchmaker) disconnect(player *matchPlayer) *matchPlayer {
 //  3. Kademlia DHT node
 //  4. Lattice market poller + block feed listener
 //  5. Terminal dashboard (TUI)
-func main() {
+func realMain() {
 	log.SetOutput(os.Stderr)
 
 	loadOrCreateWallet()

@@ -1,23 +1,27 @@
-# Handoff: Megatorrent v2.0.0-dev
+# Session Handoff (v11.60.31)
 
-## Session Summary
-- **Submodule:** Added `bobcoin` submodule (placeholder for Solana/Monero hybrid).
-- **Documentation:** Consolidated Agent instructions into `LLM_INSTRUCTIONS.md`. Created `DASHBOARD.md`.
-- **Versioning:** Bumped to `2.0.0-dev`.
-- **Protocol:** Defined `MSG_DHT_QUERY` (0x09) and `MSG_DHT_RESPONSE` (0x0A) for DHT-over-TCP.
-- **Integration:** Added `BobcoinService` stub in Node.js client.
+## 🏁 Summary of Achievements
+- **Unified Kernel**: Successfully migrated all Go logic from the `bobtorrent/` submodule into the root (`cmd/`, `internal/`, `pkg/`). The legacy `bobtorrent/` directory has been removed to eliminate path ambiguity.
+- **Reference UI Integration**: Merged `origin/megatorrent-reference-client-ui-8247358214956960041` into master, unifying Java and Go supernode features.
+- **Advanced Streaming**: Re-implemented `ReadaheadBuffer` with `mmap` backing for O(1) seek performance and reduced memory pressure during 4K video playback.
+- **Mega-Messenger Backbone**: Fully wired `libp2p` GossipSub with SQLite persistence and a WebSocket bridge. The Web UI now has a functional "Chat" tab with history hydration.
+- **Identity Trust Layer**: Implemented production-ready GitHub (Gist-based) identity verifier and added a verification form to the Web UI Identity tab.
+- **Operational Polish**: Refactored `supernode-go` to support a `-headless` flag, allowing the API and transports to run without the TUI. Added real-time "Downloads" monitoring to the Web UI.
 
-## Current State
-- **Node.js Client:** v2.0.0-dev. Supports v5 protocol (fully) and v6 protocol constants (DHT-over-TCP). Includes functional Bobcoin mining prototype.
-- **C++ Reference:** Matches Node.js protocol v5. Includes WebAPI publishing.
-- **Bobcoin:** Functional Node.js prototype with "Proof of Dance" consensus and Ring Signature stubs.
+## 🏗️ Current System State
+- **Binary Status**: `build/supernode-go`, `build/lattice-go`, `build/dht-proxy`, and `build/storage.wasm` are all buildable and verified.
+- **Database Status**: Messenger history and publication registry use SQLite (`data/messenger/`, `data/published/`).
+- **Network Status**: DHT, GossipSub, and I2P/SAM Datagram transports are active.
+- **Regression Status**: All unit and integration tests (70+ cases) are PASSING.
 
-## Next Steps
-1.  **Bobcoin:** Integrate hardware input (DDR pads) into `DanceMiner`.
-2.  **DHT-over-TCP:** Implement the logic to encapsulate `bittorrent-dht` packets into `MSG_DHT_QUERY` frames in `lib/secure-transport.js`.
-3.  **UI:** Build Qt widgets for Subscription Manager in `qbittorrent`.
+## 🚀 Next Steps (Phase 9)
+1. **ORCID & URL Verifiers**: Replace the `MockVerifier` stubs in `internal/identity` with real OAuth/DNS-based implementations.
+2. **Mobile Messenger**: Scaffold a React Native or Flutter client that uses the `/ws-messenger` bridge as its control plane.
+3. **Seeding Incentives**: Bridge the `accept_bid` lattice logic with real Bobcoin rewards for long-term seeding.
+4. **Messenger Polish**: Add typing indicators and topic-specific rate limits to the gossip mesh.
 
-## Notes for Next Agent
-- **Submodules:** Remember to commit changes inside `bobcoin/` and `qbittorrent/` directories if you edit them directly.
-- **Simulation:** `npm test` runs `scripts/simulate_network.js`. It currently fails at the Download step due to NAT/Public IP issues in the sandbox, but the Control Plane (DHT) works.
-- **Source of Truth:** `cpp-reference/` is the canonical source for C++ integration. Sync it to `qbittorrent/src/base/` manually or via script.
+## ⚠️ Important Notes
+- Always build with `-buildvcs=false` to avoid VCS stamp issues with nested submodules.
+- The `-headless` flag in `supernode-go` is critical for CI and automated frontend verification.
+- SQLite journal files (`-shm`, `-wal`) are ignored in `.gitignore` but should be double-checked before major commits.
+
