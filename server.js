@@ -69,7 +69,7 @@ class Server extends EventEmitter {
     this.wt = null // WebTransport (HTTP/3 QUIC) server instance
     this._wtSessions = new Set() // Active WebTransport sessions
 
-    // start an http tracker unless the user explictly says no
+    // start an http tracker unless the user explicitly says no
     if (opts.http !== false) {
       this.http = http.createServer(isObject(opts.http) ? opts.http : undefined)
       this.http.on('error', err => { this._onError(err) })
