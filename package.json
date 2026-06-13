@@ -2,7 +2,6 @@
   "name": "bobtorrent",
   "description": "Simple, robust, BitTorrent tracker (client & server) implementation (Bobtorrent Fork)",
   "version": "11.2.4",
-  "version": "2.2.0",
   "author": {
     "name": "WebTorrent LLC",
     "email": "feross@webtorrent.io",
@@ -62,9 +61,9 @@
     "@mapbox/node-pre-gyp": "1.0.11",
     "@webtorrent/semantic-release-config": "1.0.11",
     "magnet-uri": "7.0.8",
-    "semantic-release": "25.0.3",
+    "semantic-release": "25.0.5",
     "standard": "*",
-    "tape": "^5.9.0",
+    "tape": "5.10.0",
     "undici": "^6.16.1",
     "webrtc-polyfill": "^1.1.5",
     "webtorrent-fixtures": "2.0.3"
@@ -74,63 +73,20 @@
   },
   "exports": {
     ".": {
-      "import": "./index.js"
+      "import": "./index.js",
+      "require": "./index.js"
     },
-    "./client": {
-      "import": "./client.js"
-    },
-    "./server": {
-      "import": "./server.js"
-    },
-    "./websocket-tracker": {
-      "import": "./lib/client/websocket-tracker.js"
-    }
+    "./package.json": "./package.json"
   },
-  "keywords": [
-    "bittorrent",
-    "p2p",
-    "peer",
-    "peer-to-peer",
-    "stream",
-    "torrent",
-    "tracker",
-    "wire"
+  "files": [
+    "index.js",
+    "lib/",
+    "bin/",
+    "server.js"
   ],
-  "license": "MIT",
-  "main": "index.js",
-  "optionalDependencies": {
-    "bufferutil": "^4.0.8",
-    "utf-8-validate": "^6.0.4"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/robertpelloni/bobtorrent.git"
-  },
   "scripts": {
-    "preversion": "npm run update-authors",
-    "test": "standard && tape test/*.js",
-    "update-authors": "./tools/update-authors.sh"
-  },
-  "funding": [
-    {
-      "type": "github",
-      "url": "https://github.com/sponsors/feross"
-    },
-    {
-      "type": "patreon",
-      "url": "https://www.patreon.com/feross"
-    },
-    {
-      "type": "consulting",
-      "url": "https://feross.org/support"
-    }
-  ],
-  "renovate": {
-    "extends": [
-      "github>webtorrent/renovate-config"
-    ]
-  },
-  "release": {
-    "extends": "@webtorrent/semantic-release-config"
+    "test": "node --test --experimental-test-coverage",
+    "lint": "standard",
+    "pretest": "npm run lint"
   }
 }
