@@ -7,54 +7,56 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
+    <div class="container">
         <header>
-            <h1>Megatorrent <span class="badge">Reference Client</span></h1>
-            <div id="status-bar" class="status-bar">
-                <span id="dht-status" class="status-item">DHT: <span class="value">Loading...</span></span>
-                <span id="network-status" class="status-item">Network: <span class="value">Loading...</span></span>
+            <h1>Megatorrent <span class="badge" title="The reference implementation of the BobTorrent protocol">Reference Client</span></h1>
+            <div class="status-bar">
+                <span id="dht-status" class="status-item" title="Current connectivity status to the Distributed Hash Table">DHT: <span class="value">Loading...</span></span>
+                <span id="network-status" class="status-item" title="Overall network connectivity and peer reachability">Network: <span class="value">Loading...</span></span>
             </div>
         </header>
 
         <nav class="tabs">
-            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
-            <button class="tab-btn" data-tab="identity">Identity</button>
-            <button class="tab-btn" data-tab="publish">Publish</button>
-            <button class="tab-btn" data-tab="subscribe">Subscribe</button>
+            <button class="tab-btn active" data-tab="dashboard" title="View overall node health, metrics, and recent blobs">Dashboard</button>
+            <button class="tab-btn" data-tab="identity" title="Manage your cryptographic keypair for publishing content">Identity</button>
+            <button class="tab-btn" data-tab="publish" title="Ingest files and publish signed manifests to the network">Publish</button>
+            <button class="tab-btn" data-tab="subscribe" title="Subscribe to channels and monitor real-time updates">Subscribe</button>
+            <button class="tab-btn" data-tab="assets" title="Browse the durable index of all known published assets">Registry</button>
             <button class="tab-btn" data-tab="chat">Chat</button>
-            <button class="tab-btn" data-tab="downloads">Downloads</button>
+            <button class="tab-btn" data-tab="downloads" title="Monitor active blob transfers and file reassembly">Downloads</button>
+            <button class="tab-btn" data-tab="wallet" title="Manage your Bobcoin Solana wallet and interact with the lattice">Wallet</button>
         </nav>
 
-        <main class="content">
+        <main>
             <!-- Dashboard Tab -->
             <section id="dashboard" class="tab-content active">
-                <h2>System Status</h2>
-                <div class="card-grid">
+                <h2 title="Overview of your autonomous node metrics">System Status</h2>
+                <div class="grid">
                     <div class="card">
                         <h3>Storage</h3>
                         <div class="stat-row">
-                            <label>Blobs:</label> <span id="dash-blobs">0</span>
+                            <label title="Total number of encrypted 1MB data chunks stored locally">Blobs:</label> <span id="dash-blobs">0</span>
                         </div>
                         <div class="stat-row">
-                            <label>Size:</label> <span id="dash-size">0 MB</span>
+                            <label title="Total megabytes stored locally across all chunks">Size:</label> <span id="dash-size">0 MB</span>
                         </div>
                         <div class="stat-row">
-                            <label>Max:</label> <span id="dash-max">0 GB</span>
+                            <label title="Configured maximum storage limit (0 = Unlimited)">Max:</label> <span id="dash-max">0 GB</span>
                         </div>
                         <div class="stat-row">
-                            <label>Utilization:</label> <span id="dash-util">0%</span>
+                            <label title="Percentage of storage quota currently in use">Utilization:</label> <span id="dash-util">0%</span>
                         </div>
                     </div>
                     <div class="card">
                         <h3>Network</h3>
                         <div class="stat-row">
-                            <label>DHT Nodes:</label> <span id="dash-dht">Unknown</span>
+                            <label title="Number of reachable DHT routing nodes discovered">DHT Nodes:</label> <span id="dash-dht">Unknown</span>
                         </div>
                         <div class="stat-row">
-                            <label>Tracker:</label> <span id="dash-tracker">Connected</span>
+                            <label title="Connection status to the main Pub/Sub tracker">Tracker:</label> <span id="dash-tracker">Connected</span>
                         </div>
                         <div class="stat-row">
-                            <label>Subscriptions:</label> <span id="dash-subs">0</span>
+                            <label title="Total channels this node is actively following">Subscriptions:</label> <span id="dash-subs">0</span>
                         </div>
                     </div>
                 </div>
@@ -64,9 +66,9 @@
                     <table id="blobs-table">
                         <thead>
                             <tr>
-                                <th>Blob ID</th>
-                                <th>Size</th>
-                                <th>Added</th>
+                                <th title="Unique 32-byte SHA256 identifier for the encrypted chunk">Blob ID</th>
+                                <th title="Size of the chunk in bytes (typically 1048576)">Size</th>
+                                <th title="Time the blob was ingested or downloaded">Added</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -78,24 +80,24 @@
 
             <!-- Identity Tab -->
             <section id="identity" class="tab-content">
-                <h2>Identity Management</h2>
+                <h2 title="Cryptographic Ed25519 identity used for signing manifests and authenticating with peers">Identity Management</h2>
                 <p class="description">Your identity consists of a Public/Private keypair used to sign manifests.</p>
 
                 <div class="card">
-                    <h3>Current Identity</h3>
+                    <h3 title="Details of the active cryptographic identity in memory">Current Identity</h3>
                     <div class="form-group">
-                        <label for="id-pub">Public Key</label>
+                        <label for="id-pub" title="This is your public address. Share this with others so they can subscribe to your channel.">Public Key</label>
                         <input type="text" id="id-pub" readonly placeholder="Not generated yet">
                         <small>Share this key with others so they can subscribe to your channel.</small>
                     </div>
                     <div class="form-group">
-                        <label for="id-priv">Private Key</label>
+                        <label for="id-priv" title="This is your highly sensitive private key. Never share this. It is used to sign your published manifests.">Private Key</label>
                         <input type="password" id="id-priv" readonly placeholder="Not generated yet">
                         <small>Keep this secret! It allows publishing updates.</small>
                     </div>
                     <div class="actions">
-                        <button id="btn-generate-key" class="primary-btn">Generate New Identity</button>
-                        <button id="btn-save-key" class="secondary-btn" disabled>Save to File</button>
+                        <button id="btn-generate-key" class="primary-btn" title="Creates a new cryptographic Ed25519 keypair for publishing content">Generate New Identity</button>
+                        <button id="btn-save-key" class="secondary-btn" disabled title="Download a backup of your identity keys (Keep this safe!)">Save to File</button>
                     </div>
                 </div>
 
@@ -139,11 +141,11 @@
                 <div class="card">
                     <h3>1. Ingest File</h3>
                     <div class="form-group">
-                        <label for="ingest-path">File Path (Local System)</label>
+                        <label for="ingest-path" title="Absolute path on the local file system where the file resides.">File Path (Local System)</label>
                         <input type="text" id="ingest-path" placeholder="file.mkv">
                         <small>Enter the filename of the file placed in the data/ingest/ directory on the server.</small>
                     </div>
-                    <button id="btn-ingest" class="primary-btn">Ingest File</button>
+                    <button id="btn-ingest" class="primary-btn" title="Splits the file into 1MB encrypted chunks, generating detached AES-256-GCM keys, and prepares a manifest">Ingest File</button>
                     <div id="ingest-result" class="result-box hidden">
                         <h4>Ingestion Result</h4>
                         <pre id="ingest-json"></pre>
@@ -156,7 +158,7 @@
                         <label>Identity</label>
                         <span id="pub-identity-status">Checking...</span>
                     </div>
-                    <button id="btn-publish" class="primary-btn" disabled>Publish Manifest</button>
+                    <button id="btn-publish" class="primary-btn" disabled title="Signs the generated manifest with your private key and broadcasts it to the DHT">Publish Manifest</button>
                     <div id="publish-result" class="result-box hidden">
                         <h4>Publish Result</h4>
                         <pre id="publish-json"></pre>
@@ -172,10 +174,10 @@
                 <div class="card">
                     <h3>Add Subscription</h3>
                     <div class="form-group">
-                        <label for="sub-key">Channel Public Key</label>
+                        <label for="sub-key" title="The 64-character public key of the channel publisher you wish to follow.">Channel Public Key</label>
                         <input type="text" id="sub-key" placeholder="Enter 64-character hex key">
                     </div>
-                    <button id="btn-subscribe" class="primary-btn">Subscribe</button>
+                    <button id="btn-subscribe" class="primary-btn" title="Subscribes to the channel and begins polling the DHT for manifest updates">Subscribe</button>
                 </div>
 
                 <h3>Active Subscriptions</h3>
@@ -183,14 +185,35 @@
                     <table id="subs-table">
                         <thead>
                             <tr>
-                                <th>Channel Key</th>
-                                <th>Last Sequence</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th title="The public Ed25519 key of the publisher">Channel Key</th>
+                                <th title="The sequence counter of the most recently received manifest">Last Sequence</th>
+                                <th title="Current synchronization state for this channel">Status</th>
+                                <th title="Manage this subscription">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr><td colspan="4">No subscriptions yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Registry Tab -->
+            <section id="assets" class="tab-content">
+                <h2 title="The durable manifest registry containing your local active assets">Local Asset Registry</h2>
+                <p class="description">Browse and stream assets from your local node.</p>
+                <div class="table-container">
+                    <table id="assets-table">
+                        <thead>
+                            <tr>
+                                <th title="Unique identifier for the published asset manifest">Manifest ID</th>
+                                <th title="Original plaintext filename of the asset">Filename</th>
+                                <th title="Size of the encrypted blob (typically 1MB)">Size</th>
+                                <th title="Number of encrypted 1MB chunks comprising the asset">Chunks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4">Loading registry...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -226,21 +249,57 @@
 
             <!-- Downloads Tab -->
             <section id="downloads" class="tab-content">
-                <h2>Downloads</h2>
+                <h2 title="Ongoing background blob fetch operations">Downloads</h2>
                 <p class="description">Monitor active downloads and reassembly status.</p>
 
                 <div class="table-container">
                     <table id="downloads-table">
                         <thead>
                             <tr>
-                                <th>File Name</th>
-                                <th>Progress</th>
+                                <th title="Name of the file currently being downloaded">File Name</th>
+                                <th title="Download completion percentage">Progress</th>
                                 <th>Status</th>
-                                <th>Speed</th>
+                                <th title="Current download transfer rate">Speed</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr><td colspan="4">No active downloads.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Wallet Tab -->
+            <section id="wallet" class="tab-content">
+                <h2 title="Your integrated Bobcoin Solana wallet and lattice visualization">Bobcoin Wallet & Lattice</h2>
+                <p class="description">Interact with the Bobcoin network and visualize the block lattice.</p>
+                <div class="card">
+                    <h3>Wallet Status</h3>
+                    <div class="stat-row">
+                        <label title="Your unique Solana public key address">Address:</label> <span id="wallet-address">Loading...</span>
+                    </div>
+                    <div class="stat-row">
+                        <label title="Current balance in SOL on the Devnet">Balance:</label> <span id="wallet-balance">0 SOL</span>
+                    </div>
+                    <button id="btn-airdrop" class="primary-btn" title="Request 1 SOL from the Devnet faucet (Limit 1 per minute)">Request Airdrop</button>
+                    <div id="airdrop-result" class="result-box hidden">
+                        <h4>Airdrop Result</h4>
+                        <pre id="airdrop-json"></pre>
+                    </div>
+                </div>
+                <h3>Lattice Visualization</h3>
+                <div class="table-container">
+                    <table id="lattice-table">
+                        <thead>
+                            <tr>
+                                <th>Block Hash</th>
+                                <th>Height</th>
+                                <th>Producer</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4">Synchronizing with lattice...</td></tr>
                         </tbody>
                     </table>
                 </div>
