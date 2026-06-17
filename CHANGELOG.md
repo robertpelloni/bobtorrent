@@ -147,3 +147,10 @@
 - **Asynchronous API**: Updated `POST /api/ingest` to support an `async` flag, returning a `jobId` for tracking.
 - **Progress Tracking**: Added `GET /ingest/status?id=...` to monitor encryption and sharding progress in real-time.
 - **Unified Logic**: Consolidated chunking, encryption, and registration into a single streaming pipeline.
+
+## [11.60.33] - 2026-06-15
+### Mega-Messenger Protocol and Integration
+- **Envelope Protocol**: Defined `pkg/messenger/envelope.go` for metadata-blinded decentralized messaging.
+- **Messenger Upgrade**: Integrated Envelope marshaling and signing into the `internal/transport` layer.
+- **Bridge Support**: Added `PUBLISH_ENVELOPE` to the Mega-Bridge WebSocket for Light Node UI compatibility.
+- **Integration Roadmap**: Documented the Element-Web to libp2p porting strategy.

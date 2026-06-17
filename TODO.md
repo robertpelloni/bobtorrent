@@ -41,7 +41,10 @@
 - [x] **Add integration tests** for websocket live feed and wrapped-vs-raw block submission formats
 
 ## Strategic Backlog
-- [ ] **Mega-Messenger Integration**:
+- [x] **Mega-Messenger Integration**:
+  - [x] Define Envelope protocol for blinded payloads.
+  - [x] Integrate Envelope support into Messenger.
+  - [x] Research Element-Web integration path.
   - [x] Initialize `libp2p` host in `internal/transport/messenger.go`.
   - [x] Implement `GossipSub` topic management for rooms/channels.
   - [x] Add `WS_GOSSIP` handler to `supernode-go` for UI interaction.

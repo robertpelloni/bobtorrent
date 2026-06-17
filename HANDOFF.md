@@ -41,3 +41,9 @@ Proceed with excellence. The party never stops!
 - New API: `POST /api/ingest` with `async: true` returns a `jobId`.
 - New API: `GET /ingest/status?id=...` provides real-time progress tracking.
 - Progress: Phase 8 Game Ingestion path is now scaffolded and functional for large files.
+
+## Mega-Messenger Evolution (v11.60.33)
+- Successfully defined the `Envelope` protocol in `pkg/messenger`. This standardizes metadata-blinded messaging for Chat, Market, and Blockchain actions.
+- `Messenger` now supports publishing and unmarshaling these Envelopes.
+- `/mega-bridge` WebSocket is upgraded to support `PUBLISH_ENVELOPE`.
+- Established `docs/MEGA_MESSENGER_INTEGRATION.md` as the guide for the Element-Web UI port.
