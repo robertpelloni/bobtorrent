@@ -47,3 +47,8 @@ Proceed with excellence. The party never stops!
 - `Messenger` now supports publishing and unmarshaling these Envelopes.
 - `/mega-bridge` WebSocket is upgraded to support `PUBLISH_ENVELOPE`.
 - Established `docs/MEGA_MESSENGER_INTEGRATION.md` as the guide for the Element-Web UI port.
+
+## Performance & Signaling (v11.60.35)
+- Integrated `pprof` into both `supernode-go` (port 8000) and `lattice-go` (port 4000) for real-time performance analysis.
+- Refined I2P Datagram support for anonymous signaling, including a new `I2P_PING` control message in the Mega-Bridge.
+- Unified the ingestion registry path within the primary torrent data directory.

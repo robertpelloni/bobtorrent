@@ -160,3 +160,9 @@
 - **Envelope Verification**: Implemented Ed25519 signature verification in `pkg/messenger/envelope.go` for end-to-end mesh integrity.
 - **Mmap Ingestion**: Added `ProcessLargeFile` utilizing `github.com/edsrzf/mmap-go` for high-performance ingestion of multi-gigabyte game assets.
 - **Submodule Cleanup**: Purged legacy metadata from `bobcoin/research` and resolved `qbittorrent` remote synchronization issues.
+
+## [11.60.35] - 2026-06-17
+### Performance Profiling and Anonymous Signaling
+- **Observability**: Integrated `net/http/pprof` into `supernode-go` and `lattice-go` for production-grade profiling.
+- **I2P Discovery**: Enhanced anonymous signaling with I2P Datagrams and wired `I2P_PING` to the Mega-Bridge.
+- **Persistence Refinement**: Centralized ingestion registry storage within the torrent data directory using pure-Go SQLite.

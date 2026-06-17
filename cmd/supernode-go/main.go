@@ -13,6 +13,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"os"
 	"os/exec"
@@ -390,6 +391,13 @@ func startTrackerServices() {
 
 	// Mega-Messenger UI Bridge
 	mux.HandleFunc("/mega-bridge", handleMegaBridge)
+
+	// Profiling
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	go func() {
 		if err := http.ListenAndServe(":8000", mux); err != nil {
@@ -1947,7 +1955,7 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 
 func initIngestionService() {
 	var err error
-	storageReg, _ := pkgStorage.NewRegistry("data/ingest-registry")
+	storageReg, _ := pkgStorage.NewRegistry(filepath.Join(torrentDataDir, "ingest-db"))
 	ingestSvc, err = ingest.NewIngestionService(torrentDataDir, storageReg)
 	if err != nil {
 		log.Printf("Ingestion service unavailable: %v", err)
