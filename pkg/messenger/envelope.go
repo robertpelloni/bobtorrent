@@ -3,6 +3,7 @@ package messenger
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -37,7 +38,7 @@ func NewEnvelope(senderPub string, privKey ed25519.PrivateKey, pType PayloadType
 	h.Write([]byte(fmt.Sprintf("%d", ts)))
 	id := fmt.Sprintf("%x", h.Sum(nil))
 
-	// Data to sign: ID + sender + timestamp + type
+	// Data to sign: ID|sender|timestamp|type
 	toSign := fmt.Sprintf("%s|%s|%d|%s", id, senderPub, ts, pType)
 	sig := ed25519.Sign(privKey, []byte(toSign))
 
@@ -45,7 +46,7 @@ func NewEnvelope(senderPub string, privKey ed25519.PrivateKey, pType PayloadType
 		ID:            id,
 		SenderPubkey:  senderPub,
 		Timestamp:     ts,
-		Signature:     fmt.Sprintf("%x", sig),
+		Signature:     hex.EncodeToString(sig),
 		PayloadType:   pType,
 		EncryptedBody: body,
 	}, nil
@@ -53,8 +54,20 @@ func NewEnvelope(senderPub string, privKey ed25519.PrivateKey, pType PayloadType
 
 // Verify checks the cryptographic integrity of the envelope.
 func (e *Envelope) Verify() bool {
-	// ... implementation ...
-	return true // Placeholder
+	pubBytes, err := hex.DecodeString(e.SenderPubkey)
+	if err != nil || len(pubBytes) != ed25519.PublicKeySize {
+		return false
+	}
+
+	sigBytes, err := hex.DecodeString(e.Signature)
+	if err != nil {
+		return false
+	}
+
+	// Reconstruct the message that was signed
+	toSign := fmt.Sprintf("%s|%s|%d|%s", e.ID, e.SenderPubkey, e.Timestamp, e.PayloadType)
+
+	return ed25519.Verify(ed25519.PublicKey(pubBytes), []byte(toSign), sigBytes)
 }
 
 // Marshal encodes the envelope to JSON for transport.

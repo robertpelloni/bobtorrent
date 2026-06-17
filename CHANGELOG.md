@@ -154,3 +154,9 @@
 - **Messenger Upgrade**: Integrated Envelope marshaling and signing into the `internal/transport` layer.
 - **Bridge Support**: Added `PUBLISH_ENVELOPE` to the Mega-Bridge WebSocket for Light Node UI compatibility.
 - **Integration Roadmap**: Documented the Element-Web to libp2p porting strategy.
+
+## [11.60.34] - 2026-06-15
+### Robust Messaging and Optimized Ingestion
+- **Envelope Verification**: Implemented Ed25519 signature verification in `pkg/messenger/envelope.go` for end-to-end mesh integrity.
+- **Mmap Ingestion**: Added `ProcessLargeFile` utilizing `github.com/edsrzf/mmap-go` for high-performance ingestion of multi-gigabyte game assets.
+- **Submodule Cleanup**: Purged legacy metadata from `bobcoin/research` and resolved `qbittorrent` remote synchronization issues.
