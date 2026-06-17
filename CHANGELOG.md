@@ -140,3 +140,10 @@
 - **libp2p Messenger**: Scaffolded a `libp2p` host and GossipSub engine.
 - **Control Plane API**: Created `mega_messenger_bridge.go` for Decoupled UI support.
 
+
+## [11.60.32] - 2026-06-15
+### Game Engine Asset Ingestion
+- **Ingestion Service**: Created `internal/ingest` package to handle high-performance, asynchronous asset ingestion.
+- **Asynchronous API**: Updated `POST /api/ingest` to support an `async` flag, returning a `jobId` for tracking.
+- **Progress Tracking**: Added `GET /ingest/status?id=...` to monitor encryption and sharding progress in real-time.
+- **Unified Logic**: Consolidated chunking, encryption, and registration into a single streaming pipeline.

@@ -25,10 +25,12 @@ import (
 	"bobtorrent/internal/bridges"
 	"bobtorrent/internal/economy"
 	"bobtorrent/internal/identity"
+	"bobtorrent/internal/ingest"
 	"bobtorrent/internal/publish"
 	"bobtorrent/internal/tracker"
 	"bobtorrent/internal/transport"
 	"bobtorrent/internal/tui"
+	pkgStorage "bobtorrent/pkg/storage"
 	"bobtorrent/pkg/torrent"
 
 	anacrolixTorrent "github.com/anacrolix/torrent"
@@ -70,6 +72,7 @@ var (
 	publishRegistry     *publish.Registry
 	economyDB           *economy.Database
 	verifierSvc         *identity.VerifierService
+	ingestSvc           *ingest.IngestionService
 	startedAt           = time.Now()
 	fheOracleRunner     = computeFHEOracleCiphertext
 	signalingMatchmaker = newMatchmaker()
@@ -317,6 +320,7 @@ func realMain() {
 	initEconomyDatabase()
 	defer economyDB.Close()
 	initVerifierService()
+	initIngestionService()
 
 	model := tui.NewModel()
 	uiProgram = tea.NewProgram(model, tea.WithAltScreen())
@@ -369,6 +373,7 @@ func startTrackerServices() {
 	mux.HandleFunc("/remove-torrent", withCORS(handleRemoveTorrent))
 	mux.HandleFunc("/upload", withCORS(handleUpload))
 	mux.HandleFunc("/ingest", withCORS(handleIngest))
+	mux.HandleFunc("/ingest/status", withCORS(handleIngestStatus))
 	mux.HandleFunc("/upload-shard", withCORS(handleUploadShard))
 	mux.HandleFunc("/blobs", withCORS(handleBlobs))
 	mux.HandleFunc("/api/blobs", withCORS(handleBlobs))
@@ -1938,4 +1943,31 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func initIngestionService() {
+	var err error
+	storageReg, _ := pkgStorage.NewRegistry("data/ingest-registry")
+	ingestSvc, err = ingest.NewIngestionService(torrentDataDir, storageReg)
+	if err != nil {
+		log.Printf("Ingestion service unavailable: %v", err)
+	}
+}
+
+func handleIngestStatus(w http.ResponseWriter, r *http.Request) {
+	jobID := r.URL.Query().Get("id")
+	if jobID == "" {
+		http.Error(w, "job ID required", http.StatusBadRequest)
+		return
+	}
+	if ingestSvc == nil {
+		http.Error(w, "ingestion service offline", http.StatusServiceUnavailable)
+		return
+	}
+	status, ok := ingestSvc.GetStatus(jobID)
+	if !ok {
+		http.Error(w, "job not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, status)
 }
