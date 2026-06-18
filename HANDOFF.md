@@ -16,8 +16,7 @@
 
 ## 🚀 Next Steps (Phase 9)
 1. **Mobile Messenger**: Scaffold a React Native or Flutter client that uses the `/ws-messenger` bridge as its control plane.
-3. **Seeding Incentives**: Bridge the `accept_bid` lattice logic with real Bobcoin rewards for long-term seeding.
-4. **Messenger Polish**: Add typing indicators and topic-specific rate limits to the gossip mesh.
+2. **Messenger Polish**: Add typing indicators and topic-specific rate limits to the gossip mesh.
 
 ## ⚠️ Important Notes
 - Always build with `-buildvcs=false` to avoid VCS stamp issues with nested submodules.

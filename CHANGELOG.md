@@ -100,6 +100,10 @@
 
 # Changelog
 
+## [11.60.33] - 2026-06-18
+### Seeding Incentives
+- **Economy Bridge**: Bridged the `accept_bid` lattice logic with the node's local economy database. When the supernode accepts a storage market bid, the incoming Bobcoin bounty is now correctly recorded as an `ACCEPT_BID` transaction, making seeding rewards visible in the UI transaction history.
+
 ## [11.60.32] - 2026-06-18
 ### Verification Layer Expansion
 - **ORCID Verifier**: Implemented an ORCID verifier that allows users to prove account ownership via their ORCID profile.

@@ -841,6 +841,9 @@ func acceptBid(bidID string, amount int64, infoHash string) {
 	submitResp, err := httpClient.R().SetBody(block).Post(latticeURL + "/process")
 	if err == nil && submitResp.IsSuccess() {
 		sendStatus("Bid Accepted!", newBalance)
+		if _, txErr := recordEconomyTransaction("ACCEPT_BID", float64(amount), block.Hash, "Seeding reward", ""); txErr != nil {
+			log.Printf("failed to record accept_bid transaction: %v", txErr)
+		}
 	}
 }
 
