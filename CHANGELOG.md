@@ -100,6 +100,12 @@
 
 # Changelog
 
+## [11.60.32] - 2026-06-18
+### Verification Layer Expansion
+- **ORCID Verifier**: Implemented an ORCID verifier that allows users to prove account ownership via their ORCID profile.
+- **URL Verifier**: Implemented a generic URL verifier that allows users to prove account ownership by hosting their Bobcoin public key on an arbitrary website.
+- **Removed Mocks**: Removed the `MockVerifier` implementations for ORCID and URL endpoints, replacing them with the new production-ready implementations in the Go Supernode registry.
+
 ## [11.60.31] - 2026-05-24
 ### Monorepo Unification & Core Cleanup
 - **Directory Flattening**: Successfully migrated all Go logic from the `bobtorrent/` submodule into the root workspace structure (`cmd/`, `internal/`, `pkg/`).

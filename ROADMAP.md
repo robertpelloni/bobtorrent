@@ -35,6 +35,7 @@
 * [ ] **Anonymity & Performance**
   - [x] Integrate native I2P/SAM Datagrams for low-latency anonymous signaling
   - [ ] Optimize `ReadaheadBuffer` with `mmap` backing for large files
+* [x] **ORCID & URL Verifiers**: Replaced `MockVerifier` stubs with real implementations.
 * [ ] **Submodule & Cross-Branch Testing**
   - [ ] Synchronize `bobcoin` and `element-web` submodules with latest Go core
   - [ ] Perform cross-node consensus and messaging reliability tests

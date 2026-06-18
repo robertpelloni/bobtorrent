@@ -15,8 +15,7 @@
 - **Regression Status**: All unit and integration tests (70+ cases) are PASSING.
 
 ## 🚀 Next Steps (Phase 9)
-1. **ORCID & URL Verifiers**: Replace the `MockVerifier` stubs in `internal/identity` with real OAuth/DNS-based implementations.
-2. **Mobile Messenger**: Scaffold a React Native or Flutter client that uses the `/ws-messenger` bridge as its control plane.
+1. **Mobile Messenger**: Scaffold a React Native or Flutter client that uses the `/ws-messenger` bridge as its control plane.
 3. **Seeding Incentives**: Bridge the `accept_bid` lattice logic with real Bobcoin rewards for long-term seeding.
 4. **Messenger Polish**: Add typing indicators and topic-specific rate limits to the gossip mesh.
 
