@@ -100,6 +100,10 @@
 
 # Changelog
 
+## [11.60.42] - 2026-06-19
+### Primary Torrent Download Module
+- **Verifier Routine**: Implemented `Verifier` in `pkg/torrent/downloader` to read and verify SHA256 hashes of downloaded file pieces against expected lists.
+
 ## [11.60.41] - 2026-06-19
 ### I2P Hybrid Networking
 - **StreamSession Integration**: Refactored `I2PDatagramTransport` to include a reliable `sam3.StreamSession` alongside the existing unreliable `DatagramSession`.

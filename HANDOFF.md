@@ -1,4 +1,4 @@
-# Session Handoff (v11.60.41)
+# Session Handoff (v11.60.42)
 
 ## 🏁 Summary of Achievements
 - **Unified Kernel**: Successfully migrated all Go logic from the `bobtorrent/` submodule into the root (`cmd/`, `internal/`, `pkg/`). The legacy `bobtorrent/` directory has been removed to eliminate path ambiguity.
