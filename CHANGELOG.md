@@ -100,6 +100,10 @@
 
 # Changelog
 
+## [11.60.36] - 2026-06-19
+### Mega-Messenger Protocol Buffers
+- **Envelope Specification**: Defined the Data Envelope Specification (Protocol Buffers) format in `internal/protobuf/envelope.proto` for Light UI to Heavy Node communication.
+
 ## [11.60.35] - 2026-06-19
 ### Mainnet Launch Preparation
 - **Checklist Creation**: Created `MAINNET_LAUNCH.md` to track the DevOps, DNS, and Infrastructure readiness required for the Global Decentralized Storage Network launch.

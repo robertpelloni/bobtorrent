@@ -31,6 +31,7 @@
   - [x] Implement GossipSub for decentralized message routing
   - [x] Create WebSocket API for frontend-to-gossip mesh bridging
   - [x] Messenger Polish: Add typing indicators and topic-specific rate limits to the gossip mesh
+  - [x] Define Data Envelope Specification (Protocol Buffers) format for Light UI to Heavy Node communication.
   - [ ] Implement robust message dispatching and topic history
   - [ ] Analyze `element-web` integration path (Tauri/Electron wrapper vs embedded)
 * [ ] **Anonymity & Performance**

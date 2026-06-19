@@ -48,6 +48,7 @@
   - [x] Scaffold `element-web` bridge logic to proxy Matrix-like events to libp2p.
   - [x] Implement event persistence for missed gossip.
   - [x] Add typing indicators and topic-specific rate limits to the gossip mesh.
+  - [x] Define Data Envelope Specification (Protocol Buffers) format for Light UI to Heavy Node communication.
 - [ ] **I2P Native Datagrams**:
   - [x] Research `github.com/eyedeekay/sam3` datagram support.
   - [x] Implement `I2PDatagramTransport` in `internal/transport/i2p_datagram.go`.
