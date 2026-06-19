@@ -100,6 +100,18 @@
 
 # Changelog
 
+## [11.60.39] - 2026-06-19
+### Mobile Client Protocol Buffers
+- **Protobuf Integration**: Upgraded the React Native `MobileMessenger` client to use the `envelope.proto` specification, replacing raw JSON payloads with serialized Protocol Buffers (base64 encoded) for all GossipSub chat messages.
+
+## [11.60.38] - 2026-06-19
+### Mobile Client Implementation
+- **React Native UI**: Integrated the React Native client with the `/ws-messenger` bridge, creating a functional, real-time chat interface connected to the Heavy Node's GossipSub mesh.
+
+## [11.60.37] - 2026-06-19
+### Mobile Client Scaffolding
+- **React Native Initialization**: Scaffolded the `MobileMessenger` React Native client to serve as the Light Node frontend bridging to the `supernode-go` WebSocket control plane.
+
 ## [11.60.36] - 2026-06-19
 ### Mega-Messenger Protocol Buffers
 - **Envelope Specification**: Defined the Data Envelope Specification (Protocol Buffers) format in `internal/protobuf/envelope.proto` for Light UI to Heavy Node communication.

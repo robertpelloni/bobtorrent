@@ -15,7 +15,7 @@
 - **Regression Status**: All unit and integration tests (70+ cases) are PASSING.
 
 ## 🚀 Next Steps (Phase 9)
-1. **Mobile Messenger**: Scaffold a React Native or Flutter client that uses the `/ws-messenger` bridge as its control plane.
+1. **Robust Message Dispatching**: Implement proper backend topic history pagination, persistent delivery retries, and offline message queueing for the gossip mesh.
 
 ## ⚠️ Important Notes
 - Always build with `-buildvcs=false` to avoid VCS stamp issues with nested submodules.

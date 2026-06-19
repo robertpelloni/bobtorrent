@@ -49,6 +49,9 @@
   - [x] Implement event persistence for missed gossip.
   - [x] Add typing indicators and topic-specific rate limits to the gossip mesh.
   - [x] Define Data Envelope Specification (Protocol Buffers) format for Light UI to Heavy Node communication.
+  - [x] Scaffold Mobile Messenger React Native client.
+  - [x] Implement basic WebSocket Chat UI in MobileMessenger client.
+  - [x] Implement proper Protobuf serialization in the React Native chat client.
 - [ ] **I2P Native Datagrams**:
   - [x] Research `github.com/eyedeekay/sam3` datagram support.
   - [x] Implement `I2PDatagramTransport` in `internal/transport/i2p_datagram.go`.
