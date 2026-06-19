@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/libp2p/go-libp2p"
+	"golang.org/x/time/rate"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -25,11 +26,12 @@ type Messenger struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	topicsMu sync.RWMutex
-	topics   map[string]*pubsub.Topic
-	subs     map[string]*pubsub.Subscription
-	handlers map[string]map[string]func([]byte, peer.ID) // topic -> handlerID -> handler
-	store    *MessengerStore
+	topicsMu     sync.RWMutex
+	topics       map[string]*pubsub.Topic
+	subs         map[string]*pubsub.Subscription
+	handlers     map[string]map[string]func([]byte, peer.ID) // topic -> handlerID -> handler
+	rateLimiters map[string]*rate.Limiter
+	store        *MessengerStore
 }
 
 // NewMessenger initializes a libp2p host and a GossipSub engine.
@@ -55,14 +57,15 @@ func NewMessenger(listenAddr string, store *MessengerStore) (*Messenger, error) 
 	log.Printf("Messenger libp2p host started: ID=%s Addrs=%v", h.ID(), h.Addrs())
 
 	return &Messenger{
-		host:     h,
-		pubsub:   ps,
-		ctx:      ctx,
-		cancel:   cancel,
-		topics:   make(map[string]*pubsub.Topic),
-		subs:     make(map[string]*pubsub.Subscription),
-		handlers: make(map[string]map[string]func([]byte, peer.ID)),
-		store:    store,
+		host:         h,
+		pubsub:       ps,
+		ctx:          ctx,
+		cancel:       cancel,
+		topics:       make(map[string]*pubsub.Topic),
+		subs:         make(map[string]*pubsub.Subscription),
+		handlers:     make(map[string]map[string]func([]byte, peer.ID)),
+		rateLimiters: make(map[string]*rate.Limiter),
+		store:        store,
 	}, nil
 }
 
@@ -131,17 +134,44 @@ func (m *Messenger) UnregisterAllHandlers(topicName string) {
 	// unless we really want to leave the mesh for this topic.
 }
 
+func isTypingIndicator(data []byte) bool {
+	var parsed struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(data, &parsed); err == nil {
+		return parsed.Type == "m.typing"
+	}
+	return false
+}
+
 // Publish broadcasts a message to a GossipSub topic and persists it if a store is configured.
+// It also enforces a rate limit to prevent spamming the network.
 func (m *Messenger) Publish(topicName string, data []byte) error {
 	m.topicsMu.RLock()
 	t, exists := m.topics[topicName]
+	limiter, hasLimiter := m.rateLimiters[topicName]
 	m.topicsMu.RUnlock()
 
 	if !exists {
 		return fmt.Errorf("not joined to topic %s", topicName)
 	}
 
-	if m.store != nil {
+	if !hasLimiter {
+		m.topicsMu.Lock()
+		// Recheck inside lock
+		limiter, hasLimiter = m.rateLimiters[topicName]
+		if !hasLimiter {
+			limiter = rate.NewLimiter(rate.Limit(5), 10) // 5 req/sec, burst 10
+			m.rateLimiters[topicName] = limiter
+		}
+		m.topicsMu.Unlock()
+	}
+
+	if !limiter.Allow() {
+		return fmt.Errorf("rate limit exceeded for topic %s", topicName)
+	}
+
+	if m.store != nil && !isTypingIndicator(data) {
 		if err := m.store.SaveMessage(topicName, m.host.ID().String(), string(data)); err != nil {
 			log.Printf("failed to persist published message: %v", err)
 		}
@@ -167,7 +197,7 @@ func (m *Messenger) readLoop(sub *pubsub.Subscription) {
 			continue
 		}
 
-		if m.store != nil {
+		if m.store != nil && !isTypingIndicator(msg.Data) {
 			if err := m.store.SaveMessage(topicName, msg.ReceivedFrom.String(), string(msg.Data)); err != nil {
 				log.Printf("failed to persist received message: %v", err)
 			}

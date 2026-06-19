@@ -100,6 +100,15 @@
 
 # Changelog
 
+## [11.60.35] - 2026-06-19
+### Mainnet Launch Preparation
+- **Checklist Creation**: Created `MAINNET_LAUNCH.md` to track the DevOps, DNS, and Infrastructure readiness required for the Global Decentralized Storage Network launch.
+
+## [11.60.34] - 2026-06-18
+### Messenger Polish
+- **Rate Limiting**: Implemented a token bucket rate limiter (5 req/sec, burst of 10) per GossipSub topic within `internal/transport/messenger.go` to prevent individual nodes from spamming the P2P chat network.
+- **Typing Indicators**: The messenger now natively identifies transient `m.typing` events. These payloads are seamlessly broadcasted across the gossip mesh for real-time UI feedback but are intelligently omitted from the durable SQLite message store to prevent history bloat.
+
 ## [11.60.33] - 2026-06-18
 ### Seeding Incentives
 - **Economy Bridge**: Bridged the `accept_bid` lattice logic with the node's local economy database. When the supernode accepts a storage market bid, the incoming Bobcoin bounty is now correctly recorded as an `ACCEPT_BID` transaction, making seeding rewards visible in the UI transaction history.

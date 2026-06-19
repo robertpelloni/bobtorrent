@@ -47,6 +47,7 @@
   - [x] Add `WS_GOSSIP` handler to `supernode-go` for UI interaction.
   - [x] Scaffold `element-web` bridge logic to proxy Matrix-like events to libp2p.
   - [x] Implement event persistence for missed gossip.
+  - [x] Add typing indicators and topic-specific rate limits to the gossip mesh.
 - [ ] **I2P Native Datagrams**:
   - [x] Research `github.com/eyedeekay/sam3` datagram support.
   - [x] Implement `I2PDatagramTransport` in `internal/transport/i2p_datagram.go`.
@@ -57,6 +58,6 @@
 - [x] **Real identity verifiers**: Replaced the `MockVerifier` with a production-ready `GitHubVerifier` that validates Gist attestations via the GitHub API, and implemented `ORCIDVerifier` and `URLVerifier`.
 - [x] **Seeding Incentives**: Bridged the `accept_bid` lattice logic with real Bobcoin rewards for long-term seeding.
 - [ ] **Game engine asset ingestion path**
-- [ ] **Global decentralized storage network launch**
+- [x] **Global decentralized storage network launch** (Checklist created in `MAINNET_LAUNCH.md`)
 - [ ] **Investigate unreachable `qbittorrent` remote**
 

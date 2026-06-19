@@ -30,6 +30,7 @@
   - [x] Scaffold `libp2p` gossip mesh in `internal/transport/messenger.go`
   - [x] Implement GossipSub for decentralized message routing
   - [x] Create WebSocket API for frontend-to-gossip mesh bridging
+  - [x] Messenger Polish: Add typing indicators and topic-specific rate limits to the gossip mesh
   - [ ] Implement robust message dispatching and topic history
   - [ ] Analyze `element-web` integration path (Tauri/Electron wrapper vs embedded)
 * [ ] **Anonymity & Performance**

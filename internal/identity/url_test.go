@@ -2,17 +2,14 @@ package identity
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestURLVerifier(t *testing.T) {
-	// Temporarily stub out the SSRF check for testing local URLs
-	oldIsPrivateIPHost := isPrivateIPHost
-	isPrivateIPHost = func(host string) bool { return false }
-	defer func() { isPrivateIPHost = oldIsPrivateIPHost }()
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -30,6 +27,13 @@ func TestURLVerifier(t *testing.T) {
 	defer server.Close()
 
 	verifier := NewURLVerifier()
+	// Override transport for testing local server without triggering SSRF blocker
+	verifier.client.SetTransport(&http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+	})
 
 	tests := []struct {
 		name       string
