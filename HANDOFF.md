@@ -1,4 +1,4 @@
-# Session Handoff (v11.60.31)
+# Session Handoff (v11.60.41)
 
 ## 🏁 Summary of Achievements
 - **Unified Kernel**: Successfully migrated all Go logic from the `bobtorrent/` submodule into the root (`cmd/`, `internal/`, `pkg/`). The legacy `bobtorrent/` directory has been removed to eliminate path ambiguity.
@@ -15,7 +15,7 @@
 - **Regression Status**: All unit and integration tests (70+ cases) are PASSING.
 
 ## 🚀 Next Steps (Phase 9)
-1. **Robust Message Dispatching**: Implement proper backend topic history pagination, persistent delivery retries, and offline message queueing for the gossip mesh.
+1. **DHT Sub-Routing Optimization**: Optimize the Kademlia routing table implementation to better handle hybrid I2P/clearnet peer addressing and reduce lookup latency.**
 
 ## ⚠️ Important Notes
 - Always build with `-buildvcs=false` to avoid VCS stamp issues with nested submodules.

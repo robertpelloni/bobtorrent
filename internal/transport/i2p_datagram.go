@@ -18,11 +18,12 @@ import (
 //   2. Datagrams (UDP-like) are preferred over Stream (TCP-like) for real-time signaling/gossip.
 //   3. This complements the 'Shadow Swarms' vision of extreme censorship resistance.
 type I2PDatagramTransport struct {
-	sam     *sam3.SAM
-	session *sam3.DatagramSession
-	keys    i2pkeys.I2PKeys
-	ctx     context.Context
-	cancel  context.CancelFunc
+	sam           *sam3.SAM
+	session       *sam3.DatagramSession
+	streamSession *sam3.StreamSession
+	keys          i2pkeys.I2PKeys
+	ctx           context.Context
+	cancel        context.CancelFunc
 }
 
 // NewI2PDatagramTransport initializes an I2P/SAM datagram session.
@@ -52,14 +53,24 @@ func NewI2PDatagramTransport(samAddr string) (*I2PDatagramTransport, error) {
 		return nil, fmt.Errorf("failed to create I2P datagram session: %w", err)
 	}
 
+	// Create a new stream session for hybrid peer connections.
+	streamSession, err := s.NewStreamSession("BOBTORRENT-STREAM", keys, []string{})
+	if err != nil {
+		session.Close()
+		s.Close()
+		cancel()
+		return nil, fmt.Errorf("failed to create I2P stream session: %w", err)
+	}
+
 	log.Printf("I2P Datagram Transport started: Dest=%s", keys.Addr().Base32())
 
 	return &I2PDatagramTransport{
-		sam:     s,
-		session: session,
-		keys:    keys,
-		ctx:     ctx,
-		cancel:  cancel,
+		sam:           s,
+		session:       session,
+		streamSession: streamSession,
+		keys:          keys,
+		ctx:           ctx,
+		cancel:        cancel,
 	}, nil
 }
 
@@ -107,9 +118,41 @@ func (t *I2PDatagramTransport) ReceiveLoop(handler func([]byte, net.Addr)) {
 	}()
 }
 
+// DialI2P establishes a reliable stream connection to another I2P peer.
+func (t *I2PDatagramTransport) DialI2P(addr i2pkeys.I2PAddr) (*sam3.SAMConn, error) {
+	return t.streamSession.DialI2P(addr)
+}
+
+// AcceptLoop starts a background goroutine to accept incoming stream connections.
+func (t *I2PDatagramTransport) AcceptLoop(handler func(*sam3.SAMConn)) error {
+	listener, err := t.streamSession.Listen()
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		defer listener.Close()
+		for {
+			select {
+			case <-t.ctx.Done():
+				return
+			default:
+				conn, err := listener.AcceptI2P()
+				if err != nil {
+					log.Printf("I2P Stream accept error: %v", err)
+					continue
+				}
+				go handler(conn)
+			}
+		}
+	}()
+	return nil
+}
+
 // Close shuts down the I2P/SAM session.
 func (t *I2PDatagramTransport) Close() error {
 	t.cancel()
+	t.streamSession.Close()
 	t.session.Close()
 	return t.sam.Close()
 }

@@ -100,6 +100,16 @@
 
 # Changelog
 
+## [11.60.41] - 2026-06-19
+### I2P Hybrid Networking
+- **StreamSession Integration**: Refactored `I2PDatagramTransport` to include a reliable `sam3.StreamSession` alongside the existing unreliable `DatagramSession`.
+- **Hybrid Connectivity**: Added `DialI2P` and `AcceptLoop` methods to facilitate hybrid clear-net/dark-net peer connections for large data transfers via I2P TCP-like streams.
+
+## [11.60.40] - 2026-06-19
+### Robust Message Dispatching
+- **Topic History Pagination**: Updated the SQLite messenger store and WebSocket API (`FETCH_HISTORY`) to support offset-based pagination for chat history.
+- **Offline Message Queueing**: Implemented an offline message queue for outgoing chat payloads. If the supernode is temporarily disconnected from the GossipSub mesh, messages are buffered to disk and automatically flushed once connectivity is restored.
+
 ## [11.60.39] - 2026-06-19
 ### Mobile Client Protocol Buffers
 - **Protobuf Integration**: Upgraded the React Native `MobileMessenger` client to use the `envelope.proto` specification, replacing raw JSON payloads with serialized Protocol Buffers (base64 encoded) for all GossipSub chat messages.

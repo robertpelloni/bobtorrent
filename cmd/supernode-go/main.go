@@ -509,9 +509,10 @@ func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		var req struct {
-			Type  string `json:"type"`
-			Topic string `json:"topic"`
-			Data  string `json:"data"`
+			Type   string `json:"type"`
+			Topic  string `json:"topic"`
+			Data   string `json:"data"`
+			Offset int    `json:"offset,omitempty"`
 		}
 		if err := conn.ReadJSON(&req); err != nil {
 			break
@@ -539,7 +540,7 @@ func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 				_ = sendJSON(map[string]interface{}{"type": "JOINED", "topic": topicName})
 
 				// Send history on join
-				if history, err := messenger.GetHistory(topicName, 50); err == nil {
+				if history, err := messenger.GetHistory(topicName, 50, 0); err == nil {
 					_ = sendJSON(map[string]interface{}{
 						"type":    "HISTORY",
 						"topic":   topicName,
@@ -552,7 +553,7 @@ func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 			if req.Topic == "" {
 				continue
 			}
-			if history, err := messenger.GetHistory(req.Topic, 50); err == nil {
+			if history, err := messenger.GetHistory(req.Topic, 50, req.Offset); err == nil {
 				_ = sendJSON(map[string]interface{}{
 					"type":    "HISTORY",
 					"topic":   req.Topic,

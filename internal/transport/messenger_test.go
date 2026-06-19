@@ -69,17 +69,19 @@ func TestMessengerTypingIndicatorPersistence(t *testing.T) {
 	// Wait briefly for persistence to settle (Publish is synchronous to store, but readLoop is not, we're testing Publish here)
 	time.Sleep(100 * time.Millisecond)
 
-	history, err := store.QueryHistory(topicName, 10)
+	// Since we are the only peer and the topic has no peers, Publish will queue the message
+	// instead of saving it to the active history. We need to query the pending messages.
+	pending, err := store.GetAndClearPendingMessages()
 	if err != nil {
-		t.Fatalf("failed to query history: %v", err)
+		t.Fatalf("failed to query pending messages: %v", err)
 	}
 
-	if len(history) != 1 {
-		t.Fatalf("expected exactly 1 message persisted, got %d", len(history))
+	if len(pending) != 1 {
+		t.Fatalf("expected exactly 1 message persisted (queued), got %d", len(pending))
 	}
 
 	var parsed MatrixEvent
-	if err := json.Unmarshal([]byte(history[0].Data), &parsed); err != nil {
+	if err := json.Unmarshal([]byte(pending[0].Data), &parsed); err != nil {
 		t.Fatalf("failed to parse persisted history: %v", err)
 	}
 	if parsed.Type != "m.room.message" {

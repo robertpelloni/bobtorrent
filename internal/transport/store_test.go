@@ -36,7 +36,7 @@ func TestMessengerStore(t *testing.T) {
 		}
 	}
 
-	history, err := store.QueryHistory(topic, 10)
+	history, err := store.QueryHistory(topic, 10, 0)
 	if err != nil {
 		t.Fatalf("failed to query history: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestMessengerStore(t *testing.T) {
 	}
 
 	// Test limit
-	history2, err := store.QueryHistory(topic, 2)
+	history2, err := store.QueryHistory(topic, 2, 0)
 	if err != nil {
 		t.Fatalf("failed to query history with limit: %v", err)
 	}
@@ -63,5 +63,17 @@ func TestMessengerStore(t *testing.T) {
 	// Last two messages in chronological order
 	if history2[0].Data != "hi alice" || history2[1].Data != "how are you?" {
 		t.Errorf("history with limit returned wrong messages or order")
+	}
+
+	// Test offset
+	history3, err := store.QueryHistory(topic, 2, 1)
+	if err != nil {
+		t.Fatalf("failed to query history with offset: %v", err)
+	}
+	if len(history3) != 2 {
+		t.Errorf("expected 2 messages, got %d", len(history3))
+	}
+	if history3[0].Data != "hello" || history3[1].Data != "hi alice" {
+		t.Errorf("history with offset returned wrong messages or order")
 	}
 }

@@ -39,6 +39,13 @@ func NewMessengerStore(dbPath string) (*MessengerStore, error) {
 			timestamp DATETIME NOT NULL
 		);
 		CREATE INDEX IF NOT EXISTS idx_topic_timestamp ON messages(topic, timestamp);
+
+		CREATE TABLE IF NOT EXISTS pending_messages (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			topic TEXT NOT NULL,
+			data TEXT NOT NULL,
+			timestamp DATETIME NOT NULL
+		);
 	`)
 	if err != nil {
 		db.Close()
@@ -46,6 +53,44 @@ func NewMessengerStore(dbPath string) (*MessengerStore, error) {
 	}
 
 	return &MessengerStore{db: db}, nil
+}
+
+// QueueMessage stores a message that failed to publish because of lack of peers.
+func (s *MessengerStore) QueueMessage(topic, data string) error {
+	_, err := s.db.Exec(
+		"INSERT INTO pending_messages (topic, data, timestamp) VALUES (?, ?, ?)",
+		topic, data, time.Now(),
+	)
+	return err
+}
+
+// GetAndClearPendingMessages retrieves all offline queued messages and removes them.
+func (s *MessengerStore) GetAndClearPendingMessages() ([]PersistedMessage, error) {
+	rows, err := s.db.Query(`SELECT id, topic, data, timestamp FROM pending_messages ORDER BY timestamp ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var messages []PersistedMessage
+	var ids []int64
+	for rows.Next() {
+		var m PersistedMessage
+		if err := rows.Scan(&m.ID, &m.Topic, &m.Data, &m.Timestamp); err != nil {
+			return nil, err
+		}
+		messages = append(messages, m)
+		ids = append(ids, m.ID)
+	}
+
+	if len(ids) > 0 {
+		// Not the most efficient for thousands of rows, but fine for simple queueing
+		for _, id := range ids {
+			_, _ = s.db.Exec("DELETE FROM pending_messages WHERE id = ?", id)
+		}
+	}
+
+	return messages, nil
 }
 
 // SaveMessage persists a gossip message to the database.
@@ -58,9 +103,12 @@ func (s *MessengerStore) SaveMessage(topic, sender, data string) error {
 }
 
 // QueryHistory retrieves the last N messages for a given topic.
-func (s *MessengerStore) QueryHistory(topic string, limit int) ([]PersistedMessage, error) {
+func (s *MessengerStore) QueryHistory(topic string, limit int, offset int) ([]PersistedMessage, error) {
 	if limit <= 0 {
 		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
 	}
 
 	rows, err := s.db.Query(`
@@ -68,8 +116,8 @@ func (s *MessengerStore) QueryHistory(topic string, limit int) ([]PersistedMessa
 		FROM messages
 		WHERE topic = ?
 		ORDER BY timestamp DESC
-		LIMIT ?`,
-		topic, limit,
+		LIMIT ? OFFSET ?`,
+		topic, limit, offset,
 	)
 	if err != nil {
 		return nil, err
