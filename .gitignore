@@ -15,3 +15,5 @@ wallet.json
 
 # Jules AI session logs (auto-generated, not needed in repo)
 .jules/sessions/
+/supernode-go
+downloads/.torrent.db-*

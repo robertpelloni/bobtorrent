@@ -16,7 +16,7 @@ import { TextEncoder, TextDecoder } from 'text-encoding';
 import { omnimesh } from './src/proto/envelope';
 import { startBackgroundSync, stopBackgroundSync } from './BackgroundService';
 
-const WS_URL = 'ws://127.0.0.1:8000/ws-messenger';
+const WS_URL = 'ws://10.0.2.2:8000/ws-messenger';
 const DEFAULT_TOPIC = 'bobtorrent-global-gossip';
 
 function encodeBase64(bytes: Uint8Array): string {

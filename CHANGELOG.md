@@ -100,6 +100,10 @@
 
 # Changelog
 
+## [11.60.45] - 2026-06-20
+### Performance Profiling
+- **Go `pprof` Integration**: Injected `net/http/pprof` endpoints into the primary `supernode-go` HTTP router at `/debug/pprof/` to facilitate advanced CPU and memory bottleneck analysis under heavy network loads.
+
 ## [11.60.44] - 2026-06-19
 ### Mobile Background Operations
 - **Headless Client Sync**: Integrated `react-native-background-timer` and registered headless background components in `MobileMessenger` to enable continuous GossipSub WebSocket syncing and offline queue dispatching even when the mobile app is sent to the background.

@@ -13,6 +13,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"os"
 	"os/exec"
@@ -380,6 +381,23 @@ func startTrackerServices() {
 
 	// Mega-Messenger UI Bridge
 	mux.HandleFunc("/mega-bridge", handleMegaBridge)
+
+
+
+	// Local-only Performance Profiling Server
+	go func() {
+		pprofMux := http.NewServeMux()
+		pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
+		pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+		log.Println("Local pprof server starting on 127.0.0.1:6060")
+		if err := http.ListenAndServe("127.0.0.1:6060", pprofMux); err != nil {
+			log.Printf("Local pprof server failed: %v", err)
+		}
+	}()
 
 	go func() {
 		if err := http.ListenAndServe(":8000", mux); err != nil {
