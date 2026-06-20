@@ -208,7 +208,7 @@ func (m *Messenger) flushQueueLoop() {
 				continue
 			}
 
-			pending, err := m.store.GetAndClearPendingMessages()
+			pending, err := m.store.GetPendingMessages()
 			if err != nil {
 				log.Printf("failed to retrieve pending messages: %v", err)
 				continue
@@ -220,13 +220,15 @@ func (m *Messenger) flushQueueLoop() {
 				m.topicsMu.RUnlock()
 
 				if exists && len(t.ListPeers()) > 0 {
-					// Persist it as published
-					_ = m.store.SaveMessage(msg.Topic, m.host.ID().String(), msg.Data)
-					// Publish it
-					_ = t.Publish(m.ctx, []byte(msg.Data))
-				} else {
-					// Still offline, requeue
-					_ = m.store.QueueMessage(msg.Topic, msg.Data)
+					err := t.Publish(m.ctx, []byte(msg.Data))
+					if err == nil {
+						// Persist it as published
+						_ = m.store.SaveMessage(msg.Topic, m.host.ID().String(), msg.Data)
+						// Remove from offline queue
+						_ = m.store.RemovePendingMessage(msg.ID)
+					} else {
+						log.Printf("failed to flush pending message: %v", err)
+					}
 				}
 			}
 		}

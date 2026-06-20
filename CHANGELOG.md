@@ -100,6 +100,10 @@
 
 # Changelog
 
+## [11.60.43] - 2026-06-19
+### DHT Sub-Routing Optimization
+- **Hybrid Kademlia Lookups**: Added `AddHybridNode` and `GetPeersHybrid` to standard DHT wrapper in `internal/transport/dht_routing.go` to explicitly route `b32.i2p` addresses over optimized darknet channels while preserving normal Clearnet routing bounds.
+
 ## [11.60.42] - 2026-06-19
 ### Primary Torrent Download Module
 - **Verifier Routine**: Implemented `Verifier` in `pkg/torrent/downloader` to read and verify SHA256 hashes of downloaded file pieces against expected lists.

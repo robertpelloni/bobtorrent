@@ -64,8 +64,8 @@ func (s *MessengerStore) QueueMessage(topic, data string) error {
 	return err
 }
 
-// GetAndClearPendingMessages retrieves all offline queued messages and removes them.
-func (s *MessengerStore) GetAndClearPendingMessages() ([]PersistedMessage, error) {
+// GetPendingMessages retrieves all offline queued messages.
+func (s *MessengerStore) GetPendingMessages() ([]PersistedMessage, error) {
 	rows, err := s.db.Query(`SELECT id, topic, data, timestamp FROM pending_messages ORDER BY timestamp ASC`)
 	if err != nil {
 		return nil, err
@@ -147,4 +147,21 @@ func (s *MessengerStore) Close() error {
 		return nil
 	}
 	return s.db.Close()
+}
+
+// RemovePendingMessage deletes a message from the queue after successful publish.
+func (s *MessengerStore) RemovePendingMessage(id int64) error {
+	_, err := s.db.Exec("DELETE FROM pending_messages WHERE id = ?", id)
+	return err
+}
+
+// GetAndClearPendingMessages is a helper stub so tests don't break immediately.
+func (s *MessengerStore) GetAndClearPendingMessages() ([]PersistedMessage, error) {
+	msgs, err := s.GetPendingMessages()
+	if err == nil {
+		for _, m := range msgs {
+			s.RemovePendingMessage(m.ID)
+		}
+	}
+	return msgs, err
 }
