@@ -1,3 +1,7 @@
 module.exports = {
-  preset: '@react-native/jest-preset',
+  preset: 'react-native',
+  transformIgnorePatterns: [
+    'node_modules/(?!(react-native|@react-native|react-native-background-timer)/)',
+  ],
+  setupFiles: ['./jest.setup.js'],
 };

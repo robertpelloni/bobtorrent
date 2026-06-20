@@ -14,6 +14,7 @@ import {
 import base64 from 'base-64';
 import { TextEncoder, TextDecoder } from 'text-encoding';
 import { omnimesh } from './src/proto/envelope';
+import { startBackgroundSync, stopBackgroundSync } from './BackgroundService';
 
 const WS_URL = 'ws://127.0.0.1:8000/ws-messenger';
 const DEFAULT_TOPIC = 'bobtorrent-global-gossip';
@@ -50,7 +51,18 @@ function App() {
 
   useEffect(() => {
     connectWebSocket();
+
+    startBackgroundSync(() => {
+      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+        console.log("[App] Background heartbeat ok");
+      } else {
+        console.log("[App] Background reconnecting WS...");
+        connectWebSocket();
+      }
+    });
+
     return () => {
+      stopBackgroundSync();
       if (ws.current) {
         ws.current.close();
       }

@@ -100,6 +100,10 @@
 
 # Changelog
 
+## [11.60.44] - 2026-06-19
+### Mobile Background Operations
+- **Headless Client Sync**: Integrated `react-native-background-timer` and registered headless background components in `MobileMessenger` to enable continuous GossipSub WebSocket syncing and offline queue dispatching even when the mobile app is sent to the background.
+
 ## [11.60.43] - 2026-06-19
 ### DHT Sub-Routing Optimization
 - **Hybrid Kademlia Lookups**: Added `AddHybridNode` and `GetPeersHybrid` to standard DHT wrapper in `internal/transport/dht_routing.go` to explicitly route `b32.i2p` addresses over optimized darknet channels while preserving normal Clearnet routing bounds.
