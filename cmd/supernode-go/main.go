@@ -379,6 +379,9 @@ func startTrackerServices() {
 	mux.HandleFunc("/storage.wasm", withCORS(serveStorageWASM))
 	mux.HandleFunc("/wasm_exec.js", withCORS(serveWASMExec))
 
+	// Game Engine Asset Pipeline
+	mux.HandleFunc("/api/ingest/assets", withCORS(handleIngestGameAsset))
+
 	// Mega-Messenger UI Bridge
 	mux.HandleFunc("/mega-bridge", handleMegaBridge)
 
