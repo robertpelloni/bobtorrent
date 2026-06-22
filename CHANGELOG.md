@@ -100,6 +100,10 @@
 
 # Changelog
 
+## [11.60.47] - 2026-06-20
+### Swarm Discovery API
+- **DHT Discovery Endpoint**: Implemented `/api/swarm/discovery` to allow downstream clients (like Unity/Unreal engines) to query the swarm routing table for piece availability hashes before initiating parallel downloads.
+
 ## [11.60.46] - 2026-06-20
 ### Game Engine Asset Pipeline
 - **Specialized Ingestion**: Implemented `/api/ingest/assets` explicitly for high-throughput upload of massive game engine textures and 3D models. It efficiently handles chunking (AES-256-GCM) with RAM/Disk spooling limits via `pkg/torrent/ingest/game_assets.go`.

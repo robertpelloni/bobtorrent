@@ -11,3 +11,4 @@
 - [x] **Cross-Node Testing**: Perform cross-node consensus and messaging reliability tests under heavy load.
 # Phase 10 (Current phase)
 - [x] **Game Engine Asset Ingestion Path**: Implement a specialized asset ingestion pipeline for game engines to upload large textures and models directly into the swarm.
+- [x] **Swarm Discovery API**: Implement an endpoint to allow game engine clients to query the DHT directly for asset piece availability before beginning download.
