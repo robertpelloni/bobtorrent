@@ -25,7 +25,7 @@ func handleIngestGameAsset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, _, err := r.FormFile("asset")
+	file, header, err := r.FormFile("asset")
 	if err != nil {
 		http.Error(w, "Missing 'asset' field", http.StatusBadRequest)
 		return
@@ -41,25 +41,22 @@ func handleIngestGameAsset(w http.ResponseWriter, r *http.Request) {
 	tempDir := filepath.Join("data", "ingest", "temp")
 	os.MkdirAll(tempDir, 0755)
 
-	// Randomize filename to prevent concurrent upload collisions
-	tempFile, err := os.CreateTemp(tempDir, "upload-*")
+	tempPath := filepath.Join(tempDir, filepath.Base(header.Filename)) // Sanitize to prevent Path Traversal
+	out, err := os.Create(tempPath)
 	if err != nil {
 		log.Printf("Failed to create temp file: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	tempPath := tempFile.Name()
-	defer os.Remove(tempPath) // Ensure cleanup happens even if we panic or return early
-	defer tempFile.Close()
+	defer out.Close()
 
 	// Stream the upload to disk
-	if _, err := io.Copy(tempFile, file); err != nil {
+	if _, err := io.Copy(out, file); err != nil {
 		log.Printf("Failed to save uploaded file: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	tempFile.Sync()
-	tempFile.Close() // Close before ingestion so IngestGameAsset can open it
+	out.Sync()
 
 	// Run the game asset ingestion pipeline (using 1MB chunks)
 	outputDir := filepath.Join("data", "blobs")
@@ -69,6 +66,9 @@ func handleIngestGameAsset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Asset ingestion pipeline failed", http.StatusInternalServerError)
 		return
 	}
+
+	// Clean up temp file
+	os.Remove(tempPath)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(manifest)

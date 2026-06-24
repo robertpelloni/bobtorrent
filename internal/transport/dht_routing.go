@@ -41,29 +41,19 @@ func (n *DHTNode) AddHybridNode(addr string) error {
 
 // GetPeersHybrid executes a lookup for an infohash. It queries both
 // standard clearnet k-buckets and our optimized I2P peer list.
-
 func (n *DHTNode) GetPeersHybrid(ih string) ([]string, error) {
 	var peers []string
 
 	// 1. Query I2P Darknet Peers (Optimized path, minimal latency)
 	i2pMutex.RLock()
-	for _, addr := range i2pRoutingTable {
-		// In a real I2P integration, we'd query the I2P SAM connection for the infohash.
-		// For this stub, we just return known I2P peers as potential seeds.
+	if addr, exists := i2pRoutingTable[ih]; exists {
 		peers = append(peers, addr)
 	}
 	i2pMutex.RUnlock()
 
 	// 2. Query Clearnet Peers (Standard DHT)
-	// For this optimization pass, we return the cached I2P peers.
-	// Querying the raw anacrolix DHT table involves a channel-based iterator (a.Peers)
-	// which is handled downstream in the Torrent client itself rather than
-	// synchronously blocking this HTTP API call.
-
-	// We will rely on the libtorrent/anacrolix integrated swarms for clearnet,
-	// and use this hybrid endpoint purely to inject the parallel darknet peers into
-	// the requesting client.
-
+	// We cannot pull directly from anacrolix/dht without triggering a full active
+	// search. For now, we only return the cached hybrid I2P peers.
 
 	return peers, nil
 }

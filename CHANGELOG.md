@@ -1,3 +1,10 @@
+## [11.60.48] - 2026-06-23
+### Shadow Pilot Anomaly Detection
+- **Shadow Pilot**: Scaffolded internal module (`internal/shadowpilot/monitor.go`) to act as the core anomaly detection engine for the Jules Autopilot Orchestrator.
+- **Git Diff Monitor**: Shadow Pilot now continuously monitors local repository states via `git status --porcelain`.
+- **API Expsosure**: Exposed the anomaly state through the `/api/system/status` API endpoint.
+- **Pivot Documentation**: Officially pivoted context to the Jules Autopilot structure while retaining BobTorrent compatibility.
+
 ## [11.60.25] - 2026-05-19
 ### Mega-Messenger Bridge Scaffold
 - **Control Plane API**: Created `cmd/supernode-go/mega_messenger_bridge.go` exposing the `/mega-bridge` WebSocket endpoint.
@@ -99,10 +106,6 @@
 - ReadaheadBuffer.Seek EOF exact test
 
 # Changelog
-
-## [11.60.47] - 2026-06-20
-### Swarm Discovery API
-- **DHT Discovery Endpoint**: Implemented `/api/swarm/discovery` to allow downstream clients (like Unity/Unreal engines) to query the swarm routing table for piece availability hashes before initiating parallel downloads.
 
 ## [11.60.46] - 2026-06-20
 ### Game Engine Asset Pipeline

@@ -382,9 +382,6 @@ func startTrackerServices() {
 	// Game Engine Asset Pipeline
 	mux.HandleFunc("/api/ingest/assets", withCORS(handleIngestGameAsset))
 
-	// Swarm Discovery API
-	mux.HandleFunc("/api/swarm/discovery", withCORS(handleSwarmDiscovery))
-
 	// Mega-Messenger UI Bridge
 	mux.HandleFunc("/mega-bridge", handleMegaBridge)
 
@@ -422,7 +419,6 @@ func startTrackerServices() {
 func startDHT() {
 	var err error
 	dhtNode, err = transport.NewDHTNode(":6882")
-	globalDHTNode = dhtNode
 	if err != nil {
 		log.Printf("DHT node unavailable: %v", err)
 		return
