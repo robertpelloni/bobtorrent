@@ -1,9 +1,3 @@
-## [11.60.49] - 2026-06-24
-### Mega-Messenger Architecture (Phase 8 Completion)
-- **GossipSub Integration**: Scaffolded and verified the `libp2p` gossip mesh structure (`internal/transport/messenger.go`).
-- **Decentralized Routing**: Implemented multi-handler message dispatching, topic joining, and payload broadcasting for the `Mega-Messenger`.
-- **UI Bridge Validation**: Verified that the WebSocket bridge (`mega_messenger_bridge.go`) correctly binds the Frontend to the Go transport layer.
-
 ## [11.60.25] - 2026-05-19
 ### Mega-Messenger Bridge Scaffold
 - **Control Plane API**: Created `cmd/supernode-go/mega_messenger_bridge.go` exposing the `/mega-bridge` WebSocket endpoint.
