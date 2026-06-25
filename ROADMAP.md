@@ -1,20 +1,43 @@
-# Phase 8 (Complete)
-- [x] **Primary Torrent Download Module**: Implement the primary torrent download module, starting with the file verification routine (`Verifier`).
-- [x] **Monorepo Unification & Core Cleanup**: Migrate all Go logic from the `bobtorrent/` submodule into the root workspace structure. Remove the `bobtorrent/` directory to eliminate code duplication and import path confusion.
-- [x] **I2P Native Datagrams Refactoring**: Refactor the transport layer to fully integrate `github.com/eyedeekay/sam3` or similar for hybrid clear-net/dark-net peer connections.
-- [x] **DHT Sub-Routing Optimization**: Optimize the Kademlia routing table implementation to better handle hybrid I2P/clearnet peer addressing and reduce lookup latency.
-- [x] **Mobile Client Implementation Phase 2**: Add background execution capabilities to the React Native `MobileMessenger` client to support receiving push notifications or silent network syncs.
+# BobTorrent Roadmap (v3.0.0+)
 
-# Phase 9 (Complete)
-- [x] **Performance Profiling**: Implement `pprof` endpoints and analyze CPU/memory bottlenecks in the supernode.
-- [x] **Advanced Anonymity**: Design and implement deep integration of I2P into the anacrolix k-buckets once the library supports non-IP krpc.NodeAddr types.
-- [x] **Cross-Node Testing**: Perform cross-node consensus and messaging reliability tests under heavy load.
-# Phase 10 (Current phase)
-- [x] **Game Engine Asset Ingestion Path**: Implement a specialized asset ingestion pipeline for game engines to upload large textures and models directly into the swarm.
-- [ ] **Swarm Discovery API**: Implement an endpoint to allow game engine clients to query the DHT directly for asset piece availability before beginning download.
-# Phase 11: Jules Autopilot Orchestrator (Current phase)
-- [x] **Shadow Pilot Git Diff Monitoring**: Scaffold the internal anomaly detection engine using `git status --porcelain`.
-- [x] **System Status Integration**: Hook the `Shadow Pilot` state into the `/api/system/status` API endpoint.
-- [ ] **Frontend Dashboard Integration**: Wire the Vite/React UI to display Shadow Pilot git anomaly data.
-- [ ] **CI Pipeline Auto-Fix**: Automatically trigger anomaly fixes and commits when Shadow Pilot detects drift.
-- [ ] **Submodule Status Check**: Extend Shadow Pilot to recursively check submodules for anomalies.
+## Phase 1: Go Core Porting (Complete)
+* [x] Project Reorganization (Archiving v2.2.0, Version Bump to 3.0.0)
+* [x] Initialize Go module (`bobtorrent`)
+* [x] Port DHT Discovery & Mapping (32-byte InfoHash to 20-byte `libtorrent` style)
+* [x] Port Custom Binary Protocol v5 and AES-256-GCM Blob Storage
+* [x] Port Solana Wallet & Identity Management natively in Go
+
+## Phase 2/3/4/5/6: Advanced Network Features, Streaming, Testing & API (Complete)
+* [x] Port I2P/SAM v3.1 Integration from C++ to native Go
+* [x] Unify Manifests and Key Distribution
+* [x] Re-implement Predictive Streaming and Readahead algorithms
+* [x] Handle HTTP Range Requests (206 Partial Content) correctly using `io.Seeker`
+* [x] Port Web UI & HTTP API from Java/Node.js to Go
+* [x] Implement Ingestion endpoint with automatic encryption and Manifest generation
+* [x] Embed Web UI directly into the Go binary (`go:embed`)
+
+## Phase 7: Publisher & Subscriber Identity and Network Propagation (Complete)
+* [x] Setup Build Flags to inject Version into binary (Complete)
+* [x] Implement Identity generation (`/api/key/generate`)
+* [x] Implement Manifest Publishing (`/api/publish`) using Identity signatures
+* [x] Implement Channel Subscriptions (`/api/subscribe`, `/api/subscriptions`)
+* [x] Implement Local Blob listing (`/api/blobs`)
+* [x] Port Tracker Pub/Sub or DHT Put/Get for decentralized manifest propagation
+* [x] Update the UI to fully reflect active Pub/Sub status and real-time incoming manifests
+
+## Phase 8: Enhancement, Integration, and Polish (Upcoming)
+* [ ] **Mega-Messenger Architecture**
+  - [x] Scaffold `libp2p` gossip mesh in `internal/transport/messenger.go`
+  - [x] Implement GossipSub for decentralized message routing
+  - [x] Create WebSocket API for frontend-to-gossip mesh bridging
+  - [ ] Implement robust message dispatching and topic history
+  - [ ] Analyze `element-web` integration path (Tauri/Electron wrapper vs embedded)
+* [ ] **Anonymity & Performance**
+  - [x] Integrate native I2P/SAM Datagrams for low-latency anonymous signaling
+  - [ ] Optimize `ReadaheadBuffer` with `mmap` backing for large files
+* [ ] **Submodule & Cross-Branch Testing**
+  - [ ] Synchronize `bobcoin` and `element-web` submodules with latest Go core
+  - [ ] Perform cross-node consensus and messaging reliability tests
+* [x] Implement missing Web UI tooltips, labels, and fine details
+* [ ] Performance profiling and concurrency tuning
+

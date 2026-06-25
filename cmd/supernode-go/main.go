@@ -13,7 +13,6 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
-	"net/http/pprof"
 	"net/url"
 	"os"
 	"os/exec"
@@ -379,28 +378,8 @@ func startTrackerServices() {
 	mux.HandleFunc("/storage.wasm", withCORS(serveStorageWASM))
 	mux.HandleFunc("/wasm_exec.js", withCORS(serveWASMExec))
 
-	// Game Engine Asset Pipeline
-	mux.HandleFunc("/api/ingest/assets", withCORS(handleIngestGameAsset))
-
 	// Mega-Messenger UI Bridge
 	mux.HandleFunc("/mega-bridge", handleMegaBridge)
-
-
-
-	// Local-only Performance Profiling Server
-	go func() {
-		pprofMux := http.NewServeMux()
-		pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
-		pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-
-		log.Println("Local pprof server starting on 127.0.0.1:6060")
-		if err := http.ListenAndServe("127.0.0.1:6060", pprofMux); err != nil {
-			log.Printf("Local pprof server failed: %v", err)
-		}
-	}()
 
 	go func() {
 		if err := http.ListenAndServe(":8000", mux); err != nil {
@@ -530,10 +509,9 @@ func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		var req struct {
-			Type   string `json:"type"`
-			Topic  string `json:"topic"`
-			Data   string `json:"data"`
-			Offset int    `json:"offset,omitempty"`
+			Type  string `json:"type"`
+			Topic string `json:"topic"`
+			Data  string `json:"data"`
 		}
 		if err := conn.ReadJSON(&req); err != nil {
 			break
@@ -561,7 +539,7 @@ func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 				_ = sendJSON(map[string]interface{}{"type": "JOINED", "topic": topicName})
 
 				// Send history on join
-				if history, err := messenger.GetHistory(topicName, 50, 0); err == nil {
+				if history, err := messenger.GetHistory(topicName, 50); err == nil {
 					_ = sendJSON(map[string]interface{}{
 						"type":    "HISTORY",
 						"topic":   topicName,
@@ -574,7 +552,7 @@ func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 			if req.Topic == "" {
 				continue
 			}
-			if history, err := messenger.GetHistory(req.Topic, 50, req.Offset); err == nil {
+			if history, err := messenger.GetHistory(req.Topic, 50); err == nil {
 				_ = sendJSON(map[string]interface{}{
 					"type":    "HISTORY",
 					"topic":   req.Topic,
@@ -621,12 +599,10 @@ func initVerifierService() {
 	verifierSvc = identity.NewVerifierService()
 	mock := &identity.MockVerifier{}
 	github := identity.NewGitHubVerifier()
-	orcid := identity.NewORCIDVerifier()
-	urlVerifier := identity.NewURLVerifier()
 	verifierSvc.RegisterVerifier(identity.KindMock, mock)
 	verifierSvc.RegisterVerifier(identity.KindGitHub, github)
-	verifierSvc.RegisterVerifier(identity.KindORCID, orcid)
-	verifierSvc.RegisterVerifier(identity.KindURL, urlVerifier)
+	verifierSvc.RegisterVerifier(identity.KindORCID, mock)
+	verifierSvc.RegisterVerifier(identity.KindURL, mock)
 }
 
 func initTorrentClient() {
@@ -863,9 +839,6 @@ func acceptBid(bidID string, amount int64, infoHash string) {
 	submitResp, err := httpClient.R().SetBody(block).Post(latticeURL + "/process")
 	if err == nil && submitResp.IsSuccess() {
 		sendStatus("Bid Accepted!", newBalance)
-		if _, txErr := recordEconomyTransaction("ACCEPT_BID", float64(amount), block.Hash, "Seeding reward", ""); txErr != nil {
-			log.Printf("failed to record accept_bid transaction: %v", txErr)
-		}
 	}
 }
 

@@ -1,9 +1,8 @@
-## [11.60.48] - 2026-06-23
-### Shadow Pilot Anomaly Detection
-- **Shadow Pilot**: Scaffolded internal module (`internal/shadowpilot/monitor.go`) to act as the core anomaly detection engine for the Jules Autopilot Orchestrator.
-- **Git Diff Monitor**: Shadow Pilot now continuously monitors local repository states via `git status --porcelain`.
-- **API Expsosure**: Exposed the anomaly state through the `/api/system/status` API endpoint.
-- **Pivot Documentation**: Officially pivoted context to the Jules Autopilot structure while retaining BobTorrent compatibility.
+## [11.60.49] - 2026-06-24
+### Mega-Messenger Architecture (Phase 8 Completion)
+- **GossipSub Integration**: Scaffolded and verified the `libp2p` gossip mesh structure (`internal/transport/messenger.go`).
+- **Decentralized Routing**: Implemented multi-handler message dispatching, topic joining, and payload broadcasting for the `Mega-Messenger`.
+- **UI Bridge Validation**: Verified that the WebSocket bridge (`mega_messenger_bridge.go`) correctly binds the Frontend to the Go transport layer.
 
 ## [11.60.25] - 2026-05-19
 ### Mega-Messenger Bridge Scaffold
@@ -106,71 +105,6 @@
 - ReadaheadBuffer.Seek EOF exact test
 
 # Changelog
-
-## [11.60.46] - 2026-06-20
-### Game Engine Asset Pipeline
-- **Specialized Ingestion**: Implemented `/api/ingest/assets` explicitly for high-throughput upload of massive game engine textures and 3D models. It efficiently handles chunking (AES-256-GCM) with RAM/Disk spooling limits via `pkg/torrent/ingest/game_assets.go`.
-
-## [11.60.45] - 2026-06-20
-### Performance Profiling
-- **Go `pprof` Integration**: Injected `net/http/pprof` endpoints into the primary `supernode-go` HTTP router at `/debug/pprof/` to facilitate advanced CPU and memory bottleneck analysis under heavy network loads.
-
-## [11.60.44] - 2026-06-19
-### Mobile Background Operations
-- **Headless Client Sync**: Integrated `react-native-background-timer` and registered headless background components in `MobileMessenger` to enable continuous GossipSub WebSocket syncing and offline queue dispatching even when the mobile app is sent to the background.
-
-## [11.60.43] - 2026-06-19
-### DHT Sub-Routing Optimization
-- **Hybrid Kademlia Lookups**: Added `AddHybridNode` and `GetPeersHybrid` to standard DHT wrapper in `internal/transport/dht_routing.go` to explicitly route `b32.i2p` addresses over optimized darknet channels while preserving normal Clearnet routing bounds.
-
-## [11.60.42] - 2026-06-19
-### Primary Torrent Download Module
-- **Verifier Routine**: Implemented `Verifier` in `pkg/torrent/downloader` to read and verify SHA256 hashes of downloaded file pieces against expected lists.
-
-## [11.60.41] - 2026-06-19
-### I2P Hybrid Networking
-- **StreamSession Integration**: Refactored `I2PDatagramTransport` to include a reliable `sam3.StreamSession` alongside the existing unreliable `DatagramSession`.
-- **Hybrid Connectivity**: Added `DialI2P` and `AcceptLoop` methods to facilitate hybrid clear-net/dark-net peer connections for large data transfers via I2P TCP-like streams.
-
-## [11.60.40] - 2026-06-19
-### Robust Message Dispatching
-- **Topic History Pagination**: Updated the SQLite messenger store and WebSocket API (`FETCH_HISTORY`) to support offset-based pagination for chat history.
-- **Offline Message Queueing**: Implemented an offline message queue for outgoing chat payloads. If the supernode is temporarily disconnected from the GossipSub mesh, messages are buffered to disk and automatically flushed once connectivity is restored.
-
-## [11.60.39] - 2026-06-19
-### Mobile Client Protocol Buffers
-- **Protobuf Integration**: Upgraded the React Native `MobileMessenger` client to use the `envelope.proto` specification, replacing raw JSON payloads with serialized Protocol Buffers (base64 encoded) for all GossipSub chat messages.
-
-## [11.60.38] - 2026-06-19
-### Mobile Client Implementation
-- **React Native UI**: Integrated the React Native client with the `/ws-messenger` bridge, creating a functional, real-time chat interface connected to the Heavy Node's GossipSub mesh.
-
-## [11.60.37] - 2026-06-19
-### Mobile Client Scaffolding
-- **React Native Initialization**: Scaffolded the `MobileMessenger` React Native client to serve as the Light Node frontend bridging to the `supernode-go` WebSocket control plane.
-
-## [11.60.36] - 2026-06-19
-### Mega-Messenger Protocol Buffers
-- **Envelope Specification**: Defined the Data Envelope Specification (Protocol Buffers) format in `internal/protobuf/envelope.proto` for Light UI to Heavy Node communication.
-
-## [11.60.35] - 2026-06-19
-### Mainnet Launch Preparation
-- **Checklist Creation**: Created `MAINNET_LAUNCH.md` to track the DevOps, DNS, and Infrastructure readiness required for the Global Decentralized Storage Network launch.
-
-## [11.60.34] - 2026-06-18
-### Messenger Polish
-- **Rate Limiting**: Implemented a token bucket rate limiter (5 req/sec, burst of 10) per GossipSub topic within `internal/transport/messenger.go` to prevent individual nodes from spamming the P2P chat network.
-- **Typing Indicators**: The messenger now natively identifies transient `m.typing` events. These payloads are seamlessly broadcasted across the gossip mesh for real-time UI feedback but are intelligently omitted from the durable SQLite message store to prevent history bloat.
-
-## [11.60.33] - 2026-06-18
-### Seeding Incentives
-- **Economy Bridge**: Bridged the `accept_bid` lattice logic with the node's local economy database. When the supernode accepts a storage market bid, the incoming Bobcoin bounty is now correctly recorded as an `ACCEPT_BID` transaction, making seeding rewards visible in the UI transaction history.
-
-## [11.60.32] - 2026-06-18
-### Verification Layer Expansion
-- **ORCID Verifier**: Implemented an ORCID verifier that allows users to prove account ownership via their ORCID profile.
-- **URL Verifier**: Implemented a generic URL verifier that allows users to prove account ownership by hosting their Bobcoin public key on an arbitrary website.
-- **Removed Mocks**: Removed the `MockVerifier` implementations for ORCID and URL endpoints, replacing them with the new production-ready implementations in the Go Supernode registry.
 
 ## [11.60.31] - 2026-05-24
 ### Monorepo Unification & Core Cleanup

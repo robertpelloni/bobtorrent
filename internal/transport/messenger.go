@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/libp2p/go-libp2p"
-	"golang.org/x/time/rate"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -27,12 +25,11 @@ type Messenger struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	topicsMu     sync.RWMutex
-	topics       map[string]*pubsub.Topic
-	subs         map[string]*pubsub.Subscription
-	handlers     map[string]map[string]func([]byte, peer.ID) // topic -> handlerID -> handler
-	rateLimiters map[string]*rate.Limiter
-	store        *MessengerStore
+	topicsMu sync.RWMutex
+	topics   map[string]*pubsub.Topic
+	subs     map[string]*pubsub.Subscription
+	handlers map[string]map[string]func([]byte, peer.ID) // topic -> handlerID -> handler
+	store    *MessengerStore
 }
 
 // NewMessenger initializes a libp2p host and a GossipSub engine.
@@ -57,21 +54,16 @@ func NewMessenger(listenAddr string, store *MessengerStore) (*Messenger, error) 
 
 	log.Printf("Messenger libp2p host started: ID=%s Addrs=%v", h.ID(), h.Addrs())
 
-	m := &Messenger{
-		host:         h,
-		pubsub:       ps,
-		ctx:          ctx,
-		cancel:       cancel,
-		topics:       make(map[string]*pubsub.Topic),
-		subs:         make(map[string]*pubsub.Subscription),
-		handlers:     make(map[string]map[string]func([]byte, peer.ID)),
-		rateLimiters: make(map[string]*rate.Limiter),
-		store:        store,
-	}
-
-	go m.flushQueueLoop()
-
-	return m, nil
+	return &Messenger{
+		host:     h,
+		pubsub:   ps,
+		ctx:      ctx,
+		cancel:   cancel,
+		topics:   make(map[string]*pubsub.Topic),
+		subs:     make(map[string]*pubsub.Subscription),
+		handlers: make(map[string]map[string]func([]byte, peer.ID)),
+		store:    store,
+	}, nil
 }
 
 // JoinTopic joins a GossipSub topic and registers a handler for incoming messages.
@@ -139,100 +131,23 @@ func (m *Messenger) UnregisterAllHandlers(topicName string) {
 	// unless we really want to leave the mesh for this topic.
 }
 
-func isTypingIndicator(data []byte) bool {
-	var parsed struct {
-		Type string `json:"type"`
-	}
-	if err := json.Unmarshal(data, &parsed); err == nil {
-		return parsed.Type == "m.typing"
-	}
-	return false
-}
-
 // Publish broadcasts a message to a GossipSub topic and persists it if a store is configured.
-// It also enforces a rate limit to prevent spamming the network.
-// If there are no peers in the topic, it queues the message for later offline delivery.
 func (m *Messenger) Publish(topicName string, data []byte) error {
 	m.topicsMu.RLock()
 	t, exists := m.topics[topicName]
-	limiter, hasLimiter := m.rateLimiters[topicName]
 	m.topicsMu.RUnlock()
 
 	if !exists {
 		return fmt.Errorf("not joined to topic %s", topicName)
 	}
 
-	if !hasLimiter {
-		m.topicsMu.Lock()
-		// Recheck inside lock
-		limiter, hasLimiter = m.rateLimiters[topicName]
-		if !hasLimiter {
-			limiter = rate.NewLimiter(rate.Limit(5), 10) // 5 req/sec, burst 10
-			m.rateLimiters[topicName] = limiter
-		}
-		m.topicsMu.Unlock()
-	}
-
-	if !limiter.Allow() {
-		return fmt.Errorf("rate limit exceeded for topic %s", topicName)
-	}
-
-	// Offline queueing logic
-	peers := t.ListPeers()
-	if len(peers) == 0 && m.store != nil && !isTypingIndicator(data) {
-		if err := m.store.QueueMessage(topicName, string(data)); err != nil {
-			log.Printf("failed to queue offline message: %v", err)
-		}
-		return nil
-	}
-
-	if m.store != nil && !isTypingIndicator(data) {
+	if m.store != nil {
 		if err := m.store.SaveMessage(topicName, m.host.ID().String(), string(data)); err != nil {
 			log.Printf("failed to persist published message: %v", err)
 		}
 	}
 
 	return t.Publish(m.ctx, data)
-}
-
-func (m *Messenger) flushQueueLoop() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-m.ctx.Done():
-			return
-		case <-ticker.C:
-			if m.store == nil {
-				continue
-			}
-
-			pending, err := m.store.GetPendingMessages()
-			if err != nil {
-				log.Printf("failed to retrieve pending messages: %v", err)
-				continue
-			}
-
-			for _, msg := range pending {
-				m.topicsMu.RLock()
-				t, exists := m.topics[msg.Topic]
-				m.topicsMu.RUnlock()
-
-				if exists && len(t.ListPeers()) > 0 {
-					err := t.Publish(m.ctx, []byte(msg.Data))
-					if err == nil {
-						// Persist it as published
-						_ = m.store.SaveMessage(msg.Topic, m.host.ID().String(), msg.Data)
-						// Remove from offline queue
-						_ = m.store.RemovePendingMessage(msg.ID)
-					} else {
-						log.Printf("failed to flush pending message: %v", err)
-					}
-				}
-			}
-		}
-	}
 }
 
 func (m *Messenger) readLoop(sub *pubsub.Subscription) {
@@ -252,7 +167,7 @@ func (m *Messenger) readLoop(sub *pubsub.Subscription) {
 			continue
 		}
 
-		if m.store != nil && !isTypingIndicator(msg.Data) {
+		if m.store != nil {
 			if err := m.store.SaveMessage(topicName, msg.ReceivedFrom.String(), string(msg.Data)); err != nil {
 				log.Printf("failed to persist received message: %v", err)
 			}
@@ -301,12 +216,12 @@ func (m *Messenger) PublishMatrixEvent(topicName string, event MatrixEvent) erro
 	return m.Publish(topicName, data)
 }
 
-// GetHistory retrieves the last N messages for a topic from the persistent store, with optional offset.
-func (m *Messenger) GetHistory(topic string, limit int, offset int) ([]PersistedMessage, error) {
+// GetHistory retrieves the last N messages for a topic from the persistent store.
+func (m *Messenger) GetHistory(topic string, limit int) ([]PersistedMessage, error) {
 	if m.store == nil {
 		return nil, fmt.Errorf("messenger store not configured")
 	}
-	return m.store.QueryHistory(topic, limit, offset)
+	return m.store.QueryHistory(topic, limit)
 }
 
 // Host returns the underlying libp2p host.
