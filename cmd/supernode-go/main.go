@@ -355,6 +355,10 @@ func startTrackerServices() {
 	mux.HandleFunc("/bankroll", withCORS(handleBankroll))
 	mux.HandleFunc("/transactions", withCORS(handleTransactions))
 	mux.HandleFunc("/mint", withCORS(handleMint))
+
+	mux.HandleFunc("/blocks", withCORS(handleBlocks))
+	mux.HandleFunc("/bootstrap", withCORS(handleBootstrap))
+
 	mux.HandleFunc("/burn", withCORS(handleBurn))
 	mux.HandleFunc("/fhe-oracle", withCORS(handleFHEOracle))
 	mux.HandleFunc("/ws-messenger", handleMessengerSocket)

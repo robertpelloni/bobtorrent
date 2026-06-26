@@ -1,3 +1,8 @@
+## [11.60.50] - 2026-06-25
+### Phase 9: UI Enhancements & Bobcoin Compat
+- **Bobcoin Compatibility**: Restored missing endpoints (`/blocks`, `/bootstrap`) to natively support the legacy bobcoin frontend lattice dialect.
+- **Mega-Messenger Dispatcher**: Upgraded the `mega_messenger_bridge.go` WebSocket handler to support detailed client tracking, dynamic topic leaving, and robust history synchronization via the SQLite message store.
+
 ## [11.60.25] - 2026-05-19
 ### Mega-Messenger Bridge Scaffold
 - **Control Plane API**: Created `cmd/supernode-go/mega_messenger_bridge.go` exposing the `/mega-bridge` WebSocket endpoint.

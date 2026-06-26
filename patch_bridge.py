@@ -1,4 +1,8 @@
-package main
+with open('cmd/supernode-go/mega_messenger_bridge.go', 'r') as f:
+    content = f.read()
+
+# Enhance the WebSocket bridge to support history sync and better integration with messenger logic
+new_bridge = """package main
 
 import (
 	"encoding/json"
@@ -48,8 +52,8 @@ func handleMegaBridge(w http.ResponseWriter, r *http.Request) {
 		delete(messengerClients, conn)
 		messengerMutex.Unlock()
 		// Clean up subscriptions
-		if messenger != nil {
-			messenger.UnregisterAllHandlers(clientID)
+		if messengerSvc != nil {
+			messengerSvc.UnregisterAllHandlers(clientID)
 		}
 		log.Printf("[MegaBridge] Light Node UI disconnected. ClientID: %s", clientID)
 	}()
@@ -80,14 +84,14 @@ func handleMegaBridge(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleMessengerCommand(conn *websocket.Conn, clientID string, action string, topic string, payload []byte, limit int) {
-	if messenger == nil {
+	if messengerSvc == nil {
 		sendError(conn, "Messenger service not initialized")
 		return
 	}
 
 	switch action {
 	case "join":
-		err := messenger.JoinTopic(topic, clientID, func(data []byte, sender peer.ID) {
+		err := messengerSvc.JoinTopic(topic, clientID, func(data []byte, sender peer.ID) {
 			broadcastToClient(conn, topic, "message", data, sender.String())
 		})
 		if err != nil {
@@ -97,11 +101,11 @@ func handleMessengerCommand(conn *websocket.Conn, clientID string, action string
 		}
 
 	case "leave":
-		messenger.LeaveTopic(topic, clientID)
+		messengerSvc.LeaveTopic(topic, clientID)
 		sendAck(conn, action, topic)
 
 	case "publish":
-		err := messenger.Publish(topic, payload)
+		err := messengerSvc.Publish(topic, payload)
 		if err != nil {
 			sendError(conn, "Failed to publish: "+err.Error())
 		} else {
@@ -112,7 +116,7 @@ func handleMessengerCommand(conn *websocket.Conn, clientID string, action string
 		if limit == 0 {
 			limit = 50
 		}
-		history, err := messenger.GetHistory(topic, limit)
+		history, err := messengerSvc.GetHistory(topic, limit)
 		if err != nil {
 			sendError(conn, "Failed to fetch history: "+err.Error())
 		} else {
@@ -164,3 +168,6 @@ func sendHistory(conn *websocket.Conn, topic string, history []transport.Persist
 		"history": history,
 	})
 }
+"""
+with open('cmd/supernode-go/mega_messenger_bridge.go', 'w') as f:
+    f.write(new_bridge)

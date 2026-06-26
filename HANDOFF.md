@@ -1,16 +1,14 @@
-# Session Handoff (v11.60.49)
+# Session Handoff (v11.60.50)
 
 ## 🏁 Summary of Achievements
-- **Mega-Messenger Architecture**: Scaffolded the `libp2p` gossip mesh structure (`internal/transport/messenger.go`) and the WebSocket bridge (`mega_messenger_bridge.go`).
-- **Repository Sync**: Reconciled local branches with `origin/main` to ensure the workspace reflects the latest upstream states.
-- **Documentation**: Incremented version and updated changelog for the Phase 8 completion.
+- **Mega-Messenger Dispatching**: Enhanced the `mega_messenger_bridge.go` WebSocket API. Added support for tracking client IDs, querying history directly from SQLite, dynamic topic leaving, and broadcasting typed message structures.
+- **Bobcoin Compatibility**: Re-added missing legacy endpoints (`/blocks`, `/bootstrap`) to `api_bobcoin.go` to prevent UI drift and ensure the Go supernode serves as a valid lattice target for legacy frontends.
+- **Documentation**: Updated `VERSION`, `CHANGELOG.md`, and `ROADMAP.md` to mark Phase 8 message dispatching as fully complete.
 
 ## 🏗️ Current System State
 - **Binary Status**: `supernode-go` builds successfully.
-- **Version Status**: Bumped to `v11.60.49`.
+- **Version Status**: Bumped to `v11.60.50`.
 
 ## 🚀 Next Steps
-- Continue implementing remaining UI features for the Mega-Messenger frontend.
-
-## ⚠️ Important Notes
-- Always build with `-buildvcs=false` to avoid VCS stamp issues with nested submodules.
+- Implement advanced anonymity tracking (`Anonymity & Performance` block).
+- Synchronize submodules.
