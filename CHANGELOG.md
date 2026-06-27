@@ -1,3 +1,8 @@
+## [11.60.51] - 2026-06-27
+### Lattice Dialect Compatibility
+- **Bobcoin Submodule**: Updated the `bobcoin` frontend to correctly request the `/governance/proposals` endpoint, resolving a dialect mismatch.
+- **Consensus Bridge**: Verified that the Go supernode correctly handles both wrapped (`{"block": {...}}`) and raw block JSON payloads to maintain legacy frontend compatibility.
+
 ## [11.60.50] - 2026-06-25
 ### Phase 9: UI Enhancements & Bobcoin Compat
 - **Bobcoin Compatibility**: Restored missing endpoints (`/blocks`, `/bootstrap`) to natively support the legacy bobcoin frontend lattice dialect.
