@@ -1,6 +1,3 @@
-[submodule "qbittorrent"]
-	path = qbittorrent
-	url = https://github.com/robertpelloni/qbittorrent.git
 [submodule "bobcoin"]
 	path = bobcoin
 	url = https://github.com/robertpelloni/bobcoin
