@@ -11,6 +11,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"bobtorrent/pkg/messenger"
 )
 
 // Messenger manages the libp2p gossip mesh for decentralized chat and signaling.
@@ -132,6 +133,12 @@ func (m *Messenger) UnregisterAllHandlers(topicName string) {
 }
 
 // Publish broadcasts a message to a GossipSub topic and persists it if a store is configured.
+func (m *Messenger) PublishEnvelope(topicName string, env *messenger.Envelope) error {
+	data, err := env.Marshal()
+	if err != nil { return err }
+	return m.Publish(topicName, data)
+}
+
 func (m *Messenger) Publish(topicName string, data []byte) error {
 	m.topicsMu.RLock()
 	t, exists := m.topics[topicName]
@@ -227,4 +234,9 @@ func (m *Messenger) GetHistory(topic string, limit int) ([]PersistedMessage, err
 // Host returns the underlying libp2p host.
 func (m *Messenger) Host() host.Host {
 	return m.host
+}
+
+// UnmarshalIncoming tries to decode a raw gossip payload into an Envelope.
+func (m *Messenger) UnmarshalIncoming(data []byte) (*messenger.Envelope, error) {
+	return messenger.UnmarshalEnvelope(data)
 }

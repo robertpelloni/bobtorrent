@@ -13,6 +13,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"os"
 	"os/exec"
@@ -25,10 +26,12 @@ import (
 	"bobtorrent/internal/bridges"
 	"bobtorrent/internal/economy"
 	"bobtorrent/internal/identity"
+	"bobtorrent/internal/ingest"
 	"bobtorrent/internal/publish"
 	"bobtorrent/internal/tracker"
 	"bobtorrent/internal/transport"
 	"bobtorrent/internal/tui"
+	pkgStorage "bobtorrent/pkg/storage"
 	"bobtorrent/pkg/torrent"
 
 	anacrolixTorrent "github.com/anacrolix/torrent"
@@ -70,6 +73,7 @@ var (
 	publishRegistry     *publish.Registry
 	economyDB           *economy.Database
 	verifierSvc         *identity.VerifierService
+	ingestSvc           *ingest.IngestionService
 	startedAt           = time.Now()
 	fheOracleRunner     = computeFHEOracleCiphertext
 	signalingMatchmaker = newMatchmaker()
@@ -317,6 +321,7 @@ func realMain() {
 	initEconomyDatabase()
 	defer economyDB.Close()
 	initVerifierService()
+	initIngestionService()
 
 	model := tui.NewModel()
 	uiProgram = tea.NewProgram(model, tea.WithAltScreen())
@@ -350,6 +355,10 @@ func startTrackerServices() {
 	mux.HandleFunc("/spora/", withCORS(handleSpora))
 	mux.HandleFunc("/status", withCORS(handleServiceStatus))
 	mux.HandleFunc("/stats", withCORS(handleStats))
+	mux.HandleFunc("/lattice", withCORS(handleLattice))
+	mux.HandleFunc("/api/lattice", withCORS(handleLattice))
+	mux.HandleFunc("/channels/browse", withCORS(handleBrowseChannels))
+	mux.HandleFunc("/api/channels/browse", withCORS(handleBrowseChannels))
 	mux.HandleFunc("/filecoin/status", withCORS(handleFilecoinStatus))
 	mux.HandleFunc("/filecoin/deals", withCORS(handleFilecoinDeals))
 	mux.HandleFunc("/bankroll", withCORS(handleBankroll))
@@ -369,8 +378,10 @@ func startTrackerServices() {
 	mux.HandleFunc("/remove-torrent", withCORS(handleRemoveTorrent))
 	mux.HandleFunc("/upload", withCORS(handleUpload))
 	mux.HandleFunc("/ingest", withCORS(handleIngest))
+	mux.HandleFunc("/ingest/status", withCORS(handleIngestStatus))
 	mux.HandleFunc("/upload-shard", withCORS(handleUploadShard))
-	mux.HandleFunc("/blobs", withCORS(handleGetAssets))
+	mux.HandleFunc("/blobs", withCORS(handleBlobs))
+	mux.HandleFunc("/api/blobs", withCORS(handleBlobs))
 	mux.HandleFunc("/key/generate", withCORS(handleKeyGenerate))
 	mux.HandleFunc("/subscriptions", withCORS(handleGetSubscriptions))
 	mux.HandleFunc("/subscribe", withCORS(handleSubscribe))
@@ -384,6 +395,13 @@ func startTrackerServices() {
 
 	// Mega-Messenger UI Bridge
 	mux.HandleFunc("/mega-bridge", handleMegaBridge)
+
+	// Profiling
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	go func() {
 		if err := http.ListenAndServe(":8000", mux); err != nil {
@@ -1937,4 +1955,31 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func initIngestionService() {
+	var err error
+	storageReg, _ := pkgStorage.NewRegistry(filepath.Join(torrentDataDir, "ingest-db"))
+	ingestSvc, err = ingest.NewIngestionService(torrentDataDir, storageReg)
+	if err != nil {
+		log.Printf("Ingestion service unavailable: %v", err)
+	}
+}
+
+func handleIngestStatus(w http.ResponseWriter, r *http.Request) {
+	jobID := r.URL.Query().Get("id")
+	if jobID == "" {
+		http.Error(w, "job ID required", http.StatusBadRequest)
+		return
+	}
+	if ingestSvc == nil {
+		http.Error(w, "ingestion service offline", http.StatusServiceUnavailable)
+		return
+	}
+	status, ok := ingestSvc.GetStatus(jobID)
+	if !ok {
+		http.Error(w, "job not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, status)
 }

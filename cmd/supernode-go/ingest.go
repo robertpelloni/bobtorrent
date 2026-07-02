@@ -14,6 +14,80 @@ import (
 	"github.com/anacrolix/torrent/metainfo"
 )
 
+func handleIngest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		FilePath string `json:"filePath"`
+		Async    bool   `json:"async"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if req.FilePath == "" {
+		http.Error(w, "Missing filePath", http.StatusBadRequest)
+		return
+	}
+
+	cleanPath := filepath.Clean(req.FilePath)
+	if strings.Contains(cleanPath, "..") || filepath.IsAbs(cleanPath) {
+		http.Error(w, "Invalid file path.", http.StatusBadRequest)
+		return
+	}
+
+	ingestDir := filepath.Join("data", "ingest")
+	fullPath := filepath.Join(ingestDir, cleanPath)
+
+	if req.Async && ingestSvc != nil {
+		jobID, err := ingestSvc.ProcessFile(fullPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"jobId":  jobID,
+			"status": "Accepted",
+		})
+		return
+	}
+
+	file, err := os.Open(fullPath)
+	if err != nil {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+	defer file.Close()
+
+	originalName := filepath.Base(fullPath)
+	uploaded, err := buildUploadedTorrentFromMultipartWithFile(file, originalName, torrentDataDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := registerUploadedTorrent(uploaded); err != nil {
+		_ = os.Remove(uploaded.StoredPath)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"fileEntry": map[string]interface{}{
+			"id":   uploaded.InfoHash,
+			"name": uploaded.OriginalName,
+			"size": uploaded.Size,
+			"type": "application/octet-stream",
+		},
+		"blobCount": 1,
+	})
+}
+
 func buildUploadedTorrentFromMultipartWithFile(file *os.File, originalName string, dataDir string) (*uploadedTorrentDescriptor, error) {
 	if dataDir == "" {
 		return nil, fmt.Errorf("torrent data directory required")
@@ -72,80 +146,4 @@ func buildUploadedTorrentFromMultipartWithFile(file *os.File, originalName strin
 		StoredName:   storedName,
 		OriginalName: originalName,
 	}, nil
-}
-
-func handleIngest(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "POST required", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var req struct {
-		FilePath string `json:"filePath"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-
-	if req.FilePath == "" {
-		http.Error(w, "Missing filePath", http.StatusBadRequest)
-		return
-	}
-
-	// SECURITY FIX: Prevent arbitrary file reads by ensuring the path is relative and clean.
-	// Since this is a shim, we only allow ingesting files from a specific upload/temp directory.
-	// Or better yet, we just require the client to use standard multipart form upload (handled by /upload)
-	// but the web UI uses `filePath` JSON. So we sanitize.
-
-	cleanPath := filepath.Clean(req.FilePath)
-	if strings.Contains(cleanPath, "..") || filepath.IsAbs(cleanPath) {
-		http.Error(w, "Invalid file path. Absolute paths or directory traversal are not allowed.", http.StatusBadRequest)
-		return
-	}
-
-	// We resolve it relative to the current working directory,
-	// but further restrict it to a specific directory if possible. For now, preventing traversal and absolute is a start.
-	// A better approach is prepending a known directory to cleanPath.
-	// Let's assume we allow files in `data/ingest/` relative to pwd.
-
-	ingestDir := filepath.Join("data", "ingest")
-	if err := os.MkdirAll(ingestDir, 0o755); err != nil {
-		http.Error(w, "Failed to initialize ingest directory", http.StatusInternalServerError)
-		return
-	}
-
-	fullPath := filepath.Join(ingestDir, cleanPath)
-
-	file, err := os.Open(fullPath)
-	if err != nil {
-		http.Error(w, "File not found in ingest directory", http.StatusNotFound)
-		return
-	}
-	defer file.Close()
-
-	originalName := filepath.Base(fullPath)
-
-	uploaded, err := buildUploadedTorrentFromMultipartWithFile(file, originalName, torrentDataDir)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err := registerUploadedTorrent(uploaded); err != nil {
-		_ = os.Remove(uploaded.StoredPath)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"fileEntry": map[string]interface{}{
-			"id":   uploaded.InfoHash,
-			"name": uploaded.OriginalName,
-			"size": uploaded.Size,
-			"type": "application/octet-stream",
-		},
-		"blobCount": 1,
-	})
 }
