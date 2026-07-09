@@ -1,25 +1,27 @@
 package main
 
 import (
+	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 )
 
-// handleBlocks provides legacy compatibility for the Bobcoin frontend
-// fetching confirmed blocks.
-func handleBlocks(w http.ResponseWriter, r *http.Request) {
-	// STUB: Real implementation would fetch blocks from SQLite/Memory
-	// For now we just return an empty array or success response to prevent UI crashes.
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"blocks":  []interface{}{},
-	})
-}
+func registerBobcoinProxies(mux *http.ServeMux) {
+	latticeURL, err := url.Parse("http://127.0.0.1:4000")
+	if err != nil {
+		log.Printf("Failed to parse lattice URL: %v", err)
+		return
+	}
 
-// handleBootstrap provides legacy compatibility for the Bobcoin frontend
-// initiating sync with peers.
-func handleBootstrap(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"message": "Bootstrap sequence initiated via Bobtorrent native layer.",
-	})
+	proxy := httputil.NewSingleHostReverseProxy(latticeURL)
+
+	// Proxy legacy endpoints to the lattice daemon.
+	mux.Handle("/blocks", proxy)
+	mux.Handle("/proposals", proxy)
+	mux.Handle("/governance/proposals", proxy)
+	mux.Handle("/process", proxy)
+	// /ws is intentionally skipped here because the frontend may conflict with our native websocket.
+	// We will implement an interceptor for the bobcoin frontend to use /lattice-ws.
+	mux.Handle("/lattice-ws", proxy)
 }

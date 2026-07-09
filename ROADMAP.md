@@ -36,8 +36,8 @@
   - [x] Integrate native I2P/SAM Datagrams for low-latency anonymous signaling
   - [ ] Optimize `ReadaheadBuffer` with `mmap` backing for large files
 * [ ] **Submodule & Cross-Branch Testing**
-  - [ ] Synchronize `bobcoin` and `element-web` submodules with latest Go core
-  - [ ] Perform cross-node consensus and messaging reliability tests
+  - [x] Synchronize `bobcoin` and `element-web` submodules with latest Go core
+  - [x] Perform cross-node consensus and messaging reliability tests
 * [x] Implement missing Web UI tooltips, labels, and fine details
 * [ ] Performance profiling and concurrency tuning
 

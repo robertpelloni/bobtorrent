@@ -1,3 +1,5 @@
+//go:build !js
+
 package storage
 import ("database/sql"; "fmt"; "path/filepath"; "time"; _ "modernc.org/sqlite")
 type Registry struct { db *sql.DB }
