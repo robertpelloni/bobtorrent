@@ -154,3 +154,29 @@
 - **libp2p Messenger**: Scaffolded a `libp2p` host and GossipSub engine.
 - **Control Plane API**: Created `mega_messenger_bridge.go` for Decoupled UI support.
 
+
+## [11.60.32] - 2026-06-15
+### Game Engine Asset Ingestion
+- **Ingestion Service**: Created `internal/ingest` package to handle high-performance, asynchronous asset ingestion.
+- **Asynchronous API**: Updated `POST /api/ingest` to support an `async` flag, returning a `jobId` for tracking.
+- **Progress Tracking**: Added `GET /ingest/status?id=...` to monitor encryption and sharding progress in real-time.
+- **Unified Logic**: Consolidated chunking, encryption, and registration into a single streaming pipeline.
+
+## [11.60.33] - 2026-06-15
+### Mega-Messenger Protocol and Integration
+- **Envelope Protocol**: Defined `pkg/messenger/envelope.go` for metadata-blinded decentralized messaging.
+- **Messenger Upgrade**: Integrated Envelope marshaling and signing into the `internal/transport` layer.
+- **Bridge Support**: Added `PUBLISH_ENVELOPE` to the Mega-Bridge WebSocket for Light Node UI compatibility.
+- **Integration Roadmap**: Documented the Element-Web to libp2p porting strategy.
+
+## [11.60.34] - 2026-06-15
+### Robust Messaging and Optimized Ingestion
+- **Envelope Verification**: Implemented Ed25519 signature verification in `pkg/messenger/envelope.go` for end-to-end mesh integrity.
+- **Mmap Ingestion**: Added `ProcessLargeFile` utilizing `github.com/edsrzf/mmap-go` for high-performance ingestion of multi-gigabyte game assets.
+- **Submodule Cleanup**: Purged legacy metadata from `bobcoin/research` and resolved `qbittorrent` remote synchronization issues.
+
+## [11.60.35] - 2026-06-17
+### Performance Profiling and Anonymous Signaling
+- **Observability**: Integrated `net/http/pprof` into `supernode-go` and `lattice-go` for production-grade profiling.
+- **I2P Discovery**: Enhanced anonymous signaling with I2P Datagrams and wired `I2P_PING` to the Mega-Bridge.
+- **Persistence Refinement**: Centralized ingestion registry storage within the torrent data directory using pure-Go SQLite.
