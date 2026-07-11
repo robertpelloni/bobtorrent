@@ -1,3 +1,17 @@
+## [11.60.52] - 2026-06-27
+### Phase 8 Completion: Mega-Messenger Architecture
+- **Element-Web Integration Planning**: Finalized Phase 8 by defining the architecture for integrating the `element-web` Matrix frontend with the native Go `libp2p` GossipSub backend (documented in `element-web/ARCHITECTURE_ELEMENT.md`).
+
+## [11.60.51] - 2026-06-27
+### Lattice Dialect Compatibility
+- **Bobcoin Submodule**: Updated the `bobcoin` frontend to correctly request the `/governance/proposals` endpoint, resolving a dialect mismatch.
+- **Consensus Bridge**: Verified that the Go supernode correctly handles both wrapped (`{"block": {...}}`) and raw block JSON payloads to maintain legacy frontend compatibility.
+
+## [11.60.50] - 2026-06-25
+### Phase 9: UI Enhancements & Bobcoin Compat
+- **Bobcoin Compatibility**: Restored missing endpoints (`/blocks`, `/bootstrap`) to natively support the legacy bobcoin frontend lattice dialect.
+- **Mega-Messenger Dispatcher**: Upgraded the `mega_messenger_bridge.go` WebSocket handler to support detailed client tracking, dynamic topic leaving, and robust history synchronization via the SQLite message store.
+
 ## [11.60.25] - 2026-05-19
 ### Mega-Messenger Bridge Scaffold
 - **Control Plane API**: Created `cmd/supernode-go/mega_messenger_bridge.go` exposing the `/mega-bridge` WebSocket endpoint.
