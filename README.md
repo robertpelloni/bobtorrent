@@ -326,3 +326,6 @@ $ bittorrent-tracker --help
 ## license
 
 MIT. Copyright (c) [Feross Aboukhadijeh](https://feross.org) and [WebTorrent, LLC](https://webtorrent.io).
+
+### WebSocket Messenger API
+The WebSocket bridge is exposed at `/ws/messenger` and `/ws-messenger`. Connect via a WebSocket client to subscribe to topics and exchange GossipSub messages.

@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +12,8 @@ import (
 )
 
 func TestORCIDVerifier_Success(t *testing.T) {
-	expectedAttestation := "BOBTORRENT_IDENTITY:1234567890abcdef"
+	expectedAccount := "1234567890abcdef"
+	expectedAttestation := "BOBTORRENT_IDENTITY:" + expectedAccount
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/0000-0002-1825-0097", r.URL.Path)
@@ -32,9 +34,15 @@ func TestORCIDVerifier_Success(t *testing.T) {
 	verifier := NewORCIDVerifier()
 	verifier.BaseURL = ts.URL
 
-	valid, err := verifier.Verify("0000-0002-1825-0097", expectedAttestation)
+	attr := Attestation{
+		Kind:    KindORCID,
+		URL:     "0000-0002-1825-0097",
+		Account: expectedAccount,
+	}
+
+	result, err := verifier.Verify(context.Background(), attr)
 	require.NoError(t, err)
-	assert.True(t, valid)
+	assert.True(t, result.Success)
 }
 
 func TestORCIDVerifier_NotFound(t *testing.T) {
@@ -46,10 +54,16 @@ func TestORCIDVerifier_NotFound(t *testing.T) {
 	verifier := NewORCIDVerifier()
 	verifier.BaseURL = ts.URL
 
-	valid, err := verifier.Verify("0000-0000-0000-0000", "attest")
-	require.Error(t, err)
-	assert.False(t, valid)
-	assert.Contains(t, err.Error(), "record not found")
+	attr := Attestation{
+		Kind:    KindORCID,
+		URL:     "0000-0000-0000-0000",
+		Account: "test-acc",
+	}
+
+	result, err := verifier.Verify(context.Background(), attr)
+	require.NoError(t, err)
+	assert.False(t, result.Success)
+	assert.Contains(t, result.Message, "record not found")
 }
 
 func TestORCIDVerifier_NoBiography(t *testing.T) {
@@ -67,8 +81,14 @@ func TestORCIDVerifier_NoBiography(t *testing.T) {
 	verifier := NewORCIDVerifier()
 	verifier.BaseURL = ts.URL
 
-	valid, err := verifier.Verify("0000-0002-1825-0097", "attest")
-	require.Error(t, err)
-	assert.False(t, valid)
-	assert.Contains(t, err.Error(), "no biography found")
+	attr := Attestation{
+		Kind:    KindORCID,
+		URL:     "0000-0002-1825-0097",
+		Account: "test-acc",
+	}
+
+	result, err := verifier.Verify(context.Background(), attr)
+	require.NoError(t, err)
+	assert.False(t, result.Success)
+	assert.Contains(t, result.Message, "No biography found")
 }

@@ -110,6 +110,9 @@ func (s *Server) HTTPHandler() http.Handler {
 	mux.HandleFunc("/persistence/restore", s.handlePersistenceRestore)
 	mux.HandleFunc("/persistence/restore-bundle", s.handlePersistenceRestoreBundle)
 	mux.HandleFunc("/ws", s.handleWebSocket)
+	mux.HandleFunc("/api/dispatch", s.handleProcess)
+	mux.HandleFunc("/api/dispatch/ws", s.handleWebSocket)
+	mux.HandleFunc("/lattice-ws", s.handleWebSocket)
 
 	return mux
 }
