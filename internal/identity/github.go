@@ -2,91 +2,94 @@ package identity
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"net/url"
+	"io"
+	"net/http"
 	"strings"
 	"time"
-
-	"github.com/go-resty/resty/v2"
 )
 
-// GitHubVerifier validates Bobcoin account ownership via GitHub Gists.
-// It expects a Gist URL and verifies that the raw content of the Gist
-// contains the publisher's Bobcoin public key.
 type GitHubVerifier struct {
-	client *resty.Client
+	Client  *http.Client
+	BaseURL string
 }
 
 func NewGitHubVerifier() *GitHubVerifier {
 	return &GitHubVerifier{
-		client: resty.New().
-			SetTimeout(10 * time.Second).
-			SetHeader("User-Agent", "Bobtorrent-Go-Verifier/1.0"),
+		Client:  &http.Client{Timeout: 10 * time.Second},
+		BaseURL: "https://api.github.com",
 	}
 }
 
+// Verify implements the Verifier interface required by VerifierService.
 func (v *GitHubVerifier) Verify(ctx context.Context, attr Attestation) (*VerificationResult, error) {
-	rawURL, err := v.getRawGistURL(attr.URL)
+	// Extract the gist ID from the URL. Example: https://gist.github.com/username/abcdef123456
+	parts := strings.Split(attr.URL, "/")
+	if len(parts) < 1 {
+		return &VerificationResult{Success: false, Message: "Invalid Gist URL format.", VerifiedAt: time.Now().UnixMilli(), Kind: attr.Kind, URL: attr.URL, Account: attr.Account}, nil
+	}
+	gistID := parts[len(parts)-1]
+
+	url := fmt.Sprintf("%s/gists/%s", v.BaseURL, gistID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return v.fail(attr, fmt.Sprintf("invalid GitHub Gist URL: %v", err)), nil
+		return &VerificationResult{Success: false, Message: fmt.Sprintf("Failed to create GitHub API request: %v", err), VerifiedAt: time.Now().UnixMilli(), Kind: attr.Kind, URL: attr.URL, Account: attr.Account}, nil
 	}
 
-	resp, err := v.client.R().SetContext(ctx).Get(rawURL)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := v.Client.Do(req)
 	if err != nil {
-		return v.fail(attr, fmt.Sprintf("failed to fetch Gist content: %v", err)), nil
+		return &VerificationResult{Success: false, Message: fmt.Sprintf("Failed to execute GitHub API request: %v", err), VerifiedAt: time.Now().UnixMilli(), Kind: attr.Kind, URL: attr.URL, Account: attr.Account}, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return &VerificationResult{Success: false, Message: fmt.Sprintf("Gist not found: %s", gistID), VerifiedAt: time.Now().UnixMilli(), Kind: attr.Kind, URL: attr.URL, Account: attr.Account}, nil
 	}
 
-	if !resp.IsSuccess() {
-		return v.fail(attr, fmt.Sprintf("GitHub returned status %d", resp.StatusCode())), nil
+	if resp.StatusCode != http.StatusOK {
+		return &VerificationResult{Success: false, Message: fmt.Sprintf("GitHub API returned unexpected status: %d", resp.StatusCode), VerifiedAt: time.Now().UnixMilli(), Kind: attr.Kind, URL: attr.URL, Account: attr.Account}, nil
 	}
 
-	content := strings.TrimSpace(string(resp.Body()))
-	if !strings.Contains(content, attr.Account) {
-		return v.fail(attr, "Bobcoin account public key not found in Gist content."), nil
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &VerificationResult{Success: false, Message: fmt.Sprintf("Failed to read GitHub API response: %v", err), VerifiedAt: time.Now().UnixMilli(), Kind: attr.Kind, URL: attr.URL, Account: attr.Account}, nil
+	}
+
+	var gist struct {
+		Files map[string]struct {
+			Content string `json:"content"`
+		} `json:"files"`
+	}
+
+	if err := json.Unmarshal(body, &gist); err != nil {
+		return &VerificationResult{Success: false, Message: fmt.Sprintf("Failed to parse GitHub JSON response: %v", err), VerifiedAt: time.Now().UnixMilli(), Kind: attr.Kind, URL: attr.URL, Account: attr.Account}, nil
+	}
+
+	expectedAttestation := fmt.Sprintf("BOBTORRENT_IDENTITY:%s", attr.Account)
+
+	for _, file := range gist.Files {
+		if strings.Contains(file.Content, expectedAttestation) {
+			return &VerificationResult{
+				Success:    true,
+				Message:    "Identity successfully verified via GitHub Gist.",
+				VerifiedAt: time.Now().UnixMilli(),
+				Kind:       attr.Kind,
+				URL:        attr.URL,
+				Account:    attr.Account,
+			}, nil
+		}
 	}
 
 	return &VerificationResult{
-		Success:    true,
-		Message:    "GitHub identity successfully verified via Gist.",
+		Success:    false,
+		Message:    fmt.Sprintf("Verification failed: No file in Gist contains the expected attestation %s", expectedAttestation),
 		VerifiedAt: time.Now().UnixMilli(),
 		Kind:       attr.Kind,
 		URL:        attr.URL,
 		Account:    attr.Account,
 	}, nil
-}
-
-func (v *GitHubVerifier) getRawGistURL(inputURL string) (string, error) {
-	u, err := url.Parse(inputURL)
-	if err != nil {
-		return "", err
-	}
-
-	// If it's already a raw URL or a local test URL, return as is
-	if u.Host == "gist.githubusercontent.com" || strings.HasPrefix(u.Host, "127.0.0.1") || strings.HasPrefix(u.Host, "localhost") {
-		return inputURL, nil
-	}
-
-	// Transform standard gist URL: https://gist.github.com/{user}/{id}
-	// to raw URL: https://gist.github.com/{user}/{id}/raw
-	if u.Host == "gist.github.com" {
-		pathParts := strings.Split(strings.Trim(u.Path, "/"), "/")
-		if len(pathParts) < 2 {
-			return "", fmt.Errorf("invalid gist path structure")
-		}
-		return fmt.Sprintf("https://gist.github.com/%s/%s/raw", pathParts[0], pathParts[1]), nil
-	}
-
-	// For any other host, return as is (could be a custom raw URL)
-	return inputURL, nil
-}
-
-func (v *GitHubVerifier) fail(attr Attestation, msg string) *VerificationResult {
-	return &VerificationResult{
-		Success:    false,
-		Message:    "Verification failed: " + msg,
-		VerifiedAt: time.Now().UnixMilli(),
-		Kind:       attr.Kind,
-		URL:        attr.URL,
-		Account:    attr.Account,
-	}
 }

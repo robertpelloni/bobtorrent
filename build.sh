@@ -16,3 +16,12 @@ echo "Building WASM Storage Bridge..."
 GOOS=js GOARCH=wasm go build -buildvcs=false -o build/storage.wasm ./cmd/wasm/
 
 echo "Build complete."
+
+GOROOT=$(go env GOROOT)
+if [ -f "$GOROOT/lib/wasm/wasm_exec.js" ]; then
+    cp "$GOROOT/lib/wasm/wasm_exec.js" build/wasm_exec.js
+elif [ -f "$GOROOT/misc/wasm/wasm_exec.js" ]; then
+    cp "$GOROOT/misc/wasm/wasm_exec.js" build/wasm_exec.js
+else
+    echo "Warning: wasm_exec.js not found in GOROOT ($GOROOT)"
+fi

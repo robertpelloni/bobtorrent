@@ -910,6 +910,9 @@ func (l *Lattice) processBlockLockedDetailed(b *torrent.Block, persist bool) (bo
 		}
 	} else {
 		if frontier == nil {
+			if len(b.Account) < 16 {
+				return false, fmt.Errorf("account %s not open", b.Account)
+			}
 			return false, fmt.Errorf("account %s not open", b.Account[:16])
 		}
 		if b.Previous == nil || *b.Previous != frontier.Hash {
