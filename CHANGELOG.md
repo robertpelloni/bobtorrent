@@ -1,3 +1,16 @@
+## [11.60.44] - 2026-06-28
+### Sovereign Command Center UI Consolidation & Unified System Tray Controller
+- **Unified Command Console**: Redesigned and consolidated the BobTorrent Web UI (`web/ui/index.html`, `style.css`, `app.js`) from fragmented and isolated subpages into an intuitive, high-value Sovereign Command Center.
+- **Categorized High-Value Modules**:
+  - *Overview & Live Swarm Transfers*: Real-time peer/DHT telemetry, live swarm active transfers, and local blob chunk persistence inspect.
+  - *Publishing Studio & Asset Registry*: Asset ingestion pipeline with AES-256-GCM, BEP 44 DHT mutable item channel distribution, follower tracking, and durable local SQLite manifest registry.
+  - *Decentralized Mesh Chat*: Direct integration with `libp2p` GossipSub (`/ws-messenger`), topic discovery, real-time message stream, and persistent history hydration.
+  - *Cryptographic Identity & Sybil Attestation*: Ed25519 identity generation, key backup, and anti-sybil validation (GitHub Gist, ORCID, and signed URL with SSRF protection).
+  - *Bobcoin Wallet & Block Lattice Ledger*: Solana Devnet wallet management, devnet airdrops, and live Block Lattice consensus stream (`ws://127.0.0.1:4000/ws`).
+- **Comprehensive UI Guidance & Polish**: Added informative tooltips (`data-tooltip`), descriptive input labels, live status badges, and streamlined workflow navigation.
+- **Unified System Tray Controller**: Created `scripts/system_tray_controller.py` consolidating background daemon lifecycle management (ports 8000 and 4000) supporting both Pillow/pystray system tray graphical icon and headless daemon CLI fallback with graceful shutdown.
+- **Frontend Verification**: Completed Playwright end-to-end automated verification across all views and verified Go backend test suites.
+
 ## [11.60.52] - 2026-06-27
 ### Phase 8 Completion: Mega-Messenger Architecture
 - **Element-Web Integration Planning**: Finalized Phase 8 by defining the architecture for integrating the `element-web` Matrix frontend with the native Go `libp2p` GossipSub backend (documented in `element-web/ARCHITECTURE_ELEMENT.md`).
