@@ -45,3 +45,11 @@
 - E2E testing uses an in-memory test network avoiding race conditions by enforcing correct InfoHash routing on ingestion.
 - The HTTP APIs (`/api/ingest`, `/api/publish`, `/api/subscribe`, `/api/assets`) and Web UI are statically embedded and served concurrently without locking issues during HTTP streaming.
 
+## Command Console & System Tray Consolidation (v11.60.44)
+- Web UI has been consolidated from fractured tabs/subpages into a unified Sovereign Command Center with top-priority metrics and live transfers on the primary pane, backed by intuitive module tabs (Overview & Transfers, Publishing Studio & Registry, Decentralized Mesh Chat, Identity & Sybil Attestation, Bobcoin Wallet & Lattice Consensus).
+- Enhanced with inline tooltip explanations, live status beacons, and direct real-time polling to eliminate stale state.
+- System tray management consolidated into `scripts/system_tray_controller.py` providing complete daemon lifecycle controls (start, stop, restart, status, web console opening, graceful exit) across headless and GUI environments.
+
+## Mobile Messenger Light Client (v11.60.45)
+- Added `web/ui/mobile_preview.html`, providing a responsive light-node mobile chat interface wired to `cmd/supernode-go/mega_messenger_bridge.go` (`/mega-bridge`).
+- Supports light client control plane messaging, topic switching (`#global`, `#announcements`, `#market`, `#support`), real-time libp2p GossipSub broadcasting, and SQLite message history retrieval.
