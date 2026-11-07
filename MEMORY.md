@@ -50,6 +50,7 @@
 - Enhanced with inline tooltip explanations, live status beacons, and direct real-time polling to eliminate stale state.
 - System tray management consolidated into `scripts/system_tray_controller.py` providing complete daemon lifecycle controls (start, stop, restart, status, web console opening, graceful exit) across headless and GUI environments.
 
-## Mobile Messenger Light Client (v11.60.45)
+## Mobile Messenger Light Client & Integration (v11.60.46)
 - Added `web/ui/mobile_preview.html`, providing a responsive light-node mobile chat interface wired to `cmd/supernode-go/mega_messenger_bridge.go` (`/mega-bridge`).
+- Integrated a direct Mobile Preview launcher button in the Decentralized Mesh Chat header within `web/ui/index.html` to streamline side-by-side operator monitoring.
 - Supports light client control plane messaging, topic switching (`#global`, `#announcements`, `#market`, `#support`), real-time libp2p GossipSub broadcasting, and SQLite message history retrieval.

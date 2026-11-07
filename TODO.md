@@ -19,6 +19,7 @@
 - [x] Validate all consolidated dashboard features with Playwright end-to-end frontend tests.
 - [x] Create mobile-responsive Mega-Messenger web view (`web/ui/mobile_preview.html`) connecting to `/mega-bridge` WebSocket.
 - [x] Test mobile messenger topic switching, message publishing, and history retrieval with Playwright.
+- [x] Integrate direct mobile light node launcher into the Sovereign Command Center Mesh Chat view.
 
 # BobTorrent TODO
 

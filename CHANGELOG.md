@@ -1,3 +1,9 @@
+## [11.60.46] - 2026-06-29
+### Mobile Messenger Launcher Integration in Sovereign Command Center
+- **Direct Mobile Launcher**: Integrated an intuitive mobile light node launcher button (`📱 Mobile Preview`) directly into the Decentralized Mesh Chat header within the Sovereign Command Center (`web/ui/index.html`).
+- **Streamlined Workflow**: Allows operators to open the mobile messenger light client (`/mobile_preview.html`) side-by-side with the heavy node command console.
+- **Automated Verification**: Validated via Playwright screenshot capture (`verification/command_center_mesh_mobile_link.png`) and full Go test suite execution.
+
 ## [11.60.45] - 2026-06-28
 ### Mobile Messenger Light Node Web View & Bridge Integration
 - **Mobile Messenger Light Client Preview**: Implemented `web/ui/mobile_preview.html`, providing a responsive mobile messenger interface designed for Light Node clients.
