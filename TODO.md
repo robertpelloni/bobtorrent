@@ -17,6 +17,8 @@
 - [x] Redesign and consolidate fragmented Web UI into a singular, intuitive Sovereign Command Center.
 - [x] Unify system tray controller (`scripts/system_tray_controller.py`) with full start, stop, restart, status, web console opening, and graceful quit.
 - [x] Validate all consolidated dashboard features with Playwright end-to-end frontend tests.
+- [x] Create mobile-responsive Mega-Messenger web view (`web/ui/mobile_preview.html`) connecting to `/mega-bridge` WebSocket.
+- [x] Test mobile messenger topic switching, message publishing, and history retrieval with Playwright.
 
 # BobTorrent TODO
 

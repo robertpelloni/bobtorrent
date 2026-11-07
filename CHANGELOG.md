@@ -1,3 +1,9 @@
+## [11.60.45] - 2026-06-28
+### Mobile Messenger Light Node Web View & Bridge Integration
+- **Mobile Messenger Light Client Preview**: Implemented `web/ui/mobile_preview.html`, providing a responsive mobile messenger interface designed for Light Node clients.
+- **WebSocket Control Plane Wiring**: Connected directly to `cmd/supernode-go/mega_messenger_bridge.go` (`/mega-bridge`), supporting real-time chat publishing, topic switching across `#global`, `#announcements`, `#market`, and `#support`, and automatic history hydration.
+- **Automated Frontend Verification**: Verified with Playwright headless test capturing live message transmission and rendering in `verification/mobile_messenger_preview.png`.
+
 ## [11.60.44] - 2026-06-28
 ### Sovereign Command Center UI Consolidation & Unified System Tray Controller
 - **Unified Command Console**: Redesigned and consolidated the BobTorrent Web UI (`web/ui/index.html`, `style.css`, `app.js`) from fragmented and isolated subpages into an intuitive, high-value Sovereign Command Center.
