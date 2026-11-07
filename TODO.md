@@ -14,6 +14,11 @@
 - [x] Integrate Pub/Sub tracking layer into the Go daemon to listen for newly published manifests.
 - [x] Ensure all new API endpoints are fully integrated with the embedded Web UI.
 - [x] Update the UI to fully reflect active Pub/Sub status and real-time incoming manifests
+- [x] Redesign and consolidate fragmented Web UI into a singular, intuitive Sovereign Command Center.
+- [x] Unify system tray controller (`scripts/system_tray_controller.py`) with full start, stop, restart, status, web console opening, and graceful quit.
+- [x] Validate all consolidated dashboard features with Playwright end-to-end frontend tests.
+- [x] Create mobile-responsive Mega-Messenger web view (`web/ui/mobile_preview.html`) connecting to `/mega-bridge` WebSocket.
+- [x] Test mobile messenger topic switching, message publishing, and history retrieval with Playwright.
 
 # BobTorrent TODO
 
