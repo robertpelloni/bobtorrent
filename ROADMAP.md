@@ -46,6 +46,7 @@
 ## Phase 9: Trust Layer & Economics (Next)
 * [x] ORCID & URL Verifiers
 * [x] Mobile Messenger Light Node Web View (`web/ui/mobile_preview.html`) & WebSocket Bridge Wiring
+* [x] Command Center Mesh Chat Mobile Launcher Integration
 * [ ] Mobile Messenger Native Scaffold (React Native / Flutter)
 * [ ] Seeding Incentives (Bridge `accept_bid` lattice logic with Bobcoin rewards)
 * [ ] Messenger Polish (Typing indicators, rate limits)
