@@ -75,3 +75,6 @@ Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids f
 
 ## v11.60.52 two-node sync
 - lattice-go `-port`/`-peers` added. Fresh node2 (:4002, temp DB) + node1 (:4000, real 21-block DB): bootstrap applied 21 blocks, hashes match. Port map warning: bobcoin runs go-lattice on :4001 and go-supertorrent on :8000 — bobtorrent defaults collide with both; use -port 4002+/8001+ alongside bobcoin.
+
+## Autonomous background sync (2026-11-14)
+- Node2 (peer-registered via `-peers`) caught up 21->22 within one 30s sync interval after a new `achievement_unlock` block (`a278f148...`) was submitted to node1 only — no bootstrap call. Log: 'Autonomous sync: Peer http://127.0.0.1:4000 is ahead. Catching up...'. Chain now **22 blocks** on both node DBs. Multi-node story complete: bootstrap catch-up + autonomous reconciliation both live-proven.
