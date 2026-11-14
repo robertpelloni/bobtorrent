@@ -1,3 +1,7 @@
+## [11.60.49] - 2026-11-14
+### Operator Tools in Command Center
+- **Operator Tools** (Overview > Services & Network Health): SPoRA storage-proof runner (`GET /spora/{n}` — verified live, returns chunkHash), FHE oracle runner (`POST /fhe-oracle` — empty payload correctly 400s), pprof index/goroutine/heap links. Every backend endpoint on the supernode now has a dashboard surface.
+
 ## [11.60.48] - 2026-11-14
 ### Configurable HTTP Port + Lattice Feed Backoff
 - **`-port` flag** on supernode-go (default 8000): dashboard/tracker HTTP bind is now configurable (`main.HTTPPort`), so bobtorrent coexists with bobcoin's go-supertorrent on :8000. Verified live on :8001 â€” dashboard HTML, `/status` (version 11.60.48), `/stats`, `/blobs`, `/assets`, `/bankroll`, `/transactions`, `/status/i2p`, `/filecoin/status`, `/channels/browse` all HTTP 200 while :8000 stayed untouched.
@@ -221,3 +225,4 @@
 - **Observability**: Integrated `net/http/pprof` into `supernode-go` and `lattice-go` for production-grade profiling.
 - **I2P Discovery**: Enhanced anonymous signaling with I2P Datagrams and wired `I2P_PING` to the Mega-Bridge.
 - **Persistence Refinement**: Centralized ingestion registry storage within the torrent data directory using pure-Go SQLite.
+

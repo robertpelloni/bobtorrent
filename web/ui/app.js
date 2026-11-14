@@ -659,6 +659,17 @@ document.addEventListener('DOMContentLoaded', () => {
         try { const r = await fetch('/upload', { method: 'POST', body: fd }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Upload failed'); showBox('torrent-action-result', 'torrent-action-json', d); updateStatus(); } catch (e) { alert(e.message); }
     });
 
+    document.getElementById('btn-spora')?.addEventListener('click', async () => {
+        const c = document.getElementById('spora-challenge')?.value.trim();
+        if (!c) return alert('Enter an integer SPoRA challenge.');
+        try { const r = await fetch('/spora/' + encodeURIComponent(c)); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'SPoRA failed'); showBox('operator-result', 'operator-json', d); } catch (e) { alert(e.message); }
+    });
+    document.getElementById('btn-fhe')?.addEventListener('click', async () => {
+        const cipherText = document.getElementById('fhe-ciphertext')?.value.trim();
+        if (!cipherText) return alert('Enter an FHE ciphertext.');
+        try { const r = await fetch('/fhe-oracle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cipherText }) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'FHE oracle failed'); showBox('operator-result', 'operator-json', d); } catch (e) { alert(e.message); }
+    });
+
     // Polling intervals
     setInterval(updateStatus, 2000);
     setInterval(updateServices, 5000);

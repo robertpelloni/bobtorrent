@@ -25,3 +25,7 @@ Overview: telemetry, swarms, **Services & Network Health** (`/status`, `/status/
 - `-port` flag added (default 8000): `build\supernode-go.exe -headless -port 8001` serves the full dashboard alongside bobcoin :8000 — verified live (dashboard + 9 endpoints HTTP 200, /status version=11.60.48). Tray honors `BOBTORRENT_PORT`.
 - Lattice feed reconnect backoff 5s->60s (log spam fix).
 - Still awaiting: GitHub re-auth to push commits b0253d5 + v11.60.48; lattice-go left stopped (start via tray); I2P needs i2pd SAM on :7656.
+
+## v11.60.49 addendum
+- Operator Tools wired + live-verified on :8001 (SPoRA 200 w/ chunkHash, pprof 200, FHE empty->400). Dashboard endpoint coverage is now complete except `/matchmaking` + `/announce` (protocol endpoints, not operator UI) and `/submit-proof` (covered via Identity attestation flow).
+- Remaining blockers unchanged: GitHub re-auth for push (3 commits ahead after this one), bobcoin submodule bump decision, i2pd for I2P.

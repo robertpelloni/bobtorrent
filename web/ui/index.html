@@ -141,6 +141,23 @@
                         </div>
                         <div id="torrent-action-result" class="result-box hidden"><pre id="torrent-action-json"></pre></div>
                     </div>
+                    <div class="form-group" style="margin-top:14px">
+                        <label title="Operator-only tools: storage proof challenges, homomorphic oracle, and Go runtime profiling">Operator Tools</label>
+                        <div class="input-action-row">
+                            <input type="number" id="spora-challenge" placeholder="SPoRA challenge (integer)" title="Succinct Proof of Random Access challenge index — GET /spora/{challenge} returns the chunk hash proving this node stores the Core Arcade anchor">
+                            <button id="btn-spora" class="secondary-btn" title="Run a storage proof challenge against this node">Run SPoRA Proof</button>
+                        </div>
+                        <div class="input-action-row" style="margin-top:6px">
+                            <input type="text" id="fhe-ciphertext" placeholder="FHE ciphertext (base64/hex)" title="Encrypted payload evaluated homomorphically by the oracle — POST /fhe-oracle {cipherText}; the node never sees plaintext">
+                            <button id="btn-fhe" class="secondary-btn" title="Submit ciphertext to the FHE oracle">Run FHE Oracle</button>
+                        </div>
+                        <div class="input-action-row" style="margin-top:6px">
+                            <a href="/debug/pprof/" target="_blank" class="secondary-btn small-btn" style="text-decoration:none" title="Go runtime profiler index (goroutines, heap, CPU) — for performance diagnosis">pprof Index</a>
+                            <a href="/debug/pprof/goroutine?debug=1" target="_blank" class="secondary-btn small-btn" style="text-decoration:none" title="Live goroutine dump — find stuck or leaking routines">Goroutines</a>
+                            <a href="/debug/pprof/heap" target="_blank" class="secondary-btn small-btn" style="text-decoration:none" title="Heap profile download for memory analysis">Heap Profile</a>
+                        </div>
+                        <div id="operator-result" class="result-box hidden"><pre id="operator-json"></pre></div>
+                    </div>
                 </div>
 
                 <!-- Recent Local Blobs -->
