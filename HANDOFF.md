@@ -29,3 +29,7 @@ Overview: telemetry, swarms, **Services & Network Health** (`/status`, `/status/
 ## v11.60.49 addendum
 - Operator Tools wired + live-verified on :8001 (SPoRA 200 w/ chunkHash, pprof 200, FHE empty->400). Dashboard endpoint coverage is now complete except `/matchmaking` + `/announce` (protocol endpoints, not operator UI) and `/submit-proof` (covered via Identity attestation flow).
 - Remaining blockers unchanged: GitHub re-auth for push (3 commits ahead after this one), bobcoin submodule bump decision, i2pd for I2P.
+
+## v11.60.50 addendum
+- Fabricated lattice ledger removed; /lattice proxies real chain (empty = []). To see real blocks, submit via lattice-go /process (bobcoin-compat proxied at supernode /process too).
+- E2E pair (lattice:4000 + supernode:8001) verified working together; both left stopped (session processes do not persist).

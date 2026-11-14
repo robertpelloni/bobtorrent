@@ -1,3 +1,8 @@
+## [11.60.50] - 2026-11-14
+### Real Lattice Ledger (Fabricated Blocks Removed)
+- **`/lattice` no longer fabricates blocks**: it invented 5 synthetic blocks (heights 1024000-i, time-derived hashes) per call. Now proxies lattice-go `GET /blocks?limit=25` and maps hash/account/height/timestamp; empty or unreachable chain returns honest `[]` (dashboard reads 'No blocks confirmed yet'). Covered by `lattice_test.go` (proxy mapping + down-chain emptiness, both failed before the fix).
+- **E2E verified**: lattice-go + supernode `-headless -port 8001` below-normal — lattice WS feed connected, `/lattice` `[]` on empty chain, `/status` v11.60.50.
+
 ## [11.60.49] - 2026-11-14
 ### Operator Tools in Command Center
 - **Operator Tools** (Overview > Services & Network Health): SPoRA storage-proof runner (`GET /spora/{n}` — verified live, returns chunkHash), FHE oracle runner (`POST /fhe-oracle` — empty payload correctly 400s), pprof index/goroutine/heap links. Every backend endpoint on the supernode now has a dashboard surface.
