@@ -69,3 +69,9 @@
   - [x] Add asynchronous /api/ingest with progress tracking.
 - [ ] **Global decentralized storage network launch**
 - [ ] **Investigate unreachable `qbittorrent` remote**
+
+## Next (v11.60.48 candidates)
+- [ ] Add `-port` flag to supernode-go (HTTP, lattice proxy, tray SERVICES, UI fetches are hardcoded to :8000) OR document bobcoin go-supertorrent :8000 ownership handoff.
+- [ ] Link /debug/pprof + /spora + /fhe-oracle from Services & Network Health panel (operator section).
+- [ ] Decide bobcoin submodule pointer bump 31c79ff->09c5012 (pre-existing, uncommitted).
+- [ ] Start lattice-go persistently (tray Start All) so lattice feed stops retry-spamming supernode logs.

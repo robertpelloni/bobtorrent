@@ -585,17 +585,20 @@ document.addEventListener('DOMContentLoaded', () => {
             btnAirdrop.disabled = true;
 
             try {
-                // Request airdrop via backend or mock devnet confirmation
+                // No airdrop endpoint exists on this daemon. Show the real
+                // state instead of fabricating a confirmation/balance.
                 const res = await fetch('/api/wallet/airdrop', { method: 'POST' }).catch(() => null);
-                let resultData = { status: 'Confirmed', amount: '1.0 SOL', tx: 'sol_tx_' + Date.now().toString(36) };
-                if (res && res.ok) {
-                    resultData = await res.json();
+                if (!res || !res.ok) {
+                    airdropJson.textContent = JSON.stringify({
+                        status: 'UNAVAILABLE',
+                        detail: 'This daemon exposes no /api/wallet/airdrop endpoint, so no SOL was credited. Use a Solana Devnet faucet against the address above.'
+                    }, null, 2);
+                    airdropResult.classList.remove('hidden');
+                    return;
                 }
+                const resultData = await res.json();
                 airdropJson.textContent = JSON.stringify(resultData, null, 2);
                 airdropResult.classList.remove('hidden');
-
-                const balElem = document.getElementById('wallet-balance');
-                if (balElem) balElem.textContent = '1.0 SOL';
             } catch (err) {
                 alert('Airdrop failed: ' + err.message);
             } finally {
@@ -605,14 +608,69 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Services & Network Health + Economy + Torrent actions
+    async function jget(url) { const r = await fetch(url); if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); }
+    function showBox(boxId, preId, data) { const b = document.getElementById(boxId), p = document.getElementById(preId); if (b && p) { p.textContent = JSON.stringify(data, null, 2); b.classList.remove('hidden'); } }
+
+    async function updateServices() {
+        const table = document.getElementById('services-table')?.querySelector('tbody');
+        if (!table) return;
+        const rows = [];
+        try { const s = await jget('/status'); rows.push(['Supernode (HTTP :8000)', s.status === 'online', `v${s.version || '?'} · ${s.service || ''}`]); const fv = document.getElementById('footer-version'); if (fv && s.version) fv.textContent = s.version; } catch { rows.push(['Supernode (HTTP :8000)', false, 'unreachable']); }
+        try { const s = await jget('/status/i2p'); rows.push(['I2P Anonymous Datagrams', !!s.enabled, s.status || '']); } catch { rows.push(['I2P Anonymous Datagrams', false, 'unreachable']); }
+        try { const s = await jget('/filecoin/status'); rows.push(['Filecoin Archival Bridge', s.enabled !== false && s.mode !== 'disabled', s.mode || JSON.stringify(s).substring(0, 60)]); } catch { rows.push(['Filecoin Archival Bridge', false, 'unreachable']); }
+        try { const c = await jget('/channels/browse'); const first = Array.isArray(c) ? c[0] : null; rows.push(['Public DHT Swarm Channel', !!first, first ? `${first.peers ?? 0} peers · ${first.dhtNodes ?? 0} DHT nodes` : 'none']); } catch { rows.push(['Public DHT Swarm Channel', false, 'unreachable']); }
+        table.innerHTML = rows.map(([n, on, d]) => `<tr><td>${n}</td><td><span class="badge ${on ? 'success' : 'danger'}">${on ? 'ONLINE' : 'OFF'}</span></td><td class="mono">${d}</td></tr>`).join('');
+    }
+
+    async function updateEconomy() {
+        try { const b = await jget('/bankroll'); const bal = document.getElementById('bankroll-balance'), st = document.getElementById('bankroll-status'); if (bal) bal.textContent = b.balance ?? '—'; if (st) st.textContent = b.status || '—'; } catch {}
+        try {
+            const txs = await jget('/transactions'); const table = document.getElementById('transactions-table')?.querySelector('tbody'); if (!table) return;
+            const list = Array.isArray(txs) ? txs : (txs.transactions || []);
+            table.innerHTML = list.length ? '' : '<tr><td colspan="4">No economy transactions yet.</td></tr>';
+            list.slice(-10).reverse().forEach(tx => { const tr = document.createElement('tr'); tr.innerHTML = `<td>${tx.type || tx.kind || ''}</td><td>${tx.amount ?? ''}</td><td class="mono">${String(tx.hash || tx.id || '').substring(0, 20)}</td><td>${tx.timestamp ? new Date(tx.timestamp).toLocaleString() : ''}</td>`; table.appendChild(tr); });
+        } catch {}
+    }
+
+    async function economyAction(kind) {
+        const amount = parseFloat(document.getElementById('economy-amount')?.value);
+        const reason = document.getElementById('economy-reason')?.value.trim() || '';
+        if (!amount || amount <= 0) return alert('Enter an amount greater than 0.');
+        try { const r = await fetch('/' + kind, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, reason }) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || kind + ' failed'); showBox('economy-result', 'economy-json', d); updateEconomy(); } catch (e) { alert(e.message); }
+    }
+    document.getElementById('btn-mint')?.addEventListener('click', () => economyAction('mint'));
+    document.getElementById('btn-burn')?.addEventListener('click', () => economyAction('burn'));
+
+    document.getElementById('btn-add-torrent')?.addEventListener('click', async () => {
+        const magnet = document.getElementById('magnet-input')?.value.trim();
+        if (!magnet) return alert('Paste a magnet link first.');
+        try { const r = await fetch('/add-torrent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ magnet }) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Add failed'); showBox('torrent-action-result', 'torrent-action-json', d); updateStatus(); } catch (e) { alert(e.message); }
+    });
+    document.getElementById('btn-remove-torrent')?.addEventListener('click', async () => {
+        const infoHash = document.getElementById('magnet-input')?.value.trim();
+        if (!infoHash) return alert('Enter the 40-char InfoHash to remove.');
+        try { const r = await fetch('/remove-torrent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ infoHash }) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Remove failed'); showBox('torrent-action-result', 'torrent-action-json', d); updateStatus(); } catch (e) { alert(e.message); }
+    });
+    document.getElementById('btn-upload-torrent')?.addEventListener('click', async () => {
+        const file = document.getElementById('upload-file')?.files?.[0];
+        if (!file) return alert('Choose a file to upload & seed.');
+        const fd = new FormData(); fd.append('file', file);
+        try { const r = await fetch('/upload', { method: 'POST', body: fd }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Upload failed'); showBox('torrent-action-result', 'torrent-action-json', d); updateStatus(); } catch (e) { alert(e.message); }
+    });
+
     // Polling intervals
     setInterval(updateStatus, 2000);
+    setInterval(updateServices, 5000);
+    setInterval(updateEconomy, 5000);
     setInterval(updateBlobs, 4000);
     setInterval(updateAssets, 5000);
     setInterval(updateLattice, 3000);
     setInterval(refreshSubscriptions, 5000);
 
     // Initial triggers
+    updateServices();
+    updateEconomy();
     updateStatus();
     updateBlobs();
     updateAssets();

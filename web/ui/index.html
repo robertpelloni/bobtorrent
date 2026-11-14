@@ -112,6 +112,37 @@
                     </div>
                 </div>
 
+                <!-- Services & Network Health ( /status, /status/i2p, /filecoin/status, /channels/browse ) -->
+                <div class="card section-card">
+                    <div class="card-title-row">
+                        <h3><span class="icon">🛰️</span> Services &amp; Network Health</h3>
+                        <span class="badge" title="Live health of every backend subsystem behind this console — if a row says OFF, that feature is not running">All Subsystems</span>
+                    </div>
+                    <div class="table-container">
+                        <table id="services-table">
+                            <thead><tr>
+                                <th title="Backend subsystem">Service</th>
+                                <th title="Live state reported by the daemon">State</th>
+                                <th title="Endpoint or detail">Detail</th>
+                            </tr></thead>
+                            <tbody><tr><td colspan="3">Probing services…</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div class="form-group" style="margin-top:12px">
+                        <label for="magnet-input" title="Add a torrent to the swarm by magnet link (POST /add-torrent), upload a file (POST /upload), or remove by InfoHash (POST /remove-torrent)">Add / Remove Torrent</label>
+                        <div class="input-action-row">
+                            <input type="text" id="magnet-input" placeholder="magnet:?xt=urn:btih:…  or 40-char InfoHash to remove">
+                            <button id="btn-add-torrent" class="primary-btn" title="Start downloading/seeding this magnet link">Add Magnet</button>
+                            <button id="btn-remove-torrent" class="secondary-btn" title="Stop and remove the torrent with this InfoHash">Remove</button>
+                        </div>
+                        <div class="input-action-row" style="margin-top:6px">
+                            <input type="file" id="upload-file" title="Upload a file; the daemon builds and seeds a torrent from it">
+                            <button id="btn-upload-torrent" class="secondary-btn" title="Upload file and register it as a seeded torrent">Upload &amp; Seed File</button>
+                        </div>
+                        <div id="torrent-action-result" class="result-box hidden"><pre id="torrent-action-json"></pre></div>
+                    </div>
+                </div>
+
                 <!-- Recent Local Blobs -->
                 <div class="card section-card">
                     <div class="card-title-row">
@@ -409,6 +440,29 @@
                     </div>
                 </div>
 
+                <!-- Economy: bankroll, mint/burn, transactions ( /bankroll, /mint, /burn, /transactions ) -->
+                <div class="card section-card">
+                    <div class="card-title-row">
+                        <h3><span class="icon">🏦</span> Node Economy (Bankroll &amp; Ledger)</h3>
+                        <span class="badge" title="The supernode's own economy ledger — distinct from the Solana Devnet wallet above">Supernode Ledger</span>
+                    </div>
+                    <div class="stat-row"><label title="Spendable balance held by this node">Bankroll Balance:</label><span class="value-highlight" id="bankroll-balance">—</span></div>
+                    <div class="stat-row"><label title="Sync state of the node wallet">Wallet Sync:</label><span class="value-highlight" id="bankroll-status">—</span></div>
+                    <div class="input-action-row" style="margin:10px 0">
+                        <input type="number" id="economy-amount" min="0" step="any" placeholder="Amount" title="Amount to mint or burn">
+                        <input type="text" id="economy-reason" placeholder="Reason (optional)" title="Memo recorded with the transaction">
+                        <button id="btn-mint" class="primary-btn" title="Mint new balance to this node (POST /mint)">Mint</button>
+                        <button id="btn-burn" class="secondary-btn" title="Burn balance from this node (POST /burn)">Burn</button>
+                    </div>
+                    <div id="economy-result" class="result-box hidden"><pre id="economy-json"></pre></div>
+                    <div class="table-container small-table" style="margin-top:10px">
+                        <table id="transactions-table">
+                            <thead><tr><th title="Transaction type">Type</th><th title="Amount moved">Amount</th><th title="Transaction hash / id">Hash</th><th title="When recorded">Time</th></tr></thead>
+                            <tbody><tr><td colspan="4">No economy transactions yet.</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Lattice Visualization Table -->
                 <div class="card section-card">
                     <div class="card-title-row">
@@ -436,7 +490,7 @@
 
         <footer>
             <div class="footer-left">
-                <span>BobTorrent Sovereign Omni-Workspace</span> &bull; <span>Version <span id="footer-version">11.60.44</span></span>
+                <span>BobTorrent Sovereign Omni-Workspace</span> &bull; <span>Version <span id="footer-version">11.60.47</span></span>
             </div>
             <div class="footer-right">
                 <span title="Continuous autonomous peer synchronization">Autopilot Mesh Active</span>

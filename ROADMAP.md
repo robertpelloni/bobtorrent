@@ -50,3 +50,9 @@
 * [ ] Mobile Messenger Native Scaffold (React Native / Flutter)
 * [ ] Seeding Incentives (Bridge `accept_bid` lattice logic with Bobcoin rewards)
 * [ ] Messenger Polish (Typing indicators, rate limits)
+
+## Phase 9 addendum (v11.60.47)
+- [x] Headless/tray parity: `-headless` now serves the full dashboard + APIs (was HTTP-less).
+- [x] Single-source versioning enforced at runtime (`main.Version` -> `/status` -> UI footer).
+- [ ] Configurable listen port to coexist with bobcoin go-supertorrent on :8000.
+- [ ] Operator surface for pprof/Spora/FHE-oracle in the Command Center.

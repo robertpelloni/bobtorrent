@@ -6,6 +6,8 @@ echo "Building bobtorrent (Omni-Workspace)..."
 VERSION=$(cat VERSION)
 
 echo "Building Go Port..."
+# Pure-Go stack (modernc sqlite); avoids broken local CGO toolchains.
+export CGO_ENABLED="${CGO_ENABLED:-0}"
 mkdir -p build
 
 go build -ldflags="-X main.Version=$VERSION" -buildvcs=false -o build/supernode-go ./cmd/supernode-go/

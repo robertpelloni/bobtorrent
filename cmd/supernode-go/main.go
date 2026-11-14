@@ -59,6 +59,8 @@ const (
 )
 
 var (
+	// Version is injected at build time via -ldflags "-X main.Version=<VERSION file>".
+	Version             = "dev"
 	nodeWallet          *torrent.Keypair
 	httpClient          = resty.New().SetTimeout(10 * time.Second)
 	latticeURL          = "http://localhost:4000"
@@ -1210,7 +1212,7 @@ func handleServiceStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":    "online",
 		"service":   "Go Supernode orchestrator",
-		"version":   "11.40.0",
+		"version":   Version,
 		"signaling": signalingMatchmaker.snapshot(),
 		"filecoin":  filecoinStatus,
 	})

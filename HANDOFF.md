@@ -1,70 +1,22 @@
-# Session Handoff (v11.60.46)
+﻿# Session Handoff (v11.60.47)
 
-## 🏁 Summary of Achievements
-- **Consolidated Sovereign Command Center UI**: Reorganized the Web UI into 5 high-value modules with full telemetry, transfers, publishing, chat, identity, and lattice ledger visualization.
-- **Unified System Tray Controller**: Created `scripts/system_tray_controller.py` for headless CLI and GUI desktop system tray lifecycle management.
-- **Mobile Messenger Light Client Preview & Command Center Launcher**: Implemented `web/ui/mobile_preview.html` connected via `/mega-bridge` WebSocket, and integrated a direct launcher button (`📱 Mobile Preview`) in the Command Center Mesh Chat view for streamlined side-by-side operator workflows.
-- **Comprehensive Verification**: Validated via `./build.sh`, `go test ./...`, and Playwright automated tests (`verification/command_center_mesh_mobile_link.png` and `verification/mobile_messenger_preview.png`).
+## What was broken at session start (all fixed + verified this session)
+1. **`-headless` served no dashboard** — `main_wrapper.go` never called `startTrackerServices()`. The tray's launch mode had zero HTTP. Now headless = full service set, blocks on signals. Proven in logs: DHT :6882, libp2p messenger :6883, HTTP bind attempted, `Headless supernode v11.60.47 started`.
+2. **`/status` lied about version** — hardcoded `11.40.0`; now `main.Version` from `-X main.Version` (VERSION file = single source). Test: `cmd/supernode-go/version_status_test.go`.
+3. **No tray icon on Windows, ever** — gated on `$DISPLAY`, used `lsof` + extensionless paths. Rewritten cross-platform; GUI tray verified live (pystray+Pillow present). Quit stops services; stop only kills PIDs whose image matches our binaries.
+4. **Airdrop button fabricated success** — now reports UNAVAILABLE, credits nothing (no such endpoint exists).
+5. **`build.bat` could not build** — single-file `go build main.go` on a multi-file package, plus blocking `pause` + unrelated `npm install`. Rebuilt; `build.sh`/`build.bat` both default `CGO_ENABLED=0` (local mingw gcc emits objects Go cannot parse — this is also why plain `go test` fails here without it).
 
-## 🏗️ Current System State
-- **Binary Status**: `supernode-go`, `lattice-go`, `dht-proxy`, and `storage.wasm` build cleanly via `./build.sh`.
-- **Submodules**: `bobcoin` and `element-web` synchronized.
-- **Version Status**: `11.60.46`.
+## Dashboard (single page, 5 tabs, unchanged IA — coverage completed)
+Overview: telemetry, swarms, **Services & Network Health** (`/status`, `/status/i2p`, `/filecoin/status`, `/channels/browse`), **Add/Remove/Upload torrents**, blobs. Publishing: ingest/publish/subscribe/assets (unchanged). Mesh Chat + Mobile Preview (unchanged). Identity & Attestation (unchanged). Wallet: Solana wallet, **Node Economy** (`/bankroll`, `/transactions`, `/mint`, `/burn`), lattice ledger. Still no UI for: `/spora/*` proof, `/fhe-oracle`, `/matchmaking` signaling, `/debug/pprof` (operator-only by design — link from Services panel is a reasonable next step).
 
-## 🚀 Next Steps
-- Expand mobile messenger with end-to-end envelope encryption and audio/media note previews.
-- Continue testing and hardening the libp2p envelope dispatcher and element-web integration.
-# Handoff: Monorepo Unification and Mega-Messenger Bridge (v11.60.31)
+## NOT running right now (needs a human decision, not more code)
+- **:8000 is owned by bobcoin's `go-supertorrent.exe` v8.117.3** ("Go Game Server orchestrator"), NOT bobtorrent. Bobtorrent's dashboard cannot bind :8000 until that process stops or the supernode gets a configurable port. I did not kill it (not this project's process). **Next step candidates: (a) stop bobcoin's server when you want bobtorrent in front, or (b) add `-port` flag to supernode-go (HTTP + latticeURL + tray + UI are all hardcoded to 8000 today).**
+- **lattice-go (:4000) not running** — verified it binds and serves HTTP 200 below-normal; left stopped after the smoke test. Start via tray or `build\lattice-go.exe`.
+- **I2P datagrams OFF** — no SAM bridge at localhost:7656 (expected; install/run i2pd to enable). Filecoin bridge mode depends on Lotus config.
+- Edge CDP :9222 and HyperNexus kernel :7778 are up and healthy (not this repo's processes).
 
-## Session Summary
-This session successfully unified the Bobtorrent Go kernel into a single monorepo, achieving 100% feature parity with the legacy submodule while significantly enhancing the decentralized messaging layer. All core logic now resides in root `cmd/`, `internal/`, and `pkg/` directories.
-
-## Key Achievements
-1. **Kernel Unification**: Migrated `streaming`, `i2p`, `wallet`, `pkg/dht`, and `pkg/storage` from the legacy `bobtorrent/` submodule. Corrected all import paths.
-2. **API Feature Parity**: Restored and unified missing application logic in `cmd/supernode-go/`:
-   - `blobs.go`: Physically stored blob listing (`/blobs`).
-   - `lattice.go`: Mocked block lattice state for visualization (`/lattice`).
-   - `channels.go`: Active DHT swarm summary (`/channels/browse`).
-3. **Web UI Consolidation**: Fully merged the root UI with legacy elements.
-   - Restored "Registry", "Wallet", and "Lattice" tabs.
-   - Integrated 70+ tooltips and descriptions for a production-grade feel.
-   - Fully wired all tabs to the unified Go backend.
-4. **Messenger Enhancement**:
-   - Enhanced `internal/transport/messenger.go` with auto-topic joining and persistence support.
-   - Deepened `cmd/supernode-go/mega_messenger_bridge.go` to support the "Control Plane" pattern, allowing decoupled Light Node UIs to perform JOIN, LEAVE, PUBLISH, and FETCH_HISTORY actions via WebSocket.
-5. **Driver Portability**: Migrated `pkg/storage/registry.go` to use the pure-Go `modernc.org/sqlite` driver, eliminating CGO dependencies for the storage registry.
-
-## Current State
-- **Build**: `./build.sh` produces `supernode-go`, `lattice-go`, and `dht-proxy`. (Note: WASM build failure is a known environment issue with `modernc.org/libc` and doesn't affect kernel stability).
-- **Tests**: `go test ./...` passes all tests.
-- **UI**: 100% functional and visually verified. Served at `:8000`.
-
-## Next Steps
-1. **Game Engine Asset Ingestion Path**: Implement a specialized ingestion loop for large game assets that optimizes sharding for real-time streaming.
-2. **Element-Web Integration**: Begin active porting of `element-web` UI components into a dedicated Light Node frontend that targets the `/mega-bridge` WebSocket.
-3. **Global Launch Checklist**: Create a `LAUNCH.md` document to track bootstrapper node deployment and DNS readiness for the decentralized storage network.
-
-## Context & Quirks
-- The `bobtorrent/` directory has been removed. Do not attempt to use it as an import path.
-- The `supernode-go` entry point is managed by a wrapper (`main_wrapper.go`) to support the `-headless` flag.
-- Playwright verification script is available at `/home/jules/verification/verify_ui.py`.
-
-Proceed with excellence. The party never stops!
-
-## Game Engine Asset Ingestion (v11.60.32)
-- Successfully implemented a high-performance ingestion pipeline in `internal/ingest`.
-- `IngestionService` supports streaming encryption (AES-256-GCM) and sharding with asynchronous processing.
-- New API: `POST /api/ingest` with `async: true` returns a `jobId`.
-- New API: `GET /ingest/status?id=...` provides real-time progress tracking.
-- Progress: Phase 8 Game Ingestion path is now scaffolded and functional for large files.
-
-## Mega-Messenger Evolution (v11.60.33)
-- Successfully defined the `Envelope` protocol in `pkg/messenger`. This standardizes metadata-blinded messaging for Chat, Market, and Blockchain actions.
-- `Messenger` now supports publishing and unmarshaling these Envelopes.
-- `/mega-bridge` WebSocket is upgraded to support `PUBLISH_ENVELOPE`.
-- Established `docs/MEGA_MESSENGER_INTEGRATION.md` as the guide for the Element-Web UI port.
-
-## Performance & Signaling (v11.60.35)
-- Integrated `pprof` into both `supernode-go` (port 8000) and `lattice-go` (port 4000) for real-time performance analysis.
-- Refined I2P Datagram support for anonymous signaling, including a new `I2P_PING` control message in the Mega-Bridge.
-- Unified the ingestion registry path within the primary torrent data directory.
+## State
+- Version 11.60.47. Build: `cmd /c build.bat` OK (supernode-go.exe, lattice-go.exe, dht-proxy.exe, storage.wasm). Tests: all Go packages pass with `CGO_ENABLED=0`.
+- Pre-existing uncommitted `bobcoin` submodule pointer bump (31c79ff→09c5012) and untracked `.hypernexus/` were left untouched — not mine to commit.
+- The 15-minute autopilot loop (cron 91f8f159) re-runs "please continue to proceed as you advise"; delete it when the party should stop.

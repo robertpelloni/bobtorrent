@@ -1,3 +1,13 @@
+## [11.60.47] - 2026-11-14
+### Headless Dashboard Fix, Tray on Windows, Full Backend Coverage in UI
+- **Critical fix — headless mode served nothing**: `cmd/supernode-go/main_wrapper.go` `-headless` branch never called `startTrackerServices()`, so the tray-launched daemon had no HTTP dashboard/API on :8000. Headless now starts the identical service set as the TUI path (tracker+HTTP, DHT, messenger, I2P, ingestion, Filecoin bridge, market poller, lattice feed) and blocks on SIGINT/SIGTERM.
+- **Version truth**: added `main.Version` (ldflags `-X main.Version=`, already passed by build scripts); `/status` reported hardcoded `11.40.0`, now reports the build version. Covered by `cmd/supernode-go/version_status_test.go`. Footer version is overwritten live from `/status`.
+- **Tray controller now works on Windows**: was gated on `$DISPLAY` (never set on Windows, so no tray icon ever appeared), used `lsof` and extensionless `./build/supernode-go`. Now: `.exe` resolution, `build.bat` builds, `taskkill`/CIM port-owner lookup that only stops processes whose image matches our binaries, below-normal priority spawns, live status title, Quit stops services. GUI tray verified running with pystray+Pillow.
+- **Dashboard coverage completed** (still one page, 5 value-ordered tabs): Overview gains Services & Network Health (`/status`, `/status/i2p`, `/filecoin/status`, `/channels/browse`) plus Add Magnet / Remove / Upload & Seed (`/add-torrent`, `/remove-torrent`, `/upload`); Wallet tab gains Node Economy (`/bankroll`, `/transactions`, `/mint`, `/burn`). Every control carries a descriptive label + tooltip naming its endpoint.
+- **Honesty fix**: Devnet Airdrop button fabricated a confirmed 1.0 SOL credit when the (nonexistent) endpoint failed; it now shows UNAVAILABLE and credits nothing.
+- **Build scripts**: `build.bat` rebuilt — package-path builds (single-file `go build main.go` cannot compile this package), no unrelated `npm install`, no blocking `pause`, `CGO_ENABLED=0` (local mingw emits unparseable objects); `build.sh` defaults `CGO_ENABLED=0` likewise.
+- **Verified**: `cmd /c build.bat` (4 artifacts), `go test ./cmd/supernode-go/ ./internal/... ./pkg/...` all pass, headless + lattice-go launched below-normal and log-watched.
+
 ## [11.60.46] - 2026-06-29
 ### Mobile Messenger Launcher Integration in Sovereign Command Center
 - **Direct Mobile Launcher**: Integrated an intuitive mobile light node launcher button (`📱 Mobile Preview`) directly into the Decentralized Mesh Chat header within the Sovereign Command Center (`web/ui/index.html`).
