@@ -43,3 +43,6 @@ Overview: telemetry, swarms, **Services & Network Health** (`/status`, `/status/
 
 ## Receive transition (2026-11-14)
 - A height-2 `send` (500, `6201d5a5...`) + B height-1 `receive` (`2262c498...`) accepted. Chain: 5 blocks. Balances A=995587, B=1499 (1000 decayed + 500). open/send/receive all live-verified through the real HTTP path; dashboard `/lattice` count=5. Remaining transition types (stake/swap/NFT/governance) are unit-tested in `internal/consensus` but not yet exercised live.
+
+## Stake transition (2026-11-14)
+- B height-2 `stake` of 200 (`54a775ee...`) accepted live. Chain: 6 blocks. B frontier: balance 1297, staked_balance 200, height 2. Live-verified types now: open, send, receive, stake. Remaining live-unverified: unstake (yield-bearing), swaps, NFT, governance, publish_manifest.
