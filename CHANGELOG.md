@@ -1,3 +1,9 @@
+## [11.60.48] - 2026-11-14
+### Configurable HTTP Port + Lattice Feed Backoff
+- **`-port` flag** on supernode-go (default 8000): dashboard/tracker HTTP bind is now configurable (`main.HTTPPort`), so bobtorrent coexists with bobcoin's go-supertorrent on :8000. Verified live on :8001 — dashboard HTML, `/status` (version 11.60.48), `/stats`, `/blobs`, `/assets`, `/bankroll`, `/transactions`, `/status/i2p`, `/filecoin/status`, `/channels/browse` all HTTP 200 while :8000 stayed untouched.
+- **Tray**: honors `BOBTORRENT_PORT` env (default 8000), passes `-port` through, dashboard link follows it.
+- **Lattice feed log spam**: reconnect backoff 5s→60s exponential (was a flat 5s retry forever when lattice-go is down).
+
 ## [11.60.47] - 2026-11-14
 ### Headless Dashboard Fix, Tray on Windows, Full Backend Coverage in UI
 - **Critical fix — headless mode served nothing**: `cmd/supernode-go/main_wrapper.go` `-headless` branch never called `startTrackerServices()`, so the tray-launched daemon had no HTTP dashboard/API on :8000. Headless now starts the identical service set as the TUI path (tracker+HTTP, DHT, messenger, I2P, ingestion, Filecoin bridge, market poller, lattice feed) and blocks on SIGINT/SIGTERM.

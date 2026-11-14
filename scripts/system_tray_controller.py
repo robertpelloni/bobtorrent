@@ -29,8 +29,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 IS_WINDOWS = sys.platform.startswith("win")
 EXE = ".exe" if IS_WINDOWS else ""
 
+_SUPERNODE_PORT = int(os.environ.get("BOBTORRENT_PORT", "8000"))
 SERVICES = {
-    "supernode-go": {"port": 8000, "bin": f"build/supernode-go{EXE}", "args": ["-headless"]},
+    "supernode-go": {"port": _SUPERNODE_PORT, "bin": f"build/supernode-go{EXE}",
+                     "args": ["-headless", "-port", str(_SUPERNODE_PORT)]},
     "lattice-go": {"port": 4000, "bin": f"build/lattice-go{EXE}", "args": []},
 }
 
@@ -147,7 +149,7 @@ def restart_services():
 
 
 def open_dashboard():
-    url = "http://localhost:8000"
+    url = f"http://localhost:{_SUPERNODE_PORT}"
     print(f"[SystemTray] Opening dashboard at {url}")
     try:
         import webbrowser

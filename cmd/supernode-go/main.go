@@ -60,7 +60,11 @@ const (
 
 var (
 	// Version is injected at build time via -ldflags "-X main.Version=<VERSION file>".
-	Version             = "dev"
+	Version = "dev"
+	// HTTPPort is the dashboard/tracker HTTP listen port, set by the -port
+	// flag (default 8000). Configurable so this node can coexist with other
+	// local servers (e.g. bobcoin's go-supertorrent) already bound to :8000.
+	HTTPPort = 8000
 	nodeWallet          *torrent.Keypair
 	httpClient          = resty.New().SetTimeout(10 * time.Second)
 	latticeURL          = "http://localhost:4000"
@@ -407,8 +411,9 @@ func startTrackerServices() {
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	go func() {
-		if err := http.ListenAndServe(":8000", mux); err != nil {
-			log.Printf("HTTP tracker failed: %v", err)
+		addr := fmt.Sprintf(":%d", HTTPPort)
+		if err := http.ListenAndServe(addr, mux); err != nil {
+			log.Printf("HTTP tracker failed on %s: %v", addr, err)
 		}
 	}()
 
@@ -870,20 +875,29 @@ func acceptBid(bidID string, amount int64, infoHash string) {
 }
 
 func startLatticeFeedListener() {
+	// Exponential backoff (5s -> 60s cap) so a stopped lattice-go does not
+	// spam the log every 5 seconds forever; resets after a live connection.
+	backoff := 5 * time.Second
 	for {
-		listenToLatticeFeed()
-		time.Sleep(5 * time.Second)
+		connected := listenToLatticeFeed()
+		if connected {
+			backoff = 5 * time.Second
+		}
+		time.Sleep(backoff)
+		if backoff < 60*time.Second {
+			backoff *= 2
+		}
 	}
 }
 
-func listenToLatticeFeed() {
+func listenToLatticeFeed() bool {
 	wsURL := strings.Replace(latticeURL, "http://", "ws://", 1)
 	wsURL = strings.Replace(wsURL, "https://", "wss://", 1)
 
 	parsed, err := url.Parse(wsURL)
 	if err != nil {
 		log.Printf("invalid lattice ws url: %v", err)
-		return
+		return false
 	}
 	if parsed.Path == "" {
 		parsed.Path = "/"
@@ -892,7 +906,7 @@ func listenToLatticeFeed() {
 	conn, _, err := websocket.DefaultDialer.Dial(parsed.String(), nil)
 	if err != nil {
 		log.Printf("lattice websocket dial failed: %v", err)
-		return
+		return false
 	}
 	defer conn.Close()
 
@@ -909,7 +923,7 @@ func listenToLatticeFeed() {
 
 		if err := conn.ReadJSON(&msg); err != nil {
 			log.Printf("lattice websocket closed: %v", err)
-			return
+			return true
 		}
 
 		publishNetworkStats(msg.Chains, msg.TotalBlocks)

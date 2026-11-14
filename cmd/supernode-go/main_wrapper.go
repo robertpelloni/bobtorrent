@@ -12,7 +12,11 @@ import (
 
 func main() {
 	headless := flag.Bool("headless", false, "run without TUI (HTTP dashboard + all services, no terminal UI)")
+	port := flag.Int("port", 8000, "HTTP dashboard/tracker listen port (use e.g. 8001 when :8000 is taken by another local server)")
 	flag.Parse()
+	if *port > 0 && *port < 65536 {
+		HTTPPort = *port
+	}
 
 	if *headless {
 		runHeadless()
@@ -55,7 +59,7 @@ func runHeadless() {
 	go startMarketPoller()
 	go startLatticeFeedListener()
 
-	log.Printf("Headless supernode v%s started on :8000 (dashboard: http://localhost:8000)", Version)
+	log.Printf("Headless supernode v%s started on :%d (dashboard: http://localhost:%d)", Version, HTTPPort, HTTPPort)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)

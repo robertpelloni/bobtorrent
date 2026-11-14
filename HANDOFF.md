@@ -20,3 +20,8 @@ Overview: telemetry, swarms, **Services & Network Health** (`/status`, `/status/
 - Version 11.60.47. Build: `cmd /c build.bat` OK (supernode-go.exe, lattice-go.exe, dht-proxy.exe, storage.wasm). Tests: all Go packages pass with `CGO_ENABLED=0`.
 - Pre-existing uncommitted `bobcoin` submodule pointer bump (31c79ff→09c5012) and untracked `.hypernexus/` were left untouched — not mine to commit.
 - The 15-minute autopilot loop (cron 91f8f159) re-runs "please continue to proceed as you advise"; delete it when the party should stop.
+
+## v11.60.48 addendum
+- `-port` flag added (default 8000): `build\supernode-go.exe -headless -port 8001` serves the full dashboard alongside bobcoin :8000 — verified live (dashboard + 9 endpoints HTTP 200, /status version=11.60.48). Tray honors `BOBTORRENT_PORT`.
+- Lattice feed reconnect backoff 5s->60s (log spam fix).
+- Still awaiting: GitHub re-auth to push commits b0253d5 + v11.60.48; lattice-go left stopped (start via tray); I2P needs i2pd SAM on :7656.
