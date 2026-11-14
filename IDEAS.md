@@ -62,3 +62,10 @@ message Envelope {
   bytes encrypted_body = 6; // Encrypted using the recipient's public key (DH/AES-GCM)
 }
 ```
+
+## Grounded in live verification (2026-11-14)
+- **Mandatory-signature mode**: engine verifies Ed25519 only when a signature is present. Add lattice `-require-signatures` (and reject unsigned non-genesis blocks) once wallet UX can sign client-side via the WASM kernel — the signed path is already live-proven.
+- **Accrued-yield + demurrage preview in Wallet UI**: both decay (0.0001/60000/ms) and staking yield (5%/yr, truncates to 0 for small/short stakes) are invisible to operators. Surface projected frontier balance/yield at current time before submit.
+- **Snapshot surfacing**: materialized snapshots had not triggered by sequence 22. Show snapshot sequence/count in Peer Sync Mesh or Services panel (`/persistence/verify` already returns it) so cold-boot acceleration is observable.
+- **Tray as mesh launcher**: tray Start All could optionally start lattice node2 (`-port 4002 -peers ...`) for instant two-node demos; port map with bobcoin (:8000/:4001) must stay explicit.
+- **Chicken-egg note**: unsigned blocks were the bootstrap path for every live test. If signatures become mandatory, genesis + first-receive flows need a signed-genesis ceremony (signed by definition) documented in DEPLOY.
