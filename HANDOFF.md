@@ -84,3 +84,6 @@ Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids f
 
 ## v11.60.53 peer panel
 - UI coverage complete: every supernode + lattice endpoint family now has a dashboard surface (only /announce + /matchmaking remain protocol-only by design). One transient Go compiler trace seen during a loaded build; clean rebuild + tests pass, binary reports 11.60.53 — treat as environment flake unless it recurs.
+
+## Persistence check (2026-11-14)
+- `GET /persistence/verify` on real DB: healthy, quick_check ok, 22 blocks, sequence 22, export 200 (10,388 bytes). Full `go test ./...` green. Durable findings consolidated into MEMORY.md (headless parity, version chain, CGO, port map, consensus math, multi-node, dashboard rule).

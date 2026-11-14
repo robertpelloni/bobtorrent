@@ -54,3 +54,12 @@
 - Added `web/ui/mobile_preview.html`, providing a responsive light-node mobile chat interface wired to `cmd/supernode-go/mega_messenger_bridge.go` (`/mega-bridge`).
 - Integrated a direct Mobile Preview launcher button in the Decentralized Mesh Chat header within `web/ui/index.html` to streamline side-by-side operator monitoring.
 - Supports light client control plane messaging, topic switching (`#global`, `#announcements`, `#market`, `#support`), real-time libp2p GossipSub broadcasting, and SQLite message history retrieval.
+
+## Session Findings (2026-11-14, v11.60.47-53)
+- **Headless parity rule**: any new service init added to `realMain` (TUI) must also be added to `runHeadless` in `main_wrapper.go` — the tray launches `-headless` only. This divergence silently killed the dashboard once.
+- **Version truth chain**: `VERSION` file -> `-X main.Version` -> `GET /status` -> dashboard footer. Never hardcode version strings in handlers or docs; DASHBOARD/DEPLOY now reference the VERSION file.
+- **Windows toolchain**: local mingw gcc emits objects Go cannot parse; everything builds/tests with `CGO_ENABLED=0` (modernc sqlite stack). `go test -race` unavailable here. `build.bat` must build package paths, never single files.
+- **Port map (this machine)**: bobcoin owns :8000 (go-supertorrent) + :4001 (go-lattice). Bobtorrent: supernode :8001 (`-port`), lattice :4000/:4002+ (`-port`, own DB per node). Never kill bobcoin processes.
+- **Consensus live-math**: every balance-bearing block needs exact demurrage replication (0.0001/60000 per ms on frontier balance/timestamp) or the engine rejects with a precise expected-vs-got message. Costs: proposal 10, NFT mint 50 / transfer 1, data_anchor 10. Staking yield (5%/yr) truncates to 0 for small/short stakes. Signatures verified only when present (Ed25519 over block hash, base58).
+- **Multi-node proven**: bootstrap catch-up (21 blocks/1 page), autonomous 30s sync, divergence -> analysis `divergent` + apply 409 refused, fail-closed. Persistence: `/persistence/verify` healthy on the 22-block DB; snapshotCount still 0 at sequence 22 (first snapshot threshold not yet reached).
+- **Dashboard rule**: new backend endpoints are not done until surfaced same-origin in `web/ui` (proxy via `registerBobcoinProxies` for lattice state) with labels + tooltips; chain-supplied strings must be HTML-escaped in JS renderers.
