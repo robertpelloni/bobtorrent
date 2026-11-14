@@ -68,3 +68,7 @@ Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids f
 
 ## v11.60.51: dashboard lattice-state panels
 - All lattice state (proposals/NFTs/swaps/anchors/bids/frontiers) reachable same-origin via supernode proxy and rendered in Wallet & Lattice tab. One transient full-suite failure observed then PASS on verbose rerun (TestHandleMessengerSocket timing suspected flake — watch it).
+
+## Signed blocks + flake hunt (2026-11-14)
+- **Signature path live-verified both ways**: bad-signature control rejected (400 'invalid signature for block 3ef569ab...'), valid Ed25519-signed `send` (wallet `6Rkjn...`, signed via python `cryptography`) accepted. Chain: **21 blocks**. Unsigned blocks remain accepted by design (signature verified only when present) — requiring signatures is a policy decision for the user.
+- **Messenger test flake**: not reproduced in 8 consecutive runs (5x focused messenger/signaling/matchmaker + 3x full package, plus vet clean). The single earlier failure coincided with a parallel `build.bat` in the same command; suspected CPU contention with the 2.26s messenger test. `go test -race` unavailable (needs CGO; local mingw broken). Watch, don't chase.
