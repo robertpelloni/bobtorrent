@@ -52,3 +52,6 @@ Overview: telemetry, swarms, **Services & Network Health** (`/status`, `/status/
 
 ## NFT mint/transfer (2026-11-14)
 - B height-4 `mint_nft` ('Genesis Shard #1', cost 50, NFT id `8d8d79c7...`) + height-5 `transfer_nft` to genesis account A (fee 1) accepted live. Chain: 9 blocks. `GET /nfts` shows owner=A. Live-verified: open/send/receive/stake/unstake/mint_nft/transfer_nft. Remaining live-unverified: swaps (initiate/claim/refund), governance proposals/votes, publish_manifest.
+
+## Swap HTLC lifecycle (2026-11-14)
+- A height-3 `initiate_swap` (300 locked to B, `fdbaa3b6...`) + B height-6 `claim_swap` with secret preimage accepted live; `GET /swaps` status CLAIMED. Chain: 11 blocks, B balance 1739. Live-verified: open/send/receive/stake/unstake/mint_nft/transfer_nft/initiate_swap/claim_swap. Remaining: refund_swap (needs expiry), governance, publish_manifest. Note: one transient lattice startup failure observed (empty logs, likely DB-lock race after force-kill) — startup succeeded on retry; graceful shutdown would reduce this.
