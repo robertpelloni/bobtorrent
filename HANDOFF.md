@@ -49,3 +49,6 @@ Overview: telemetry, swarms, **Services & Network Health** (`/status`, `/status/
 
 ## Unstake transition (2026-11-14)
 - B height-3 `unstake` of full 200 (`9ab08d91...`) accepted live. Chain: 7 blocks. B: balance 1495, staked 0, height 3. Live-verified: open/send/receive/stake/unstake. **Finding:** staking yield truncates to 0 for small/short stakes (200 units x ~35min at 5%/yr = <0.01 -> int64 0); yield only materializes for large or long-held stakes — consider surfacing accrued-yield preview in UI before unstaking.
+
+## NFT mint/transfer (2026-11-14)
+- B height-4 `mint_nft` ('Genesis Shard #1', cost 50, NFT id `8d8d79c7...`) + height-5 `transfer_nft` to genesis account A (fee 1) accepted live. Chain: 9 blocks. `GET /nfts` shows owner=A. Live-verified: open/send/receive/stake/unstake/mint_nft/transfer_nft. Remaining live-unverified: swaps (initiate/claim/refund), governance proposals/votes, publish_manifest.
