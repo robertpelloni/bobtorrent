@@ -78,3 +78,6 @@ Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids f
 
 ## Autonomous background sync (2026-11-14)
 - Node2 (peer-registered via `-peers`) caught up 21->22 within one 30s sync interval after a new `achievement_unlock` block (`a278f148...`) was submitted to node1 only — no bootstrap call. Log: 'Autonomous sync: Peer http://127.0.0.1:4000 is ahead. Catching up...'. Chain now **22 blocks** on both node DBs. Multi-node story complete: bootstrap catch-up + autonomous reconciliation both live-proven.
+
+## Divergence safety (2026-11-14)
+- Foreign-genesis node (:4003, own SYSTEM_GENESIS supply 777) vs main 22-block chain: `POST /reconcile` -> relationship `divergent`, suggestedAction `investigate_divergence`; `POST /reconcile/apply` -> **409 refused** ('Safe reconciliation refuses to execute when histories are ambiguous or divergent'), executed=false. Neither chain mutated (node3 stayed 1 block, node1 stayed 22). Temp divergent DB deleted. The reconcile layer fails closed exactly as designed.
