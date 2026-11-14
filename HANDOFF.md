@@ -93,3 +93,6 @@ Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids f
 
 ## Second tracked secret (2026-11-14)
 - `data/node-b/identity.json` (test node-b identity: publicKey + 128-char secretKey) also untracked via `git rm --cached`; on disk, `data/` ignored. Full tracked-tree scan for secret-shaped keys: remaining hits are source-code field names/tests, no other data files. **Rotation list: (1) storage/wallet.json key, (2) node-b identity key.** Both remain in history. `data/node-b/video.mp4` is tracked test media (~large) — owner decision to untrack/LFS.
+
+## Full-component smoke (2026-11-14, v11.60.55 binaries)
+All three Go binaries launched together below-normal: lattice :4000 (200), supernode :8001 — dashboard /, mobile_preview.html, storage.wasm (22MB), wasm_exec.js, /status, /stats, /debug/pprof all 200; dht-proxy :9080 up (root / is 404 **by design** — only /api/announce + /api/torrent/add exist; GeoIP DB absent -> graceful non-enriched mode, logged as warning not error). Only degraded item remains I2P (no SAM on :7656).
