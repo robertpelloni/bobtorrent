@@ -1,22 +1,22 @@
 # Deployment Instructions (Omni-Workspace)
 
 ## Current Release
-- **Version**: `11.43.0`
+- **Version**: see `VERSION` file (single source of truth; currently `11.60.53`). The running version is reported by `GET /status` and shown in the dashboard footer.
 
 ## 1. Build All Go Artifacts
-Use the Windows build helper:
+Windows: `build.bat` — Unix: `./build.sh`. Both build by package path with
+`CGO_ENABLED=0` (pure-Go stack; single-file `go build .../main.go` does NOT
+work for multi-file packages) and inject the version via
+`-ldflags "-X main.Version=$(cat VERSION)"` (supernode only).
 
-```bat
-build.bat
-```
-
-Or run manually:
+Manual equivalents:
 
 ```bash
-go build -buildvcs=false -o build/dht-proxy cmd/dht-proxy/main.go
-go build -buildvcs=false -o build/supernode-go cmd/supernode-go/main.go
-go build -buildvcs=false -o build/lattice-go cmd/lattice-go/main.go
-GOOS=js GOARCH=wasm go build -buildvcs=false -o build/storage.wasm cmd/wasm/main.go
+export CGO_ENABLED=0
+go build -buildvcs=false -o build/dht-proxy ./cmd/dht-proxy/
+go build -ldflags="-X main.Version=$(cat VERSION)" -buildvcs=false -o build/supernode-go ./cmd/supernode-go/
+go build -buildvcs=false -o build/lattice-go ./cmd/lattice-go/
+GOOS=js GOARCH=wasm go build -buildvcs=false -o build/storage.wasm ./cmd/wasm/
 ```
 
 Also ensure the Go runtime bridge is present beside the WASM binary:
@@ -24,9 +24,13 @@ Also ensure the Go runtime bridge is present beside the WASM binary:
 
 ## 2. Run the Go Lattice Node
 ```bash
-./build/lattice-go
+./build/lattice-go [-port 4000] [-peers http://127.0.0.1:4000,...]
 ```
-Default port: `4000`
+Default port: `4000` (`-port` flag; each node in a multi-node setup needs its
+own port AND its own `BOBTORRENT_LATTICE_DB`). `-peers` registers lattice
+peers for the autonomous 30s background sync loop. On-demand catch-up:
+`POST /bootstrap {"peer":"http://127.0.0.1:4000"}`. Divergence is refused
+(`/reconcile/apply` returns 409) — never auto-merged.
 
 Persistence:
 - default SQLite path: `data/lattice/lattice.db`
@@ -58,13 +62,28 @@ Provides:
 
 ## 3. Run the Go Supernode
 ```bash
-./build/supernode-go
+./build/supernode-go [-headless] [-port 8000]
 ```
+- `-headless`: full service set + dashboard, no TUI (this is what the tray launches).
+- `-port`: HTTP dashboard/tracker port (default 8000).
 Default services:
-- HTTP tracker / stats on `:8000`
+- HTTP tracker / dashboard / stats on `:<port>` (default `:8000`)
 - UDP tracker on `:6881`
 - DHT node on `:6882`
-- TUI in the foreground terminal session
+- libp2p GossipSub messenger on `:6883`
+- TUI in the foreground terminal session (unless `-headless`)
+
+**Dashboard**: `http://localhost:<port>` — single-page Sovereign Command
+Center; every backend feature is surfaced there (see DASHBOARD.md).
+
+**System tray**: `python scripts/system_tray_controller.py` (needs
+`pystray` + `Pillow`). Right-click the tray icon for Start/Restart/Stop/
+Open Dashboard/Quit (Quit stops the servers). Set `BOBTORRENT_PORT` to
+run the supernode on a non-default port through the tray.
+
+**Local port map (this machine)**: bobcoin already owns `:8000`
+(go-supertorrent) and `:4001` (go-lattice). Run bobtorrent alongside on
+supernode `:8001` and lattice `:4000` / `:4002+`.
 
 The supernode expects the lattice node to be available at `http://localhost:4000`.
 
