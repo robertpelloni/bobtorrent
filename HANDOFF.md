@@ -87,3 +87,6 @@ Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids f
 
 ## Persistence check (2026-11-14)
 - `GET /persistence/verify` on real DB: healthy, quick_check ok, 22 blocks, sequence 22, export 200 (10,388 bytes). Full `go test ./...` green. Durable findings consolidated into MEMORY.md (headless parity, version chain, CGO, port map, consensus math, multi-node, dashboard rule).
+
+## Secret untracking (2026-11-14)
+- `storage/wallet.json` (contains `secretKey`) removed from the index (`git rm --cached`); file remains on disk and is covered by the existing `/storage/` ignore rule. It stays in git HISTORY (commit 0605fb6) — not rewritten. **Owner action: rotate that keypair and decide on a history purge.** `MobileMessenger/ios/.xcode.env` appears in historical paths only; not present in the worktree.
