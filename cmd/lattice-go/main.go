@@ -1,17 +1,23 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"path/filepath"
-
-	"bobtorrent/internal/consensus"
+	"strings"
 )
 
+import "bobtorrent/internal/consensus"
+
 func main() {
+	port := flag.Int("port", 4000, "HTTP listen port (two-node setups need distinct ports per node)")
+	peers := flag.String("peers", "", "comma-separated peer lattice URLs for autonomous background sync, e.g. http://127.0.0.1:4000")
+	flag.Parse()
+
 	fmt.Println("Bobcoin Lattice Node (Go Port) - Initializing...")
 
 	dbPath := os.Getenv("BOBTORRENT_LATTICE_DB")
@@ -30,6 +36,13 @@ func main() {
 		}
 	}()
 
+	for _, peer := range strings.Split(*peers, ",") {
+		if peer = strings.TrimSpace(peer); peer != "" {
+			s.Lattice().AddPeer(peer)
+			log.Printf("registered lattice peer: %s", peer)
+		}
+	}
+
 	s.StartBackgroundSync(0) // Default interval
 
 	mux := http.NewServeMux()
@@ -42,9 +55,9 @@ func main() {
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
-	port := ":4000"
-	fmt.Printf("Lattice Node listening on %s with persistence at %s\n", port, dbPath)
-	if err := http.ListenAndServe(port, mux); err != nil {
+	addr := fmt.Sprintf(":%d", *port)
+	fmt.Printf("Lattice Node listening on %s with persistence at %s\n", addr, dbPath)
+	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatalf("Lattice Server failed: %v", err)
 	}
 }

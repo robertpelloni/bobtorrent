@@ -72,3 +72,6 @@ Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids f
 ## Signed blocks + flake hunt (2026-11-14)
 - **Signature path live-verified both ways**: bad-signature control rejected (400 'invalid signature for block 3ef569ab...'), valid Ed25519-signed `send` (wallet `6Rkjn...`, signed via python `cryptography`) accepted. Chain: **21 blocks**. Unsigned blocks remain accepted by design (signature verified only when present) — requiring signatures is a policy decision for the user.
 - **Messenger test flake**: not reproduced in 8 consecutive runs (5x focused messenger/signaling/matchmaker + 3x full package, plus vet clean). The single earlier failure coincided with a parallel `build.bat` in the same command; suspected CPU contention with the 2.26s messenger test. `go test -race` unavailable (needs CGO; local mingw broken). Watch, don't chase.
+
+## v11.60.52 two-node sync
+- lattice-go `-port`/`-peers` added. Fresh node2 (:4002, temp DB) + node1 (:4000, real 21-block DB): bootstrap applied 21 blocks, hashes match. Port map warning: bobcoin runs go-lattice on :4001 and go-supertorrent on :8000 — bobtorrent defaults collide with both; use -port 4002+/8001+ alongside bobcoin.

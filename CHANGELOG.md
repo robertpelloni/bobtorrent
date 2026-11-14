@@ -1,3 +1,7 @@
+## [11.60.52] - 2026-11-14
+### Lattice Multi-Node: Port/Peer Flags + Live Bootstrap Sync
+- lattice-go gains `-port` (default 4000) and `-peers` flags. **Live two-node proof**: fresh node on :4002 bootstrapped from :4000 via `POST /bootstrap` — 21/21 blocks applied in 1 fetched page, latest hash + state hash identical. (:4001 is occupied by bobcoin's go-lattice.exe; left untouched.)
+
 ## [11.60.51] - 2026-11-14
 ### Lattice State Panels in Dashboard
 - Supernode now reverse-proxies lattice read routes (`/nfts`, `/swaps`, `/anchors`, `/market/bids`, `/frontier/`, `/balance/`, `/peers`) using the package `latticeURL` (was hardcoded + shadowed). Covered by `proxy_routes_test.go`.
