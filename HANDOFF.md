@@ -33,3 +33,7 @@ Overview: telemetry, swarms, **Services & Network Health** (`/status`, `/status/
 ## v11.60.50 addendum
 - Fabricated lattice ledger removed; /lattice proxies real chain (empty = []). To see real blocks, submit via lattice-go /process (bobcoin-compat proxied at supernode /process too).
 - E2E pair (lattice:4000 + supernode:8001) verified working together; both left stopped (session processes do not persist).
+
+## Genesis block (2026-11-14, live-verified)
+- First real block submitted to lattice-go `POST /process`: SYSTEM_GENESIS open for supernode wallet `6RkjnNtnsxm99BsJJuJJcCkLhtJEkHr1xYuaXrS7wcZw`, hash `a07810ce3df0860acb71ee80a7225dfe09c0e68aed1890025e679a4851f6ebff`, balance 1000000, persisted in `data/lattice/lattice.db`. Supernode `/lattice` now returns this real block; `/balance` reads 999995 (demurrage applied — worth a UX note in the wallet card someday).
+- Restart the pair (lattice-go + supernode -port 8001) and the dashboard ledger shows the genesis block; chain height grows only via real `/process` submissions.
