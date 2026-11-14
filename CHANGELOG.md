@@ -1,3 +1,8 @@
+## [11.60.51] - 2026-11-14
+### Lattice State Panels in Dashboard
+- Supernode now reverse-proxies lattice read routes (`/nfts`, `/swaps`, `/anchors`, `/market/bids`, `/frontier/`, `/balance/`, `/peers`) using the package `latticeURL` (was hardcoded + shadowed). Covered by `proxy_routes_test.go`.
+- Wallet & Lattice tab renders Governance Proposals, NFT Registry, Atomic Swaps, Anchored Manifests (live chain data, HTML-escaped). Live-verified on the 20-block chain via :8001.
+
 ## [11.60.50] - 2026-11-14
 ### Real Lattice Ledger (Fabricated Blocks Removed)
 - **`/lattice` no longer fabricates blocks**: it invented 5 synthetic blocks (heights 1024000-i, time-derived hashes) per call. Now proxies lattice-go `GET /blocks?limit=25` and maps hash/account/height/timestamp; empty or unreachable chain returns honest `[]` (dashboard reads 'No blocks confirmed yet'). Covered by `lattice_test.go` (proxy mapping + down-chain emptiness, both failed before the fix).

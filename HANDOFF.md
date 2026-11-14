@@ -65,3 +65,6 @@ Chain: **20 blocks** persisted in `data/lattice/lattice.db` (accounts: genesis w
 - publish_manifest (anchor 'manifest-genesis-shard-1'), market_bid (50) + accept_bid (+50),
 - data_anchor (cost 10; /anchors count=2), achievement_unlock (informational, no balance change).
 Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids filtered) — expected. First governance attempt failed on my arithmetic (used cost 100 vs ProposalCost 10); engine rejection message was exact and self-correcting. Demurrage (0.0001/60000 per ms) must be replicated exactly for every balance-bearing block.
+
+## v11.60.51: dashboard lattice-state panels
+- All lattice state (proposals/NFTs/swaps/anchors/bids/frontiers) reachable same-origin via supernode proxy and rendered in Wallet & Lattice tab. One transient full-suite failure observed then PASS on verbose rerun (TestHandleMessengerSocket timing suspected flake — watch it).

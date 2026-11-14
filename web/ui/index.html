@@ -486,6 +486,24 @@
                         <h3><span class="icon">🔗</span> Live Block Lattice Ledger</h3>
                         <span class="badge" title="Confirmed blocks processed by local lattice daemon">Recent Blocks</span>
                     </div>
+                    <div class="two-col-grid" style="margin-bottom:16px">
+                        <div>
+                            <h4 title="Governance proposals from lattice-go /proposals — quadratic voting, 7-day window">Governance Proposals</h4>
+                            <div class="table-container small-table"><table id="proposals-table"><thead><tr><th title="Proposal title">Title</th><th title="active / passed / failed">Status</th><th title="Quadratic votes for / against">Votes F/A</th></tr></thead><tbody><tr><td colspan="3">Loading…</td></tr></tbody></table></div>
+                        </div>
+                        <div>
+                            <h4 title="NFTs registered on the lattice (mint cost 50, transfer fee 1) — /nfts">NFT Registry</h4>
+                            <div class="table-container small-table"><table id="nfts-table"><thead><tr><th title="NFT name">Name</th><th title="Current owner account">Owner</th></tr></thead><tbody><tr><td colspan="2">Loading…</td></tr></tbody></table></div>
+                        </div>
+                        <div>
+                            <h4 title="HTLC atomic swaps — /swaps (LOCKED / CLAIMED / REFUNDED)">Atomic Swaps</h4>
+                            <div class="table-container small-table"><table id="swaps-table"><thead><tr><th title="Locked amount">Amount</th><th title="Swap state">Status</th><th title="Recipient account">Recipient</th></tr></thead><tbody><tr><td colspan="3">Loading…</td></tr></tbody></table></div>
+                        </div>
+                        <div>
+                            <h4 title="Manifest + data anchors pinned on-chain — /anchors">Anchored Manifests</h4>
+                            <div class="table-container small-table"><table id="anchors-table"><thead><tr><th title="Anchor / manifest id">Manifest</th><th title="publish_manifest or data_anchor">Kind</th></tr></thead><tbody><tr><td colspan="2">Loading…</td></tr></tbody></table></div>
+                        </div>
+                    </div>
                     <div class="table-container">
                         <table id="lattice-table">
                             <thead>
@@ -507,7 +525,7 @@
 
         <footer>
             <div class="footer-left">
-                <span>BobTorrent Sovereign Omni-Workspace</span> &bull; <span>Version <span id="footer-version">11.60.50</span></span>
+                <span>BobTorrent Sovereign Omni-Workspace</span> &bull; <span>Version <span id="footer-version">11.60.51</span></span>
             </div>
             <div class="footer-right">
                 <span title="Continuous autonomous peer synchronization">Autopilot Mesh Active</span>

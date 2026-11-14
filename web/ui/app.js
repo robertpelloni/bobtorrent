@@ -670,8 +670,25 @@ document.addEventListener('DOMContentLoaded', () => {
         try { const r = await fetch('/fhe-oracle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cipherText }) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'FHE oracle failed'); showBox('operator-result', 'operator-json', d); } catch (e) { alert(e.message); }
     });
 
+    // Lattice state panels (proxied from lattice-go: /proposals /nfts /swaps /anchors)
+    function fillTable(id, rows, emptyText, cols) {
+        const table = document.getElementById(id)?.querySelector('tbody');
+        if (!table) return;
+        table.innerHTML = rows.length ? '' : `<tr><td colspan="${cols}">${emptyText}</td></tr>`;
+        rows.forEach(cells => { const tr = document.createElement('tr'); tr.innerHTML = cells; table.appendChild(tr); });
+    }
+    const short = s => String(s || '').length > 18 ? String(s).substring(0, 16) + '…' : String(s || '');
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    async function updateLatticeState() {
+        try { const d = await jget('/proposals'); const list = d.proposals || []; fillTable('proposals-table', list.map(p => [`<td>${esc(p.title || short(p.id))}</td><td><span class="badge ${p.status === 'passed' ? 'success' : ''}">${p.status}</span></td><td>${Number(p.votesFor || 0).toFixed(1)} / ${Number(p.votesAgainst || 0).toFixed(1)}</td>`]), 'No proposals yet.', 3); } catch {}
+        try { const d = await jget('/nfts'); const list = d.nfts || []; fillTable('nfts-table', list.map(n => [`<td>${esc(n.name || short(n.id))}</td><td class="mono">${esc(short(n.owner))}</td>`]), 'No NFTs minted yet.', 2); } catch {}
+        try { const d = await jget('/swaps'); const list = d.swaps || []; fillTable('swaps-table', list.map(x => [`<td>${x.amount}</td><td><span class="badge ${x.status === 'CLAIMED' ? 'success' : ''}">${x.status}</span></td><td class="mono">${esc(short(x.recipient))}</td>`]), 'No swaps yet.', 3); } catch {}
+        try { const d = await jget('/anchors'); const list = d.anchors || []; fillTable('anchors-table', list.map(a => [`<td class="mono">${esc(short(a.manifestId || a.id))}</td><td>${esc(a.type)}</td>`]), 'No anchored manifests yet.', 2); } catch {}
+    }
+
     // Polling intervals
     setInterval(updateStatus, 2000);
+    setInterval(updateLatticeState, 5000);
     setInterval(updateServices, 5000);
     setInterval(updateEconomy, 5000);
     setInterval(updateBlobs, 4000);
@@ -680,6 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(refreshSubscriptions, 5000);
 
     // Initial triggers
+    updateLatticeState();
     updateServices();
     updateEconomy();
     updateStatus();
