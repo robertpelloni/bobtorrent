@@ -37,3 +37,6 @@ Overview: telemetry, swarms, **Services & Network Health** (`/status`, `/status/
 ## Genesis block (2026-11-14, live-verified)
 - First real block submitted to lattice-go `POST /process`: SYSTEM_GENESIS open for supernode wallet `6RkjnNtnsxm99BsJJuJJcCkLhtJEkHr1xYuaXrS7wcZw`, hash `a07810ce3df0860acb71ee80a7225dfe09c0e68aed1890025e679a4851f6ebff`, balance 1000000, persisted in `data/lattice/lattice.db`. Supernode `/lattice` now returns this real block; `/balance` reads 999995 (demurrage applied — worth a UX note in the wallet card someday).
 - Restart the pair (lattice-go + supernode -port 8001) and the dashboard ledger shows the genesis block; chain height grows only via real `/process` submissions.
+
+## Send/receive verification (2026-11-14)
+- Height-1 `send` (1,000 units, hash `d1aa7b0a...`) from genesis account to `BobReceiver111...` + receiver `open` (hash `9c595032...`) both accepted by lattice-go `/process` with demurrage-exact balance math (rate 0.0001/60000/ms). Chain: 3 blocks, persisted. Balances: A=997466 (decayed), B=1000. Supernode `/lattice` lists all 3 in order — dashboard ledger is fully real end-to-end.
