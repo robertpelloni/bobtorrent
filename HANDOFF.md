@@ -55,3 +55,13 @@ Overview: telemetry, swarms, **Services & Network Health** (`/status`, `/status/
 
 ## Swap HTLC lifecycle (2026-11-14)
 - A height-3 `initiate_swap` (300 locked to B, `fdbaa3b6...`) + B height-6 `claim_swap` with secret preimage accepted live; `GET /swaps` status CLAIMED. Chain: 11 blocks, B balance 1739. Live-verified: open/send/receive/stake/unstake/mint_nft/transfer_nft/initiate_swap/claim_swap. Remaining: refund_swap (needs expiry), governance, publish_manifest. Note: one transient lattice startup failure observed (empty logs, likely DB-lock race after force-kill) — startup succeeded on retry; graceful shutdown would reduce this.
+
+## CONSENSUS MATRIX CLOSED (2026-11-14) — all 17 types live-verified on real chain
+Chain: **20 blocks** persisted in `data/lattice/lattice.db` (accounts: genesis wallet `6Rkjn...` + `BobReceiver111...`). Every dispatch type in `internal/consensus/lattice.go` accepted via `POST /process` against lattice-go and visible through supernode `/lattice` (count=20):
+- open (genesis SYSTEM_GENESIS + receiver open), send x3, receive, stake, unstake,
+- mint_nft + transfer_nft (NFT 'Genesis Shard #1' now owned by genesis account),
+- initiate_swap + claim_swap (HTLC CLAIMED), initiate_swap + refund_swap (expired, REFUNDED),
+- proposal (cost 10) + vote (quadratic power 41.69 -> status passed),
+- publish_manifest (anchor 'manifest-genesis-shard-1'), market_bid (50) + accept_bid (+50),
+- data_anchor (cost 10; /anchors count=2), achievement_unlock (informational, no balance change).
+Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids filtered) — expected. First governance attempt failed on my arithmetic (used cost 100 vs ProposalCost 10); engine rejection message was exact and self-correcting. Demurrage (0.0001/60000 per ms) must be replicated exactly for every balance-bearing block.
