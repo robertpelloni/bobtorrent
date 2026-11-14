@@ -687,6 +687,20 @@ document.addEventListener('DOMContentLoaded', () => {
         try { const d = await jget('/anchors'); const list = d.anchors || []; fillTable('anchors-table', list.map(a => [`<td class="mono">${esc(short(a.manifestId || a.id))}</td><td>${esc(a.type)}</td>`]), 'No anchored manifests yet.', 2); } catch {}
     }
 
+    async function updateLatticeAccount() {
+        const addr = document.getElementById('wallet-address')?.textContent.trim();
+        if (!addr || addr === 'Loading...') return;
+        try {
+            const b = await jget('/balance/' + encodeURIComponent(addr));
+            const el = document.getElementById('lattice-balance'); if (el) el.textContent = b.balance ?? '—';
+        } catch {}
+        try {
+            const f = await jget('/frontier/' + encodeURIComponent(addr));
+            const h = document.getElementById('lattice-frontier'); if (h) h.textContent = f.height ?? '—';
+            const st = document.getElementById('lattice-staked'); if (st) st.textContent = f.staked_balance ?? f.stakedBalance ?? '0';
+        } catch {}
+    }
+
     async function updatePeers() {
         try {
             const d = await jget('/peers');
@@ -703,6 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Polling intervals
     setInterval(updateStatus, 2000);
     setInterval(updatePeers, 5000);
+    setInterval(updateLatticeAccount, 5000);
     setInterval(updateLatticeState, 5000);
     setInterval(updateServices, 5000);
     setInterval(updateEconomy, 5000);
@@ -712,6 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(refreshSubscriptions, 5000);
 
     // Initial triggers
+    updateLatticeAccount();
     updatePeers();
     updateLatticeState();
     updateServices();

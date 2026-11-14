@@ -1,3 +1,7 @@
+## [11.60.55] - 2026-11-14
+### Lattice Account in Wallet Tab
+- Block Lattice card shows the wallet's on-chain account: balance (demurrage-decayed, tooltip explains the rate), frontier height, staked amount — via proxied `/balance` + `/frontier`. Live-verified: genesis account height 8, balance 971348.
+
 ## [11.60.54] - 2026-11-14
 ### Lattice Persistence in Services Panel
 - Supernode proxies `/persistence/*`; Services & Network Health gains a Lattice Persistence row (healthy, blockCount, sequence, snapshotCount, quick_check from `/persistence/verify`). Live-verified via :8001 (healthy, 22 blocks, seq 22, snapshots 0). Note: supernode lattice-feed/proxy calls can 502 if fired in the same second lattice starts — warmup race, self-heals.

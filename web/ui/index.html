@@ -454,6 +454,18 @@
                             <label>Lattice WebSocket:</label>
                             <span class="value-highlight">ws://127.0.0.1:4000/ws</span>
                         </div>
+                        <div class="stat-row">
+                            <label title="This wallet's on-chain lattice balance — decays by demurrage (0.0001/60000 per ms) between blocks; read live from /balance">Lattice Balance:</label>
+                            <span class="value-highlight" id="lattice-balance">—</span>
+                        </div>
+                        <div class="stat-row">
+                            <label title="Frontier (latest) block height and hash prefix for this account — /frontier">Frontier Height:</label>
+                            <span class="value-highlight" id="lattice-frontier">—</span>
+                        </div>
+                        <div class="stat-row">
+                            <label title="Currently staked amount (stake/unstake blocks); staking yield is 5%/yr and truncates to 0 for small or short stakes">Staked:</label>
+                            <span class="value-highlight" id="lattice-staked">—</span>
+                        </div>
                     </div>
                 </div>
 
@@ -533,7 +545,7 @@
 
         <footer>
             <div class="footer-left">
-                <span>BobTorrent Sovereign Omni-Workspace</span> &bull; <span>Version <span id="footer-version">11.60.54</span></span>
+                <span>BobTorrent Sovereign Omni-Workspace</span> &bull; <span>Version <span id="footer-version">11.60.55</span></span>
             </div>
             <div class="footer-right">
                 <span title="Continuous autonomous peer synchronization">Autopilot Mesh Active</span>
