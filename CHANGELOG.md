@@ -1,3 +1,7 @@
+## [11.60.53] - 2026-11-14
+### Peer Sync Mesh Panel
+- Wallet & Lattice tab gains Peer Sync Mesh: live `/peers` diagnostics (health, last sync, success/failure counts) + Add Peer & Sync form (`POST /peers`). Live-verified: peer :4002 registered through the supernode proxy, health `healthy`/`synced` 1/0. Dashboard backend coverage is now complete (all lattice + supernode surfaces).
+
 ## [11.60.52] - 2026-11-14
 ### Lattice Multi-Node: Port/Peer Flags + Live Bootstrap Sync
 - lattice-go gains `-port` (default 4000) and `-peers` flags. **Live two-node proof**: fresh node on :4002 bootstrapped from :4000 via `POST /bootstrap` — 21/21 blocks applied in 1 fetched page, latest hash + state hash identical. (:4001 is occupied by bobcoin's go-lattice.exe; left untouched.)

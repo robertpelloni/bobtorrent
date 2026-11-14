@@ -81,3 +81,6 @@ Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids f
 
 ## Divergence safety (2026-11-14)
 - Foreign-genesis node (:4003, own SYSTEM_GENESIS supply 777) vs main 22-block chain: `POST /reconcile` -> relationship `divergent`, suggestedAction `investigate_divergence`; `POST /reconcile/apply` -> **409 refused** ('Safe reconciliation refuses to execute when histories are ambiguous or divergent'), executed=false. Neither chain mutated (node3 stayed 1 block, node1 stayed 22). Temp divergent DB deleted. The reconcile layer fails closed exactly as designed.
+
+## v11.60.53 peer panel
+- UI coverage complete: every supernode + lattice endpoint family now has a dashboard surface (only /announce + /matchmaking remain protocol-only by design). One transient Go compiler trace seen during a loaded build; clean rebuild + tests pass, binary reports 11.60.53 — treat as environment flake unless it recurs.

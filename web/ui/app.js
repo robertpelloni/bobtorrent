@@ -686,8 +686,22 @@ document.addEventListener('DOMContentLoaded', () => {
         try { const d = await jget('/anchors'); const list = d.anchors || []; fillTable('anchors-table', list.map(a => [`<td class="mono">${esc(short(a.manifestId || a.id))}</td><td>${esc(a.type)}</td>`]), 'No anchored manifests yet.', 2); } catch {}
     }
 
+    async function updatePeers() {
+        try {
+            const d = await jget('/peers');
+            const diags = d.diagnostics || [];
+            fillTable('peers-table', diags.map(p => [`<td class="mono">${esc(short(p.peer))}</td><td><span class="badge ${p.health === 'healthy' ? 'success' : 'danger'}">${esc(p.health || 'unknown')}</span></td><td>${esc(p.lastStatus || '—')}</td><td>${p.totalSyncSuccesses || 0}/${p.totalSyncFailures || 0}</td>`]), 'No peers registered. Single-node mode.', 4);
+        } catch {}
+    }
+    document.getElementById('btn-add-peer')?.addEventListener('click', async () => {
+        const addr = document.getElementById('peer-addr')?.value.trim();
+        if (!addr) return alert('Enter a peer lattice URL, e.g. http://127.0.0.1:4002');
+        try { const r = await fetch('/peers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ addr, sync: true }) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Add peer failed'); updatePeers(); updateLattice(); } catch (e) { alert(e.message); }
+    });
+
     // Polling intervals
     setInterval(updateStatus, 2000);
+    setInterval(updatePeers, 5000);
     setInterval(updateLatticeState, 5000);
     setInterval(updateServices, 5000);
     setInterval(updateEconomy, 5000);
@@ -697,6 +711,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(refreshSubscriptions, 5000);
 
     // Initial triggers
+    updatePeers();
     updateLatticeState();
     updateServices();
     updateEconomy();

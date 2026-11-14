@@ -504,6 +504,14 @@
                             <div class="table-container small-table"><table id="anchors-table"><thead><tr><th title="Anchor / manifest id">Manifest</th><th title="publish_manifest or data_anchor">Kind</th></tr></thead><tbody><tr><td colspan="2">Loading…</td></tr></tbody></table></div>
                         </div>
                     </div>
+                    <div style="margin-bottom:16px">
+                        <h4 title="Lattice peer synchronization — /peers diagnostics from the autonomous 30s sync loop; divergent peers are refused, never merged">Peer Sync Mesh</h4>
+                        <div class="input-action-row" style="margin-bottom:8px">
+                            <input type="text" id="peer-addr" placeholder="http://127.0.0.1:4002" title="Peer lattice URL to register and sync from (POST /peers)">
+                            <button id="btn-add-peer" class="secondary-btn" title="Register this peer and immediately sync missing blocks from it">Add Peer &amp; Sync</button>
+                        </div>
+                        <div class="table-container small-table"><table id="peers-table"><thead><tr><th title="Peer lattice URL">Peer</th><th title="healthy / degraded / divergent">Health</th><th title="Last sync outcome">Last Sync</th><th title="Successful / failed sync attempts">Syncs ✓/✗</th></tr></thead><tbody><tr><td colspan="4">No peers registered. Single-node mode.</td></tr></tbody></table></div>
+                    </div>
                     <div class="table-container">
                         <table id="lattice-table">
                             <thead>
@@ -525,7 +533,7 @@
 
         <footer>
             <div class="footer-left">
-                <span>BobTorrent Sovereign Omni-Workspace</span> &bull; <span>Version <span id="footer-version">11.60.52</span></span>
+                <span>BobTorrent Sovereign Omni-Workspace</span> &bull; <span>Version <span id="footer-version">11.60.53</span></span>
             </div>
             <div class="footer-right">
                 <span title="Continuous autonomous peer synchronization">Autopilot Mesh Active</span>
