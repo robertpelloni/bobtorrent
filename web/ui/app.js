@@ -620,6 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try { const s = await jget('/status/i2p'); rows.push(['I2P Anonymous Datagrams', !!s.enabled, s.status || '']); } catch { rows.push(['I2P Anonymous Datagrams', false, 'unreachable']); }
         try { const s = await jget('/filecoin/status'); rows.push(['Filecoin Archival Bridge', s.enabled !== false && s.mode !== 'disabled', s.mode || JSON.stringify(s).substring(0, 60)]); } catch { rows.push(['Filecoin Archival Bridge', false, 'unreachable']); }
         try { const c = await jget('/channels/browse'); const first = Array.isArray(c) ? c[0] : null; rows.push(['Public DHT Swarm Channel', !!first, first ? `${first.peers ?? 0} peers · ${first.dhtNodes ?? 0} DHT nodes` : 'none']); } catch { rows.push(['Public DHT Swarm Channel', false, 'unreachable']); }
+        try { const v = await jget('/persistence/verify'); rows.push(['Lattice Persistence (SQLite)', !!v.healthy, `${v.blockCount ?? 0} blocks · seq ${v.latestBlockSequence ?? 0} · snapshots ${v.snapshotCount ?? 0} · quick_check ${v.quickCheckResult || '?'}`]); } catch { rows.push(['Lattice Persistence (SQLite)', false, 'lattice unreachable']); }
         table.innerHTML = rows.map(([n, on, d]) => `<tr><td>${n}</td><td><span class="badge ${on ? 'success' : 'danger'}">${on ? 'ONLINE' : 'OFF'}</span></td><td class="mono">${d}</td></tr>`).join('');
     }
 

@@ -23,7 +23,7 @@ func TestBobcoinProxiesLatticeReadRoutes(t *testing.T) {
 	mux := http.NewServeMux()
 	registerBobcoinProxies(mux)
 
-	for _, path := range []string{"/nfts", "/swaps", "/anchors", "/market/bids", "/frontier/abc", "/balance/abc"} {
+	for _, path := range []string{"/nfts", "/swaps", "/anchors", "/market/bids", "/frontier/abc", "/balance/abc", "/persistence/verify"} {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 		if rec.Code != http.StatusOK {

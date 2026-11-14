@@ -33,6 +33,7 @@ func registerBobcoinProxies(mux *http.ServeMux) {
 	mux.Handle("/frontier/", proxy)
 	mux.Handle("/balance/", proxy)
 	mux.Handle("/peers", proxy)
+	mux.Handle("/persistence/", proxy)
 	// /ws is intentionally skipped here because the frontend may conflict with our native websocket.
 	// We will implement an interceptor for the bobcoin frontend to use /lattice-ws.
 	mux.Handle("/lattice-ws", proxy)

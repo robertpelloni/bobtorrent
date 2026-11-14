@@ -1,3 +1,7 @@
+## [11.60.54] - 2026-11-14
+### Lattice Persistence in Services Panel
+- Supernode proxies `/persistence/*`; Services & Network Health gains a Lattice Persistence row (healthy, blockCount, sequence, snapshotCount, quick_check from `/persistence/verify`). Live-verified via :8001 (healthy, 22 blocks, seq 22, snapshots 0). Note: supernode lattice-feed/proxy calls can 502 if fired in the same second lattice starts — warmup race, self-heals.
+
 ## [11.60.53] - 2026-11-14
 ### Peer Sync Mesh Panel
 - Wallet & Lattice tab gains Peer Sync Mesh: live `/peers` diagnostics (health, last sync, success/failure counts) + Add Peer & Sync form (`POST /peers`). Live-verified: peer :4002 registered through the supernode proxy, health `healthy`/`synced` 1/0. Dashboard backend coverage is now complete (all lattice + supernode surfaces).
