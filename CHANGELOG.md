@@ -1,3 +1,7 @@
+## [11.60.75] - 2026-11-17
+### Tray Stop Actually Stops (Windows)
+- Tray `stop_services` claimed success while externally-started lattice-go kept running: Windows console servers refuse graceful `taskkill /T`. Now escalates to `/F` after the graceful attempt and verifies the port is free before printing 'Stopped' (prints FAILED otherwise). Live-verified both ways; unrelated processes on managed ports still left untouched.
+
 ## [11.60.74] - 2026-11-17
 ### Graceful Lattice Shutdown
 - lattice-go now serves HTTP in a goroutine and waits on SIGINT/SIGTERM so its deferred `StopBackgroundSync` + store `Close` actually run (previously ListenAndServe blocked main and every stop was an unclean kill for WAL recovery). Verified serving 27 blocks after change; Windows console processes still require force termination (platform signal limits).

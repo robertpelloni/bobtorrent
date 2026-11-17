@@ -133,10 +133,23 @@ def stop_services():
                     if name not in img:
                         print(f"[SystemTray] Port {cfg['port']} held by unrelated '{img}' (PID {pid}) — left running.")
                         continue
-                    subprocess.run(["taskkill", "/PID", str(pid), "/T"], timeout=10)
+                    # Windows console servers refuse graceful taskkill
+                    # ("can only be terminated forcefully"); escalate to
+                    # /F only after the graceful attempt, and report
+                    # honestly — never claim a stop that did not happen.
+                    subprocess.run(["taskkill", "/PID", str(pid), "/T"], timeout=10,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    time.sleep(0.6)
+                    if pid in _pids_on_port(cfg["port"]):
+                        subprocess.run(["taskkill", "/F", "/PID", str(pid), "/T"], timeout=10,
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        time.sleep(0.6)
                 else:
                     os.kill(pid, 15)
-                print(f"[SystemTray] Stopped {name} (PID {pid})")
+                if pid in _pids_on_port(cfg["port"]):
+                    print(f"[SystemTray] FAILED to stop {name} (PID {pid}) — still listening on port {cfg['port']}.")
+                else:
+                    print(f"[SystemTray] Stopped {name} (PID {pid})")
             except Exception:
                 pass
     print("[SystemTray] Stop complete.")
