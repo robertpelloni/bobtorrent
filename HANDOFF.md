@@ -107,3 +107,6 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 
 ## v11.60.58 require-signatures
 - Opt-in enforcement shipped (flag, default off). Owner policy decision is now: run lattice-go with `-require-signatures` or not — note signed-only mode refuses peer sync of unsigned history by design.
+
+## Node test scope fix (2026-11-16)
+- Root `npm test` discovered tests across submodules (element-web Jest/TS): 355 false failures. Repo's own suite scoped (`test/*.test.js`): **113/113 pass**. `package.json` test script scoped accordingly (one line). `npm test` still gates on `pretest` lint: 669 pre-existing standard-style findings in legacy JS (index.js/server.js/lib/test) — left untouched (mass style rewrite not advised); fix with `npx standard --fix` as a dedicated change if desired.

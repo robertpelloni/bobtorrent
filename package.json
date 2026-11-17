@@ -85,7 +85,7 @@
     "server.js"
   ],
   "scripts": {
-    "test": "node --test --experimental-test-coverage",
+    "test": "node --test --experimental-test-coverage \"test/*.test.js\"",
     "lint": "standard",
     "pretest": "npm run lint"
   }
