@@ -1,3 +1,7 @@
+## [11.60.68] - 2026-11-17
+### Torrent Actions Live-Verified
+- Multipart `/upload` (file -> infoHash + magnet, seeded), `/add-torrent` with a valid magnet (200; garbage magnet 400 with parse reason), `/remove-torrent`, and no-file upload 400 - the full dashboard torrent action set exercised live.
+
 ## [11.60.67] - 2026-11-17
 ### Matchmaking Signaling Live-Verified
 - `/matchmaking` exercised live: two clients matched (initiator/responder), SIGNAL relayed intact, `/status` signaling telemetry exact (2 connections, 1 match, 1 relay, 2 disconnects). No code change needed.
