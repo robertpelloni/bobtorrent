@@ -75,3 +75,13 @@
 - [ ] Link /debug/pprof + /spora + /fhe-oracle from Services & Network Health panel (operator section).
 - [ ] Decide bobcoin submodule pointer bump 31c79ff->09c5012 (pre-existing, uncommitted).
 - [ ] Start lattice-go persistently (tray Start All) so lattice feed stops retry-spamming supernode logs.
+
+## Done (v11.60.56)
+- [x] Dashboard raw block submission (`POST /process`) with exact rejection surfacing.
+- [x] Snapshot cold boot live-verified (snapshot @25, tail to 26+, hash-identical).
+- [x] Lattice persistence + peer sync + lattice account surfaced in dashboard.
+## Open (owner decisions)
+- [ ] Rotate `storage/wallet.json` + `data/node-b/identity.json` keys (in history; untracked now) / optional history purge.
+- [ ] Signature-mandatory policy for lattice blocks.
+- [ ] i2pd SAM (:7656) for I2P; Lotus RPC for Filecoin non-simulated mode.
+- [ ] Edge CDP cross-agent messaging needs a CDP driver tool in-session.

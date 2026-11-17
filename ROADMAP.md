@@ -56,3 +56,8 @@
 - [x] Single-source versioning enforced at runtime (`main.Version` -> `/status` -> UI footer).
 - [ ] Configurable listen port to coexist with bobcoin go-supertorrent on :8000.
 - [ ] Operator surface for pprof/Spora/FHE-oracle in the Command Center.
+
+## Live-verified addendum (v11.60.56)
+- [x] All 17 consensus transition types + signed blocks on a real persisted chain (27 blocks).
+- [x] Multi-node: bootstrap catch-up, autonomous 30s sync, divergence 409 refusal, snapshot cold boot.
+- [x] Dashboard: complete read/write coverage of supernode + lattice surfaces on one page.

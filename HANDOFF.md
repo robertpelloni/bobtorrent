@@ -100,3 +100,7 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 ## Snapshot cold boot (2026-11-14)
 - Submitted 4 `achievement_unlock` blocks to cross the snapshot interval (25): chain 22->26, `snapshotCount=1, latestSnapshotSequence=25`. Cold restart replayed snapshot+tail: total=26, latest hash identical (`812bdacc...`), verify healthy. Snapshot-backed boot is live-proven, not just unit-tested.
 - Repo state: another actor merged `main` into `master` and synced the `bobcoin` submodule pointer (Protocols #300-305); branch was fully up to date with origin at check time.
+
+## v11.60.56 dashboard write path
+- Wallet tab Submit Lattice Block (Advanced) posts raw/wrapped JSON to `/process` via supernode proxy; verified live through :8001 (chain 26->27, block `860b7155...`). Chain now **27 blocks**. Dashboard coverage: read + write complete.
+- Branch audit: all local branches (jules-*, fix-wasm, monorepo, main) fully merged into master. Tray controller verified: menu Open/Start/Restart/Stop/Refresh/Quit(stops services); Windows `.exe` + `taskkill`/CIM guarded stop.
