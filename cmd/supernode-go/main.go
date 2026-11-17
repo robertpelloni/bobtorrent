@@ -1144,13 +1144,18 @@ func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := signalingMatchmaker.upgrader.Upgrade(w, r, nil)
+	// Capture the matchmaker instance for this connection's lifetime.
+	// Reading the mutable global at operation time (notably in the
+	// deferred disconnect) lets a late-closing connection mutate a
+	// different instance than the one it registered with.
+	mm := signalingMatchmaker
+	conn, err := mm.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("signaling websocket upgrade failed: %v", err)
 		return
 	}
 	player := &matchPlayer{conn: conn, connectedAt: time.Now(), lastSeen: time.Now()}
-	signalingMatchmaker.registerConnection(player)
+	mm.registerConnection(player)
 	conn.SetReadLimit(signalingMaxMessageSize)
 	_ = conn.SetReadDeadline(time.Now().Add(signalingReadTimeout))
 	conn.SetPongHandler(func(string) error {
@@ -1177,7 +1182,7 @@ func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		close(done)
 		player.markClosed()
-		opponent := signalingMatchmaker.disconnect(player)
+		opponent := mm.disconnect(player)
 		_ = conn.Close()
 		if opponent != nil && !opponent.isClosed() {
 			_ = opponent.sendJSON(map[string]interface{}{"type": "OPPONENT_DISCONNECTED"})
@@ -1195,7 +1200,7 @@ func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 		msgType, _ := msg["type"].(string)
 		switch msgType {
 		case "FIND_MATCH":
-			opponent, matched := signalingMatchmaker.queueOrMatch(player)
+			opponent, matched := mm.queueOrMatch(player)
 			if !matched {
 				continue
 			}
@@ -1206,7 +1211,7 @@ func handleSignalingSocket(w http.ResponseWriter, r *http.Request) {
 			if opponent == nil || opponent.isClosed() {
 				continue
 			}
-			signalingMatchmaker.recordSignalRelay()
+			mm.recordSignalRelay()
 			_ = opponent.sendJSON(map[string]interface{}{"type": "SIGNAL", "signal": msg["signal"]})
 		}
 	}

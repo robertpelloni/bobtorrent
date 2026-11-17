@@ -1,3 +1,7 @@
+## [11.60.66] - 2026-11-17
+### Signaling Matchmaker Instance Capture
+- `handleSignalingSocket` read the mutable `signalingMatchmaker` global at operation time; a late-closing connection's deferred disconnect could mutate a different (swapped) instance - the CI failure in `TestHandleServiceStatusIncludesSignalingSnapshot` (activeConnections 2->1, disconnects 1). The handler now captures one instance per connection. Local suite x3 green.
+
 ## [11.60.65] - 2026-11-17
 ### Live Chat Delivery Fix (same-node)
 - Dashboard chat messages published on a node never reached other clients on the SAME node live (libp2p readLoop skips own-host messages; sender saw only the UI's optimistic echo, peers saw nothing until rejoin). `Messenger.PublishFromHandler` now fans out locally to registered topic handlers (excluding the originator); wired into `/ws-messenger` and `/mega-bridge`. Regression test `TestMessengerSocketDeliversToPeerClient` (the old test tolerated the missing echo); live two-client verified.
