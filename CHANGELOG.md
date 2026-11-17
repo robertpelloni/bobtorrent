@@ -1,3 +1,7 @@
+## [11.60.64] - 2026-11-17
+### Mega-Bridge Live-Verified + Log Hygiene
+- `/mega-bridge` WebSocket exercised live: join/publish ack, history returns persisted message, unknown action errors cleanly. Normal client closes (1000) no longer logged as errors.
+
 ## [11.60.63] - 2026-11-17
 ### Shard Round-Trip Verified
 - `/upload-shard` -> `/shards/<hash>` byte-identical round-trip live-verified; hash-mismatch and bad-base64 correctly 400, missing shard 404, path-traversal probes correctly 400 (Go ServeMux/ServeFile). No code change needed.
