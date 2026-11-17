@@ -96,3 +96,7 @@ Notes: `GET /market/bids` returns null when no OPEN bids remain (accepted bids f
 
 ## Full-component smoke (2026-11-14, v11.60.55 binaries)
 All three Go binaries launched together below-normal: lattice :4000 (200), supernode :8001 — dashboard /, mobile_preview.html, storage.wasm (22MB), wasm_exec.js, /status, /stats, /debug/pprof all 200; dht-proxy :9080 up (root / is 404 **by design** — only /api/announce + /api/torrent/add exist; GeoIP DB absent -> graceful non-enriched mode, logged as warning not error). Only degraded item remains I2P (no SAM on :7656).
+
+## Snapshot cold boot (2026-11-14)
+- Submitted 4 `achievement_unlock` blocks to cross the snapshot interval (25): chain 22->26, `snapshotCount=1, latestSnapshotSequence=25`. Cold restart replayed snapshot+tail: total=26, latest hash identical (`812bdacc...`), verify healthy. Snapshot-backed boot is live-proven, not just unit-tested.
+- Repo state: another actor merged `main` into `master` and synced the `bobcoin` submodule pointer (Protocols #300-305); branch was fully up to date with origin at check time.

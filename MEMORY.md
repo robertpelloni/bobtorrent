@@ -63,3 +63,5 @@
 - **Consensus live-math**: every balance-bearing block needs exact demurrage replication (0.0001/60000 per ms on frontier balance/timestamp) or the engine rejects with a precise expected-vs-got message. Costs: proposal 10, NFT mint 50 / transfer 1, data_anchor 10. Staking yield (5%/yr) truncates to 0 for small/short stakes. Signatures verified only when present (Ed25519 over block hash, base58).
 - **Multi-node proven**: bootstrap catch-up (21 blocks/1 page), autonomous 30s sync, divergence -> analysis `divergent` + apply 409 refused, fail-closed. Persistence: `/persistence/verify` healthy on the 22-block DB; snapshotCount still 0 at sequence 22 (first snapshot threshold not yet reached).
 - **Dashboard rule**: new backend endpoints are not done until surfaced same-origin in `web/ui` (proxy via `registerBobcoinProxies` for lattice state) with labels + tooltips; chain-supplied strings must be HTML-escaped in JS renderers.
+
+- Snapshot interval is 25 blocks (`defaultLatticeSnapshotInterval`, env `BOBTORRENT_LATTICE_SNAPSHOT_INTERVAL`); snapshot+tail cold boot verified live at 26 blocks with identical state hash.
