@@ -89,7 +89,7 @@ func (d *Database) GetPeers(infoHash string, limit int, refLat, refLon float64) 
 	}
 	defer rows.Close()
 
-	var peers []Peer
+	peers := []Peer{}
 	for rows.Next() {
 		var p Peer
 		if err := rows.Scan(&p.IP, &p.Port, &p.Country, &p.Latitude, &p.Longitude); err != nil {
