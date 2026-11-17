@@ -1,3 +1,7 @@
+## [11.60.77] - 2026-11-17
+### Submodule Repair + TODO Reconciliation
+- Removed dead `MobileMessenger` gitlink (no .gitmodules mapping, target repo does not exist) that made every `git submodule` command fatal. bobcoin + element-web now list/update cleanly. Stale TODO items reconciled (port flag, operator links, submodule pointer - all already shipped).
+
 ## [11.60.76] - 2026-11-17
 ### DHT Proxy Live-Verified + Empty-List Fix
 - `/api/announce` + `/api/torrent/add` exercised live (crawl triggers, 400 without hash, GeoIP-absent graceful). Empty peer results serialized as JSON `null`; `GetPeers` now returns a non-nil slice so consumers see `[]`. Test: `internal/dhtproxy/database_test.go`.

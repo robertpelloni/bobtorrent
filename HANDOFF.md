@@ -128,3 +128,6 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 
 ## v11.60.61 + port map update (2026-11-17)
 - /subscribe key validation fixed + tested + live-verified on :8002. PORT MAP CHANGED: bobcoin go-casino.exe now owns :8001 too (in addition to go-supertorrent :8000, go-lattice :4001). Use supernode -port 8002 (or any free port) alongside bobcoin lanes; fixed sleeps are too short under multi-lane load - always readiness-loop before probing.
+
+## Submodule repair (2026-11-17)
+- Dead gitlink removed: MobileMessenger pointed at commit 215ce1e with no .gitmodules mapping and no such GitHub repo (Jules scaffold artifact); every git submodule command fataled on it. Removed from index only - pointer preserved in history (8fb7538), empty dir kept. git submodule status now lists bobcoin + element-web cleanly. Restore MobileMessenger as a real submodule if its repo URL is provided.

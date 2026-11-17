@@ -71,10 +71,10 @@
 - [ ] **Investigate unreachable `qbittorrent` remote**
 
 ## Next (v11.60.48 candidates)
-- [ ] Add `-port` flag to supernode-go (HTTP, lattice proxy, tray SERVICES, UI fetches are hardcoded to :8000) OR document bobcoin go-supertorrent :8000 ownership handoff.
-- [ ] Link /debug/pprof + /spora + /fhe-oracle from Services & Network Health panel (operator section).
-- [ ] Decide bobcoin submodule pointer bump 31c79ff->09c5012 (pre-existing, uncommitted).
-- [ ] Start lattice-go persistently (tray Start All) so lattice feed stops retry-spamming supernode logs.
+- [x] Add `-port` flag to supernode-go (v11.60.48; tray honors BOBTORRENT_PORT; bobcoin owns :8000/:8001/:4001 - use :8002).
+- [x] Operator section: SPoRA + FHE runners + pprof links in Services & Network Health (v11.60.49).
+- [x] bobcoin submodule pointer synced by Protocols #300-305; dead MobileMessenger gitlink removed from index (v11.60.77) - restore as submodule if its real repo URL is provided.
+- [x] Lattice feed retry spam fixed with 5s->60s backoff (v11.60.48); persistent start remains an operator runtime choice via tray.
 
 ## Done (v11.60.56)
 - [x] Dashboard raw block submission (`POST /process`) with exact rejection surfacing.
