@@ -22,7 +22,8 @@ jobs:
       # Legacy peer tree (@lightprotocol/compressed-token) cannot resolve
       # under npm's strict peer rules; local installs already rely on this.
       - name: Version consistency (VERSION file is source of truth)
-        run: node -e "const fs=require('fs');const v=fs.readFileSync('VERSION','utf8').trim();const p=require('./package.json').version;if(v!==p){console.error('VERSION drift: VERSION='+v+' package.json='+p);process.exit(1)}console.log('version consistent:',v)"
+        run: |
+          node -e "const fs=require('fs');const v=fs.readFileSync('VERSION','utf8').trim();const p=require('./package.json').version;if(v!==p){console.error('VERSION drift: VERSION='+v+' package.json='+p);process.exit(1)}console.log('version consistent:',v)"
       - run: npm install --legacy-peer-deps
       - run: npm run build --if-present
       - run: npm test
