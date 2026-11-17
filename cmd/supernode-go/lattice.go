@@ -28,7 +28,7 @@ func handleLattice(w http.ResponseWriter, r *http.Request) {
 	blocks := make([]BlockInfo, 0)
 
 	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get(latticeURL + "/blocks?limit=25")
+	resp, err := client.Get(latticeURL + "/blocks?limit=200")
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode == http.StatusOK {

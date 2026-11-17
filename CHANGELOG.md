@@ -1,3 +1,7 @@
+## [11.60.57] - 2026-11-14
+### Ledger Truncation Fix
+- Dashboard `/lattice` proxy capped at 25 blocks (chain had 27 — newest blocks invisible). Limit raised to 200; verified 27/27 via dashboard at v11.60.57. Found during the v11.60.56 handoff relaunch.
+
 ## [11.60.56] - 2026-11-14
 ### Raw Block Submission in Dashboard
 - Wallet tab gains Submit Lattice Block (Advanced): full block JSON -> `POST /process` via supernode proxy, exact consensus rejection reasons surfaced. Live-verified through the dashboard origin (block accepted, chain 26->27). Branch audit: all local branches already merged into `master`.
