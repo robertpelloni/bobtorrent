@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 import "bobtorrent/internal/consensus"
@@ -62,7 +64,18 @@ func main() {
 
 	addr := fmt.Sprintf(":%d", *port)
 	fmt.Printf("Lattice Node listening on %s with persistence at %s\n", addr, dbPath)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatalf("Lattice Server failed: %v", err)
-	}
+	// Serve in a goroutine so SIGINT/SIGTERM can run the deferred
+	// StopBackgroundSync + store Close above. Previously ListenAndServe
+	// blocked main forever, those defers never ran, and every stop was
+	// an unclean kill left for WAL recovery to sort out.
+	go func() {
+		if err := http.ListenAndServe(addr, mux); err != nil {
+			log.Fatalf("Lattice Server failed: %v", err)
+		}
+	}()
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	<-sig
+	log.Printf("Lattice Node shutting down gracefully")
 }

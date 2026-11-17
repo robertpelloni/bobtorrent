@@ -1,3 +1,7 @@
+## [11.60.74] - 2026-11-17
+### Graceful Lattice Shutdown
+- lattice-go now serves HTTP in a goroutine and waits on SIGINT/SIGTERM so its deferred `StopBackgroundSync` + store `Close` actually run (previously ListenAndServe blocked main and every stop was an unclean kill for WAL recovery). Verified serving 27 blocks after change; Windows console processes still require force termination (platform signal limits).
+
 ## [11.60.73] - 2026-11-17
 ### UDP Tracker (BEP 15) Live-Verified
 - Connect + announce exercised over UDP :6881: connection-id handshake, interval 1800, seeder counting, and compact peer exchange (second peer receives the first as 6-byte compact). Both tracker transports (HTTP + UDP) now live-proven.
