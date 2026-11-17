@@ -19,7 +19,9 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node }}
-      - run: npm install
+      # Legacy peer tree (@lightprotocol/compressed-token) cannot resolve
+      # under npm's strict peer rules; local installs already rely on this.
+      - run: npm install --legacy-peer-deps
       - run: npm run build --if-present
       - run: npm test
   go:
