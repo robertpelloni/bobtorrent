@@ -113,3 +113,6 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 
 ## CI node bump + gate audit (2026-11-16)
 - CI workflow Node 18 -> 22: scoped test glob needs Node >=21 test-runner glob support; local is v22.23.4, engines permit it. go vet clean. gofmt: 46 pre-existing unformatted Go files (compact vendored style) deliberately not mass-formatted; new session files are gofmt-clean. JS lint debt later fixed to 0 (v11.60.59), superseding the earlier note.
+
+## CI not firing (2026-11-17, owner action)
+- GitHub Actions is enabled and ci/Release/stale workflows are active, but gh run list shows ZERO ci/Release runs for all Nov 14-16 master pushes (only scheduled stale runs). Local gates pass (Go suite, npm test 114/114, CI bumped to Node 22), so this is a repo/token-side trigger issue to inspect in the Actions tab (push token workflow scope is the usual suspect). Also: release.yml runs semantic-release with no config in-repo while governance is VERSION-file based, and package.json version had drifted to 11.2.4 - synced to 11.60.59 this turn. Decide: keep semantic-release or retire release.yml in favor of VERSION-file releases.
