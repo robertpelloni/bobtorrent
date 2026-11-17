@@ -119,3 +119,6 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 
 ## CI resolved (2026-11-17)
 - The not-firing mystery was a gh default-repo artifact: gh resolved to upstream webtorrent/bittorrent-tracker. On the fork (explicit -R robertpelloni/bobtorrent), ci.yml gained a Go build/vet/test job + workflow_dispatch; manual dispatch run 44030837396 is GREEN (Go 28s, Node 50s) after fixing npm install with --legacy-peer-deps (ERESOLVE on @lightprotocol/compressed-token). Push-triggered runs still unobserved - dispatch is the proven path; check push token if automatic runs are wanted.
+
+## Push-trigger diagnosis (2026-11-17)
+- Fork API confirms: only workflow_dispatch + Copilot dynamic events have EVER run; pushes create zero runs. Verified NOT the cause: Actions enabled (allowed_actions=all), ci+Release workflow state=active, push credential is owner OAuth (gho_, repo+workflow scopes), commits attributed to owner, workflow files valid (dispatch run 44030837396 green: Go 28s + Node 50s). Remaining suspects live only in GitHub Settings UI (fork workflow approval / Actions policy). Workaround proven: gh workflow run ci.yml -R robertpelloni/bobtorrent. Also note gh CLI defaults to upstream webtorrent/bittorrent-tracker in this workspace - always pass -R robertpelloni/bobtorrent.
