@@ -1,3 +1,7 @@
+## [11.60.72] - 2026-11-17
+### Tracker Announce Live-Verified
+- HTTP `/announce` exercised live: first peer gets empty list, second peer receives the first in compact 6-byte form, re-announce returns the other peer; parameter-less announce correctly 400. Classic tracker semantics intact in the Go port.
+
 ## [11.60.71] - 2026-11-17
 ### Submit-Proof Design Finding (owner decision)
 - `/submit-proof` negative paths verified live (bad payload 400, score<1000 400). FINDING: its `zkVerified` gate is only `score >= 1000` - no cryptographic proof is checked, yet it mints `score/100` economy balance. Anyone who can reach the endpoint can mint with a fabricated JSON score. Bobcoin proof-of-play compatibility endpoint; hardening (signed proof, FHE-oracle linkage, or removal) is an owner call - not changed unilaterally.
