@@ -131,3 +131,6 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 
 ## Submodule repair (2026-11-17)
 - Dead gitlink removed: MobileMessenger pointed at commit 215ce1e with no .gitmodules mapping and no such GitHub repo (Jules scaffold artifact); every git submodule command fataled on it. Removed from index only - pointer preserved in history (8fb7538), empty dir kept. git submodule status now lists bobcoin + element-web cleanly. Restore MobileMessenger as a real submodule if its repo URL is provided.
+
+## Submodule catch-up audit (2026-11-17)
+- bobcoin submodule is 24 commits behind its origin/main (through v8.117.31, ZK/SP1/casino releases from the bobcoin lane). NOT advanced here: pointer bumps are the sync owner (Protocols) lane and pull frontend changes against the Go compat surface. element-web checked separately. Parent repo gates (Go suite, npm test, fork CI) all green at current pointers.
