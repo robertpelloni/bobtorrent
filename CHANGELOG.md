@@ -1,3 +1,7 @@
+## [11.60.60] - 2026-11-17
+### Disaster Recovery Verified
+- Encrypted backup-bundle -> restore -> cold-boot path proven live on the real 27-block chain (wrong passphrase 400; restored node 27/27, hash-identical) and locked in as `TestSecureBundleRestorePreservesSnapshotChain`.
+
 ## [11.60.59] - 2026-11-16
 ### JS Gate Restored: Lint 0 + Real Bug Fixed
 - `standard --fix` + manual cleanup: 669 -> 0 findings on owned JS (`index.js server.js lib test`; lint script scoped to match — unscoped standard swept submodules).
