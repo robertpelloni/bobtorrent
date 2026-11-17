@@ -629,12 +629,13 @@ func initEconomyDatabase() {
 
 func initVerifierService() {
 	verifierSvc = identity.NewVerifierService()
-	mock := &identity.MockVerifier{}
-	github := identity.NewGitHubVerifier()
-	verifierSvc.RegisterVerifier(identity.KindMock, mock)
-	verifierSvc.RegisterVerifier(identity.KindGitHub, github)
-	verifierSvc.RegisterVerifier(identity.KindORCID, mock)
-	verifierSvc.RegisterVerifier(identity.KindURL, mock)
+	// Real verifiers for real kinds. ORCID and URL were previously wired
+	// to the mock, so those dashboard options silently fake-verified
+	// (any URL containing "verify-me" passed). Only KindMock uses mock.
+	verifierSvc.RegisterVerifier(identity.KindMock, &identity.MockVerifier{})
+	verifierSvc.RegisterVerifier(identity.KindGitHub, identity.NewGitHubVerifier())
+	verifierSvc.RegisterVerifier(identity.KindORCID, identity.NewORCIDVerifier())
+	verifierSvc.RegisterVerifier(identity.KindURL, identity.NewURLVerifier())
 }
 
 func initTorrentClient() {

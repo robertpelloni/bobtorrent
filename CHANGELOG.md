@@ -1,3 +1,7 @@
+## [11.60.69] - 2026-11-17
+### Real Attestation Verifiers Wired
+- ORCID and Custom-URL attestation kinds were registered to the MockVerifier, so those dashboard options silently fake-verified (any URL containing 'verify-me' passed). They now use the real `ORCIDVerifier` and SSRF-protected `URLVerifier`; only the explicit Mock kind uses mock. Regression test `TestVerifierRoutingUsesRealVerifiers`; live loopback probe now returns the real SSRF refusal.
+
 ## [11.60.68] - 2026-11-17
 ### Torrent Actions Live-Verified
 - Multipart `/upload` (file -> infoHash + magnet, seeded), `/add-torrent` with a valid magnet (200; garbage magnet 400 with parse reason), `/remove-torrent`, and no-file upload 400 - the full dashboard torrent action set exercised live.
