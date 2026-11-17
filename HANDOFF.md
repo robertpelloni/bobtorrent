@@ -110,3 +110,6 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 
 ## Node test scope fix (2026-11-16)
 - Root `npm test` discovered tests across submodules (element-web Jest/TS): 355 false failures. Repo's own suite scoped (`test/*.test.js`): **113/113 pass**. `package.json` test script scoped accordingly (one line). `npm test` still gates on `pretest` lint: 669 pre-existing standard-style findings in legacy JS (index.js/server.js/lib/test) — left untouched (mass style rewrite not advised); fix with `npx standard --fix` as a dedicated change if desired.
+
+## CI node bump + gate audit (2026-11-16)
+- CI workflow Node 18 -> 22: scoped test glob needs Node >=21 test-runner glob support; local is v22.23.4, engines permit it. go vet clean. gofmt: 46 pre-existing unformatted Go files (compact vendored style) deliberately not mass-formatted; new session files are gofmt-clean. JS lint debt later fixed to 0 (v11.60.59), superseding the earlier note.
