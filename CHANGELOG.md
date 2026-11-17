@@ -1,3 +1,7 @@
+## [11.60.63] - 2026-11-17
+### Shard Round-Trip Verified
+- `/upload-shard` -> `/shards/<hash>` byte-identical round-trip live-verified; hash-mismatch and bad-base64 correctly 400, missing shard 404, path-traversal probes correctly 400 (Go ServeMux/ServeFile). No code change needed.
+
 ## [11.60.62] - 2026-11-17
 ### Publishing Pipeline Live-Verified
 - Ingest -> publish -> assets -> manifest retrieval exercised end-to-end over HTTP: file ingested to torrent (400 on path traversal, 404 on missing), manifest signed+published, `GET /assets` lists it, `GET /manifests/<id>` serves it (200). Port map: bobcoin now also owns :8001 (go-casino) - bobtorrent verification uses :8002.
