@@ -1,3 +1,7 @@
+## [11.60.82] - 2026-11-17
+### CI Go Coverage Widened
+- Fork CI Go job ran only `./cmd/... ./internal/... ./pkg/...`; it now runs `go test ./...` so the root `test` package (and any future top-level package) is covered. Local `./...` green.
+
 ## [11.60.80] - 2026-11-17
 ### TUI Block Feed Seeded
 - Live block feed sat at 'Waiting for blocks...' on chains whose blocks predated startup (WS only pushes post-connect NEW_BLOCK events). The market poller now seeds/refreshes the feed with the chain's latest block (hash-deduped). Verified live in TUI: ACHIEVEMENT_UNLOCK entry shown, Chains 2 / Blocks 27.
