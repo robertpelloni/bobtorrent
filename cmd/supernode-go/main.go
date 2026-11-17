@@ -782,7 +782,16 @@ func pollMarket() {
 		uiProgram.Send(tui.BidsMsg{Bids: bidsResp.Bids})
 	}
 
-	publishNetworkStats(0, 0)
+	// Publish REAL lattice counts. This previously hardcoded (0, 0),
+	// wiping the TUI Chains/Blocks counters every 10 seconds even
+	// though the lattice WS feed had supplied true values.
+	var latticeStats struct {
+		Chains int `json:"chains"`
+		Blocks int `json:"blocks"`
+	}
+	if _, err := httpClient.R().SetResult(&latticeStats).Get(latticeURL + "/"); err == nil {
+		publishNetworkStats(latticeStats.Chains, latticeStats.Blocks)
+	}
 
 	for _, bid := range bidsResp.Bids {
 		if bid.Status != "OPEN" || bid.Magnet == "" {

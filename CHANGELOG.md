@@ -1,3 +1,7 @@
+## [11.60.79] - 2026-11-17
+### TUI Lattice Counters Fixed
+- Market poller hardcoded `publishNetworkStats(0, 0)` every 10s, wiping TUI Chains/Blocks to zero against a live 27-block chain. It now publishes real counts from the lattice status endpoint. Verified live in TUI: Lattice ONLINE, Chains 2, Blocks 27, live-decaying balance.
+
 ## [11.60.78] - 2026-11-17
 ### TUI Version Truth + Smoke Test
 - Terminal UI hardcoded stale versions (header v2.0, footer v11.6.0). It now renders the injected build `Version` (`tui.Version` set from `main.Version`). TUI path smoke-tested live both runs: renders, honest Lattice OFFLINE state, quits cleanly on q (exit 0).
