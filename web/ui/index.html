@@ -492,6 +492,21 @@
                     </div>
                 </div>
 
+                <!-- Raw block submission (advanced, POST /process) -->
+                <div class="card section-card">
+                    <div class="card-title-row">
+                        <h3><span class="icon">🧱</span> Submit Lattice Block (Advanced)</h3>
+                        <span class="badge" title="Direct consensus write path — the same POST /process endpoint lattice clients use; invalid blocks are rejected with an exact reason">Consensus Write</span>
+                    </div>
+                    <p class="description">Paste a full block JSON (raw or <code>{"block": {...}}</code> wrapped). The hash must be the SHA-256 of <code>type+account+previous+balance+staked+height+link+payload</code>, balances must match demurrage-adjusted expectations, and a signature (if present) must verify. Rejections return the engine's exact reason — nothing is silently accepted.</p>
+                    <div class="form-group">
+                        <label for="block-json" title="Complete block object: type, account, previous, balance, staked_balance, height, link, timestamp, hash, signature">Block JSON</label>
+                        <textarea id="block-json" rows="7" style="width:100%;font-family:monospace" placeholder='{"type":"achievement_unlock","account":"...","previous":"...","balance":0,"staked_balance":0,"height":1,"link":"","timestamp":0,"hash":"...","signature":""}'></textarea>
+                    </div>
+                    <button id="btn-submit-block" class="primary-btn" title="Submit this block to the lattice consensus engine via POST /process">Submit Block to Consensus</button>
+                    <div id="block-result" class="result-box hidden"><pre id="block-json-result"></pre></div>
+                </div>
+
                 <!-- Lattice Visualization Table -->
                 <div class="card section-card">
                     <div class="card-title-row">
@@ -545,7 +560,7 @@
 
         <footer>
             <div class="footer-left">
-                <span>BobTorrent Sovereign Omni-Workspace</span> &bull; <span>Version <span id="footer-version">11.60.55</span></span>
+                <span>BobTorrent Sovereign Omni-Workspace</span> &bull; <span>Version <span id="footer-version">11.60.56</span></span>
             </div>
             <div class="footer-right">
                 <span title="Continuous autonomous peer synchronization">Autopilot Mesh Active</span>

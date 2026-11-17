@@ -687,6 +687,20 @@ document.addEventListener('DOMContentLoaded', () => {
         try { const d = await jget('/anchors'); const list = d.anchors || []; fillTable('anchors-table', list.map(a => [`<td class="mono">${esc(short(a.manifestId || a.id))}</td><td>${esc(a.type)}</td>`]), 'No anchored manifests yet.', 2); } catch {}
     }
 
+    document.getElementById('btn-submit-block')?.addEventListener('click', async () => {
+        const raw = document.getElementById('block-json')?.value.trim();
+        if (!raw) return alert('Paste a block JSON first.');
+        let parsed; try { parsed = JSON.parse(raw); } catch { return alert('Invalid JSON.'); }
+        try {
+            const r = await fetch('/process', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(parsed) });
+            const text = await r.text();
+            let data; try { data = JSON.parse(text); } catch { data = { response: text }; }
+            if (!r.ok) throw new Error(data.error || text || 'Block rejected');
+            showBox('block-result', 'block-json-result', data);
+            updateLattice(); updateLatticeState(); updateLatticeAccount();
+        } catch (e) { alert('Consensus rejected: ' + e.message); }
+    });
+
     async function updateLatticeAccount() {
         const addr = document.getElementById('wallet-address')?.textContent.trim();
         if (!addr || addr === 'Loading...') return;

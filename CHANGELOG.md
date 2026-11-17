@@ -1,3 +1,7 @@
+## [11.60.56] - 2026-11-14
+### Raw Block Submission in Dashboard
+- Wallet tab gains Submit Lattice Block (Advanced): full block JSON -> `POST /process` via supernode proxy, exact consensus rejection reasons surfaced. Live-verified through the dashboard origin (block accepted, chain 26->27). Branch audit: all local branches already merged into `master`.
+
 ## [11.60.55] - 2026-11-14
 ### Lattice Account in Wallet Tab
 - Block Lattice card shows the wallet's on-chain account: balance (demurrage-decayed, tooltip explains the rate), frontier height, staked amount — via proxied `/balance` + `/frontier`. Live-verified: genesis account height 8, balance 971348.
