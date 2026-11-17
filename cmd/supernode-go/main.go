@@ -329,6 +329,7 @@ func realMain() {
 	initVerifierService()
 	initIngestionService()
 
+	tui.Version = Version
 	model := tui.NewModel()
 	uiProgram = tea.NewProgram(model, tea.WithAltScreen())
 

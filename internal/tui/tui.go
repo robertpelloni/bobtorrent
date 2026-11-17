@@ -140,6 +140,12 @@ type Bid struct {
 // maxFeedLines limits the block feed to the most recent N entries.
 const maxFeedLines = 15
 
+// Version is the build version rendered in the TUI header/footer.
+// Set by the entrypoint from the binary's injected Version so the TUI
+// can never drift from the VERSION file (it previously hardcoded
+// stale v2.0 / v11.6.0 strings).
+var Version = "dev"
+
 // Model is the Bubble Tea model for the Supernode TUI dashboard.
 type Model struct {
 	// table displays the current storage market bids.
@@ -272,7 +278,7 @@ func (m Model) View() string {
 	var sb strings.Builder
 
 	// ── Header ──
-	sb.WriteString(titleStyle.Render("⚡ BOBTORRENT SUPERNODE v2.0 (GO) ⚡"))
+	sb.WriteString(titleStyle.Render("⚡ BOBTORRENT SUPERNODE v" + Version + " (GO) ⚡"))
 	sb.WriteString("\n\n")
 
 	// ── Status Bar ──
@@ -323,7 +329,7 @@ func (m Model) View() string {
 	sb.WriteString("\n\n")
 
 	// ── Footer ──
-	sb.WriteString(footerStyle.Render("  Press 'q' to quit  │  Bobtorrent Omni-Workspace v11.6.0"))
+	sb.WriteString(footerStyle.Render("  Press 'q' to quit  │  Bobtorrent Omni-Workspace v" + Version))
 	sb.WriteString("\n")
 
 	return sb.String()
