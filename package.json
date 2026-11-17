@@ -60,10 +60,10 @@
   "devDependencies": {
     "@mapbox/node-pre-gyp": "^2.0.3",
     "@webtorrent/semantic-release-config": "1.0.11",
-    "magnet-uri": "7.0.8",
-    "semantic-release": "25.0.5",
+    "magnet-uri": "7.0.10",
+    "semantic-release": "25.0.9",
     "standard": "*",
-    "tape": "5.10.0",
+    "tape": "5.10.3",
     "undici": "^6.16.1",
     "webrtc-polyfill": "^1.1.5",
     "webtorrent-fixtures": "2.0.3"
