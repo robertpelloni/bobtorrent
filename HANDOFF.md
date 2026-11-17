@@ -134,3 +134,6 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 
 ## Submodule catch-up audit (2026-11-17)
 - bobcoin submodule is 24 commits behind its origin/main (through v8.117.31, ZK/SP1/casino releases from the bobcoin lane). NOT advanced here: pointer bumps are the sync owner (Protocols) lane and pull frontend changes against the Go compat surface. element-web checked separately. Parent repo gates (Go suite, npm test, fork CI) all green at current pointers.
+
+## TUI-mode HTTP parity (2026-11-17)
+- TUI mode was exercised with lattice UP: first TUI smokes used default :8000 (owned by bobcoin go-supertorrent), so HTTP failed to bind but the TUI itself ran. Correct invocation here: ``supernode-go -port 8002`` (TUI) or ``supernode-go -headless -port 8002``; both serve dashboard + /status on :8002. DEPLOY.md updated to recommend :8002 on this machine while flag default stays 8000 for upstream compatibility.

@@ -62,10 +62,10 @@ Provides:
 
 ## 3. Run the Go Supernode
 ```bash
-./build/supernode-go [-headless] [-port 8000]
+./build/supernode-go [-headless] [-port 8002]
 ```
 - `-headless`: full service set + dashboard, no TUI (this is what the tray launches).
-- `-port`: HTTP dashboard/tracker port (default 8000).
+- `-port`: HTTP dashboard/tracker port. The flag default remains `8000` for upstream compatibility, but **on this machine :8000 is owned by bobcoin's go-supertorrent (and :8001 by go-casino), so run bobtorrent with `-port 8002`** or the HTTP service will fail to bind (the TUI itself still works). Verified live: `supernode-go -port 8002` in TUI mode serves `/status` (11.60.81) and the dashboard on :8002, and `supernode-go -headless -port 8002` behaves identically for HTTP.
 Default services:
 - HTTP tracker / dashboard / stats on `:<port>` (default `:8000`)
 - UDP tracker on `:6881`
