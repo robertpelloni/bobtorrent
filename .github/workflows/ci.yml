@@ -2,6 +2,7 @@ name: ci
 'on':
   - push
   - pull_request
+  - workflow_dispatch
 jobs:
   test:
     name: Node ${{ matrix.node }} / ${{ matrix.os }}
@@ -21,3 +22,17 @@ jobs:
       - run: npm install
       - run: npm run build --if-present
       - run: npm test
+  go:
+    name: Go build + test
+    runs-on: ubuntu-latest
+    env:
+      # Pure-Go stack (modernc sqlite); CGO toolchains are not required.
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go build -buildvcs=false ./...
+      - run: go vet -buildvcs=false ./...
+      - run: go test -buildvcs=false ./cmd/... ./internal/... ./pkg/...
