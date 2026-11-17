@@ -1,3 +1,7 @@
+## [11.60.70] - 2026-11-17
+### Attestation Verifiers Live-Checked
+- GitHub + ORCID real verifiers exercised against live APIs with deterministic negatives (missing Gist -> 'Gist not found'; real ORCID iD without attestation string -> correctly unverified). Positive verification requires owner-published content containing `BOBTORRENT_IDENTITY:<account>` (a Gist or ORCID biography) - owner action, not automatable here.
+
 ## [11.60.69] - 2026-11-17
 ### Real Attestation Verifiers Wired
 - ORCID and Custom-URL attestation kinds were registered to the MockVerifier, so those dashboard options silently fake-verified (any URL containing 'verify-me' passed). They now use the real `ORCIDVerifier` and SSRF-protected `URLVerifier`; only the explicit Mock kind uses mock. Regression test `TestVerifierRoutingUsesRealVerifiers`; live loopback probe now returns the real SSRF refusal.
