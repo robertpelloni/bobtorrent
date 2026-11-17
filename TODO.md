@@ -85,3 +85,4 @@
 - [ ] Signature-mandatory policy for lattice blocks.
 - [ ] i2pd SAM (:7656) for I2P; Lotus RPC for Filecoin non-simulated mode.
 - [ ] Edge CDP cross-agent messaging needs a CDP driver tool in-session.
+- [ ] OWNER DECISION: harden /submit-proof (currently mints on score>=1000 with no proof verification) - signed proof, FHE-oracle binding, or remove the mint.
