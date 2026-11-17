@@ -1,3 +1,7 @@
+## [11.60.65] - 2026-11-17
+### Live Chat Delivery Fix (same-node)
+- Dashboard chat messages published on a node never reached other clients on the SAME node live (libp2p readLoop skips own-host messages; sender saw only the UI's optimistic echo, peers saw nothing until rejoin). `Messenger.PublishFromHandler` now fans out locally to registered topic handlers (excluding the originator); wired into `/ws-messenger` and `/mega-bridge`. Regression test `TestMessengerSocketDeliversToPeerClient` (the old test tolerated the missing echo); live two-client verified.
+
 ## [11.60.64] - 2026-11-17
 ### Mega-Bridge Live-Verified + Log Hygiene
 - `/mega-bridge` WebSocket exercised live: join/publish ack, history returns persisted message, unknown action errors cleanly. Normal client closes (1000) no longer logged as errors.

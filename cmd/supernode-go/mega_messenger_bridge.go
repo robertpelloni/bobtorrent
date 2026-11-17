@@ -101,7 +101,7 @@ func handleMessengerCommand(conn *websocket.Conn, clientID string, action string
 		sendAck(conn, action, topic)
 
 	case "publish":
-		err := messenger.Publish(topic, payload)
+		err := messenger.PublishFromHandler(topic, payload, clientID)
 		if err != nil {
 			sendError(conn, "Failed to publish: "+err.Error())
 		} else {

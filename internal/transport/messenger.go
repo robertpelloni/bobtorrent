@@ -139,6 +139,30 @@ func (m *Messenger) PublishEnvelope(topicName string, env *messenger.Envelope) e
 	return m.Publish(topicName, data)
 }
 
+// PublishFromHandler publishes to the gossip network and additionally
+// fans the message out to locally registered topic handlers (except the
+// originating handler). This local fan-out is required because the
+// libp2p readLoop deliberately skips own-host messages, so without it
+// other clients connected to THIS node would never see locally
+// published messages live — only via history on rejoin.
+func (m *Messenger) PublishFromHandler(topicName string, data []byte, excludeHandlerID string) error {
+	if err := m.Publish(topicName, data); err != nil {
+		return err
+	}
+	m.topicsMu.RLock()
+	handlers := make(map[string]func([]byte, peer.ID), len(m.handlers[topicName]))
+	for id, h := range m.handlers[topicName] {
+		handlers[id] = h
+	}
+	m.topicsMu.RUnlock()
+	for id, h := range handlers {
+		if id != excludeHandlerID {
+			h(data, m.host.ID())
+		}
+	}
+	return nil
+}
+
 func (m *Messenger) Publish(topicName string, data []byte) error {
 	m.topicsMu.RLock()
 	t, exists := m.topics[topicName]

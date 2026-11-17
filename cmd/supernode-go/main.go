@@ -605,7 +605,7 @@ func handleMessengerSocket(w http.ResponseWriter, r *http.Request) {
 				if targetTopic == "" {
 					targetTopic = globalTopic
 				}
-				_ = messenger.Publish(targetTopic, []byte(req.Data))
+				_ = messenger.PublishFromHandler(targetTopic, []byte(req.Data), handlerID)
 			}
 		}
 	}
