@@ -1,3 +1,7 @@
+## [11.60.80] - 2026-11-17
+### TUI Block Feed Seeded
+- Live block feed sat at 'Waiting for blocks...' on chains whose blocks predated startup (WS only pushes post-connect NEW_BLOCK events). The market poller now seeds/refreshes the feed with the chain's latest block (hash-deduped). Verified live in TUI: ACHIEVEMENT_UNLOCK entry shown, Chains 2 / Blocks 27.
+
 ## [11.60.79] - 2026-11-17
 ### TUI Lattice Counters Fixed
 - Market poller hardcoded `publishNetworkStats(0, 0)` every 10s, wiping TUI Chains/Blocks to zero against a live 27-block chain. It now publishes real counts from the lattice status endpoint. Verified live in TUI: Lattice ONLINE, Chains 2, Blocks 27, live-decaying balance.

@@ -793,6 +793,33 @@ func pollMarket() {
 		publishNetworkStats(latticeStats.Chains, latticeStats.Blocks)
 	}
 
+	// Seed/refresh the TUI live block feed with the chain's latest block.
+	// The WS feed only pushes NEW_BLOCK events after connect, so without
+	// this the feed panel sat at "Waiting for blocks..." forever on a
+	// chain whose blocks all predated startup.
+	if uiProgram != nil {
+		var blocksResp struct {
+			Blocks []struct {
+				Type      string `json:"type"`
+				Hash      string `json:"hash"`
+				Account   string `json:"account"`
+				Timestamp int64  `json:"timestamp"`
+			} `json:"blocks"`
+		}
+		if _, err := httpClient.R().SetResult(&blocksResp).Get(latticeURL + "/blocks?limit=200"); err == nil && len(blocksResp.Blocks) > 0 {
+			latest := blocksResp.Blocks[len(blocksResp.Blocks)-1]
+			if latest.Hash != lastTuiFeedHash {
+				lastTuiFeedHash = latest.Hash
+				uiProgram.Send(tui.BlockFeedMsg{
+					Type:      latest.Type,
+					Hash:      latest.Hash,
+					Account:   latest.Account,
+					Timestamp: time.UnixMilli(latest.Timestamp),
+				})
+			}
+		}
+	}
+
 	for _, bid := range bidsResp.Bids {
 		if bid.Status != "OPEN" || bid.Magnet == "" {
 			continue
@@ -949,6 +976,9 @@ func listenToLatticeFeed() bool {
 		}
 	}
 }
+
+// lastTuiFeedHash dedupes TUI block-feed seeding across market polls.
+var lastTuiFeedHash string
 
 func publishNetworkStats(chains, totalBlocks int) {
 	if uiProgram == nil {
