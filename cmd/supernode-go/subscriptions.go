@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -48,6 +49,14 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	if req.PublicKey == "" {
 		http.Error(w, "Missing public key", http.StatusBadRequest)
+		return
+	}
+
+	// Publisher keys are Ed25519 public keys: exactly 64 hex characters.
+	// Anything else can never resolve to a channel, so reject it instead
+	// of storing a dead subscription.
+	if raw, err := hex.DecodeString(req.PublicKey); err != nil || len(raw) != 32 {
+		http.Error(w, "publicKey must be a 64-character hex Ed25519 public key", http.StatusBadRequest)
 		return
 	}
 

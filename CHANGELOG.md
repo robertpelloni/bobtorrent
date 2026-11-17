@@ -1,3 +1,7 @@
+## [11.60.61] - 2026-11-17
+### Subscribe Key Validation
+- `/subscribe` accepted any non-empty string as a publisher key. Now requires a 64-char hex Ed25519 public key (400 otherwise). Test: `subscribe_validation_test.go`; live-verified (zz -> 400, valid -> 200). Found in exhaustive dashboard sweep: 21/21 GET surfaces 200, negative controls (FHE empty, bad magnet, negative mint, bogus block, empty peer) all correctly reject.
+
 ## [11.60.60] - 2026-11-17
 ### Disaster Recovery Verified
 - Encrypted backup-bundle -> restore -> cold-boot path proven live on the real 27-block chain (wrong passphrase 400; restored node 27/27, hash-identical) and locked in as `TestSecureBundleRestorePreservesSnapshotChain`.

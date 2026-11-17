@@ -125,3 +125,6 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 
 ## Disaster-recovery drill (2026-11-17)
 - Full operator path live-verified on the real 27-block chain: POST /persistence/backup-bundle (passphrase, unsigned) -> wrong passphrase rejected 400 -> POST /persistence/restore-bundle -> fresh lattice-go cold boot on restored DB: 27/27 blocks, latest hash match. File-level proof at each stage (plain backup 27 rows; restored file 27 rows pre-boot and post-boot). One earlier drill run reported 0 blocks - not reproduced in two subsequent end-to-end runs; suspected concurrent-start WAL race in the drill harness (a hung first node attempt), not restore code. Durable unit proof added: internal/consensus/secure_bundle_snapshot_test.go (snapshot-crossed chain through bundle round-trip). Drill artifacts in TEMP were passphrase test files only - delete freely.
+
+## v11.60.61 + port map update (2026-11-17)
+- /subscribe key validation fixed + tested + live-verified on :8002. PORT MAP CHANGED: bobcoin go-casino.exe now owns :8001 too (in addition to go-supertorrent :8000, go-lattice :4001). Use supernode -port 8002 (or any free port) alongside bobcoin lanes; fixed sleeps are too short under multi-lane load - always readiness-loop before probing.
