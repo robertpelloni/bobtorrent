@@ -1,3 +1,7 @@
+## [11.60.73] - 2026-11-17
+### UDP Tracker (BEP 15) Live-Verified
+- Connect + announce exercised over UDP :6881: connection-id handshake, interval 1800, seeder counting, and compact peer exchange (second peer receives the first as 6-byte compact). Both tracker transports (HTTP + UDP) now live-proven.
+
 ## [11.60.72] - 2026-11-17
 ### Tracker Announce Live-Verified
 - HTTP `/announce` exercised live: first peer gets empty list, second peer receives the first in compact 6-byte form, re-announce returns the other peer; parameter-less announce correctly 400. Classic tracker semantics intact in the Go port.
