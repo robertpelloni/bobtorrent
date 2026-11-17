@@ -1,3 +1,7 @@
+## [11.60.58] - 2026-11-14
+### Opt-In Signature Enforcement (lattice-go -require-signatures)
+- `Lattice.RequireSignatures` + `-require-signatures` flag (default OFF — permissive behavior unchanged). Live unsigned blocks rejected ('signature required'), signed accepted; replay of existing history never gated so cold boot cannot brick. Covered by `require_signatures_test.go` + live test on a throwaway chain. Enabling it makes the mandatory-signature policy a deployment choice instead of a code change.
+
 ## [11.60.57] - 2026-11-14
 ### Ledger Truncation Fix
 - Dashboard `/lattice` proxy capped at 25 blocks (chain had 27 — newest blocks invisible). Limit raised to 200; verified 27/27 via dashboard at v11.60.57. Found during the v11.60.56 handoff relaunch.

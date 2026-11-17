@@ -83,6 +83,14 @@ const (
 // market bids). All mutations go through ProcessBlock which enforces the
 // full validation pipeline before committing any state change.
 type Lattice struct {
+	// RequireSignatures, when true, rejects live (persist=true) blocks that
+	// carry no Ed25519 signature. Default false preserves the historical
+	// permissive behavior. Replay of persisted history (persist=false) is
+	// never gated, so enabling it cannot brick an existing chain's cold
+	// boot; it does mean peer sync of unsigned history will be refused,
+	// which is the intended posture for a signed-only network.
+	RequireSignatures bool
+
 	// chains maps account public keys to their ordered sequence of blocks.
 	// Each account has exactly one chain, starting with an "open" block.
 	chains map[string][]*torrent.Block
@@ -893,6 +901,8 @@ func (l *Lattice) processBlockLockedDetailed(b *torrent.Block, persist bool) (bo
 		if !torrent.Verify(b.Hash, b.Signature, b.Account) {
 			return false, fmt.Errorf("invalid signature for block %s", b.Hash[:16])
 		}
+	} else if l.RequireSignatures && persist {
+		return false, fmt.Errorf("signature required for block %s (node runs with -require-signatures)", b.Hash[:16])
 	}
 
 	// ── 3. Chain Integrity ──

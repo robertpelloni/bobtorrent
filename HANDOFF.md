@@ -104,3 +104,6 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 ## v11.60.56 dashboard write path
 - Wallet tab Submit Lattice Block (Advanced) posts raw/wrapped JSON to `/process` via supernode proxy; verified live through :8001 (chain 26->27, block `860b7155...`). Chain now **27 blocks**. Dashboard coverage: read + write complete.
 - Branch audit: all local branches (jules-*, fix-wasm, monorepo, main) fully merged into master. Tray controller verified: menu Open/Start/Restart/Stop/Refresh/Quit(stops services); Windows `.exe` + `taskkill`/CIM guarded stop.
+
+## v11.60.58 require-signatures
+- Opt-in enforcement shipped (flag, default off). Owner policy decision is now: run lattice-go with `-require-signatures` or not — note signed-only mode refuses peer sync of unsigned history by design.

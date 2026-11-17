@@ -16,6 +16,7 @@ import "bobtorrent/internal/consensus"
 func main() {
 	port := flag.Int("port", 4000, "HTTP listen port (two-node setups need distinct ports per node)")
 	peers := flag.String("peers", "", "comma-separated peer lattice URLs for autonomous background sync, e.g. http://127.0.0.1:4000")
+	requireSigs := flag.Bool("require-signatures", false, "reject live blocks without a valid Ed25519 signature (replay of existing history is never gated; peer sync of unsigned history will be refused)")
 	flag.Parse()
 
 	fmt.Println("Bobcoin Lattice Node (Go Port) - Initializing...")
@@ -28,6 +29,10 @@ func main() {
 	s, err := consensus.NewPersistentServer(dbPath)
 	if err != nil {
 		log.Fatalf("failed to initialize persistent lattice server: %v", err)
+	}
+	if *requireSigs {
+		s.Lattice().RequireSignatures = true
+		log.Printf("signature enforcement ENABLED: unsigned live blocks will be rejected")
 	}
 	defer func() {
 		s.StopBackgroundSync()
