@@ -90,9 +90,9 @@ if (command === 'ingest') {
   } else {
     // Interactive Mode
     const dht = new DHTClient({
-        stateFile: path.join(argv.dir, 'dht_state.json'),
-        bootstrap: argv.bootstrap,
-        address: argv.host
+      stateFile: path.join(argv.dir, 'dht_state.json'),
+      bootstrap: argv.bootstrap,
+      address: argv.host
     })
     import('./lib/secure-transport.js').then(({ startSecureServer }) => {
       const server = startSecureServer(argv.dir, 0, null, dht, null, argv.host)
@@ -120,19 +120,19 @@ if (command === 'ingest') {
 }
 
 if (command === 'mine') {
-    const bobcoin = new BobcoinService({ enabled: true })
-    await bobcoin.start()
-    // Simulate a "Perfect" combo
-    const danceData = Array(50).fill({ arrow: 'UP', timing: 'PERFECT' })
-    const block = await bobcoin.submitDance(danceData)
-    if (block) {
-        log.info('Mining Successful!')
-        log.json(block)
-        process.exit(0)
-    } else {
-        log.error('Mining Failed')
-        process.exit(1)
-    }
+  const bobcoin = new BobcoinService({ enabled: true })
+  await bobcoin.start()
+  // Simulate a "Perfect" combo
+  const danceData = Array(50).fill({ arrow: 'UP', timing: 'PERFECT' })
+  const block = await bobcoin.submitDance(danceData)
+  if (block) {
+    log.info('Mining Successful!')
+    log.json(block)
+    process.exit(0)
+  } else {
+    log.error('Mining Failed')
+    process.exit(1)
+  }
 }
 
 if (command === 'publish') {
@@ -165,9 +165,9 @@ if (command === 'publish') {
   } else {
     log.info('Publishing manifest to DHT...')
     const dht = new DHTClient({
-        stateFile: path.join(argv.dir, 'dht_state.json'),
-        bootstrap: argv.bootstrap,
-        address: argv.host
+      stateFile: path.join(argv.dir, 'dht_state.json'),
+      bootstrap: argv.bootstrap,
+      address: argv.host
     })
     dht.putManifest(keypair, sequence, manifest).then(hash => {
       log.info('Published!')
@@ -193,8 +193,8 @@ if (command === 'serve') {
   }
 
   if (argv.bobcoin) {
-      const bobcoin = new BobcoinService({ enabled: true })
-      await bobcoin.start()
+    const bobcoin = new BobcoinService({ enabled: true })
+    await bobcoin.start()
   }
 
   const client = new MegatorrentClient({

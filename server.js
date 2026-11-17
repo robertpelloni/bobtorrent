@@ -342,9 +342,15 @@ class Server extends EventEmitter {
     if (this.udp4) this.udp4.bind(udpPort, udp4Hostname)
     if (this.udp6) this.udp6.bind(udpPort, udp6Hostname)
 
-    // WebTransport (HTTP/3) listener
+    // WebTransport (HTTP/3) listener. The constructor-scope `onListening`
+    // counter is not visible in this method, so pass a local completion
+    // callback with the same net effect (mark + emit 'listening'); the
+    // once('listening') registration above makes duplicate emits harmless.
     if (this._wtOpts) {
-      this._startWebTransport(this._wtOpts, port, onListening)
+      this._startWebTransport(this._wtOpts, port, () => {
+        this.listening = true
+        this.emit('listening')
+      })
     }
   }
 

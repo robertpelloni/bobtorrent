@@ -1,6 +1,5 @@
 import test from 'node:test'
 import assert from 'node:assert'
-import crypto from 'crypto'
 import { ManifestDistributor } from '../supernode/network/manifest-distributor.js'
 
 function createMockDHT () {
@@ -46,9 +45,9 @@ test('ManifestDistributor', async (t) => {
   await t.test('constructor initializes correctly', () => {
     const dht = createMockDHT()
     const storage = createMockStorage()
-    
+
     const distributor = new ManifestDistributor({ dht, storage, wsPort: 8080 })
-    
+
     assert.strictEqual(distributor.wsPort, 8080)
     assert.strictEqual(distributor._destroyed, false)
     assert.strictEqual(distributor.manifestCache.size, 0)
@@ -57,19 +56,19 @@ test('ManifestDistributor', async (t) => {
 
   await t.test('setPort updates wsPort', () => {
     const distributor = new ManifestDistributor({})
-    
+
     distributor.setPort(9999)
-    
+
     assert.strictEqual(distributor.wsPort, 9999)
   })
 
   await t.test('fileIdToInfoHash produces consistent SHA1 hashes', () => {
     const distributor = new ManifestDistributor({})
     const fileId = 'test-file-id-12345'
-    
+
     const hash1 = distributor.fileIdToInfoHash(fileId)
     const hash2 = distributor.fileIdToInfoHash(fileId)
-    
+
     assert.ok(hash1 instanceof Buffer)
     assert.strictEqual(hash1.length, 20)
     assert.ok(hash1.equals(hash2))
@@ -77,10 +76,10 @@ test('ManifestDistributor', async (t) => {
 
   await t.test('fileIdToInfoHash produces different hashes for different fileIds', () => {
     const distributor = new ManifestDistributor({})
-    
+
     const hash1 = distributor.fileIdToInfoHash('file-1')
     const hash2 = distributor.fileIdToInfoHash('file-2')
-    
+
     assert.ok(!hash1.equals(hash2))
   })
 
@@ -88,14 +87,14 @@ test('ManifestDistributor', async (t) => {
     const dht = createMockDHT()
     const storage = createMockStorage()
     const distributor = new ManifestDistributor({ dht, storage, wsPort: 8080 })
-    
+
     const events = []
     distributor.on('manifest-announced', (info) => events.push(info))
-    
+
     distributor.announceManifest('test-file-id')
-    
-    await new Promise(r => setTimeout(r, 50))
-    
+
+    await new Promise(resolve => setTimeout(resolve, 50))
+
     assert.strictEqual(distributor.manifestCache.has('test-file-id'), true)
     assert.strictEqual(events.length, 1)
     assert.strictEqual(events[0].fileId, 'test-file-id')
@@ -106,17 +105,17 @@ test('ManifestDistributor', async (t) => {
     const storage = createMockStorage()
     const distributor = new ManifestDistributor({ dht, storage, wsPort: 8080 })
     distributor._destroyed = true
-    
+
     distributor.announceManifest('test-file-id')
-    
+
     assert.strictEqual(distributor.manifestCache.size, 0)
   })
 
   await t.test('createManifestRequest returns valid request object', () => {
     const distributor = new ManifestDistributor({})
-    
+
     const request = distributor.createManifestRequest('my-file-id')
-    
+
     assert.strictEqual(request.type, 'manifest-request')
     assert.strictEqual(request.fileId, 'my-file-id')
     assert.ok(request.requestId)
@@ -126,9 +125,9 @@ test('ManifestDistributor', async (t) => {
   await t.test('createManifestResponse with manifest', () => {
     const distributor = new ManifestDistributor({})
     const manifest = Buffer.from('encrypted-manifest-data')
-    
+
     const response = distributor.createManifestResponse('req-123', 'file-abc', manifest)
-    
+
     assert.strictEqual(response.type, 'manifest-response')
     assert.strictEqual(response.requestId, 'req-123')
     assert.strictEqual(response.fileId, 'file-abc')
@@ -138,9 +137,9 @@ test('ManifestDistributor', async (t) => {
 
   await t.test('createManifestResponse without manifest', () => {
     const distributor = new ManifestDistributor({})
-    
+
     const response = distributor.createManifestResponse('req-123', 'file-abc', null)
-    
+
     assert.strictEqual(response.found, false)
     assert.strictEqual(response.manifest, null)
   })
@@ -149,18 +148,18 @@ test('ManifestDistributor', async (t) => {
     const storage = createMockStorage()
     const testManifest = Buffer.from('test-manifest-content')
     storage.storeManifest('file-123', testManifest)
-    
+
     const distributor = new ManifestDistributor({ storage })
-    
+
     const request = {
       type: 'manifest-request',
       fileId: 'file-123',
       requestId: 'req-abc'
     }
-    
+
     let sentResponse = null
     const result = distributor.handleMessage(request, (resp) => { sentResponse = resp })
-    
+
     assert.strictEqual(result, true)
     assert.ok(sentResponse)
     assert.strictEqual(sentResponse.type, 'manifest-response')
@@ -170,18 +169,18 @@ test('ManifestDistributor', async (t) => {
 
   await t.test('handleMessage returns false for unknown message types', () => {
     const distributor = new ManifestDistributor({})
-    
+
     const result = distributor.handleMessage({ type: 'unknown' }, () => {})
-    
+
     assert.strictEqual(result, false)
   })
 
   await t.test('handleMessage processes manifest-response for pending request', async () => {
     const distributor = new ManifestDistributor({})
-    
+
     const testManifest = Buffer.from('my-manifest-data')
     const requestId = 'pending-req-123'
-    
+
     let resolvedResult = null
     const promise = new Promise((resolve) => {
       distributor.pendingRequests.set(requestId, {
@@ -194,7 +193,7 @@ test('ManifestDistributor', async (t) => {
         timer: setTimeout(() => {}, 10000)
       })
     })
-    
+
     const response = {
       type: 'manifest-response',
       requestId,
@@ -202,12 +201,12 @@ test('ManifestDistributor', async (t) => {
       manifest: testManifest.toString('base64'),
       found: true
     }
-    
+
     const result = distributor.handleMessage(response, () => {})
-    
+
     assert.strictEqual(result, true)
     await promise
-    
+
     assert.ok(resolvedResult)
     assert.strictEqual(resolvedResult.fileId, 'file-xyz')
     assert.ok(resolvedResult.manifest.equals(testManifest))
@@ -216,27 +215,27 @@ test('ManifestDistributor', async (t) => {
 
   await t.test('requestManifest times out when no response', async () => {
     const distributor = new ManifestDistributor({})
-    
+
     let sentRequest = null
     const sendRequest = (req) => { sentRequest = req }
-    
+
     await assert.rejects(
       () => distributor.requestManifest('file-id', sendRequest, 100),
       /timeout/i
     )
-    
+
     assert.ok(sentRequest)
     assert.strictEqual(sentRequest.type, 'manifest-request')
   })
 
   await t.test('getAnnouncedManifests returns cached manifests', () => {
     const distributor = new ManifestDistributor({})
-    
+
     distributor.manifestCache.set('file-1', { announcedAt: 1000, infoHash: 'hash1' })
     distributor.manifestCache.set('file-2', { announcedAt: 2000, infoHash: 'hash2' })
-    
+
     const manifests = distributor.getAnnouncedManifests()
-    
+
     assert.strictEqual(manifests.length, 2)
     assert.ok(manifests.find(m => m.fileId === 'file-1'))
     assert.ok(manifests.find(m => m.fileId === 'file-2'))
@@ -244,39 +243,39 @@ test('ManifestDistributor', async (t) => {
 
   await t.test('getStats returns correct counts', () => {
     const distributor = new ManifestDistributor({})
-    
+
     distributor.manifestCache.set('f1', {})
     distributor.manifestCache.set('f2', {})
     distributor.pendingRequests.set('r1', { timer: setTimeout(() => {}, 1000) })
-    
+
     const stats = distributor.getStats()
-    
+
     assert.strictEqual(stats.announcedManifests, 2)
     assert.strictEqual(stats.pendingRequests, 1)
-    
+
     clearTimeout(distributor.pendingRequests.get('r1').timer)
   })
 
   await t.test('destroy cleans up all resources', async () => {
     const distributor = new ManifestDistributor({})
-    
+
     distributor.manifestCache.set('f1', {})
-    
+
     let rejected = false
     distributor.pendingRequests.set('r1', {
       timer: setTimeout(() => {}, 10000),
       resolve: () => {},
       reject: () => { rejected = true }
     })
-    
+
     const destroyedPromise = new Promise(resolve => {
       distributor.once('destroyed', resolve)
     })
-    
+
     distributor.destroy()
-    
+
     await destroyedPromise
-    
+
     assert.strictEqual(distributor._destroyed, true)
     assert.strictEqual(distributor.manifestCache.size, 0)
     assert.strictEqual(distributor.pendingRequests.size, 0)
@@ -286,17 +285,17 @@ test('ManifestDistributor', async (t) => {
   await t.test('emits manifest-served event when handling request', () => {
     const storage = createMockStorage()
     storage.storeManifest('file-abc', Buffer.from('manifest'))
-    
+
     const distributor = new ManifestDistributor({ storage })
-    
+
     const events = []
     distributor.on('manifest-served', (info) => events.push(info))
-    
+
     distributor.handleMessage(
       { type: 'manifest-request', fileId: 'file-abc', requestId: 'req-1' },
       () => {}
     )
-    
+
     assert.strictEqual(events.length, 1)
     assert.strictEqual(events[0].fileId, 'file-abc')
     assert.strictEqual(events[0].found, true)
@@ -306,13 +305,13 @@ test('ManifestDistributor', async (t) => {
   await t.test('handles manifest-request for unknown file', () => {
     const storage = createMockStorage()
     const distributor = new ManifestDistributor({ storage })
-    
+
     let response = null
     distributor.handleMessage(
       { type: 'manifest-request', fileId: 'unknown-file', requestId: 'req-1' },
       (resp) => { response = resp }
     )
-    
+
     assert.strictEqual(response.found, false)
     assert.strictEqual(response.manifest, null)
   })
@@ -322,13 +321,13 @@ test('ManifestDistributor integration', async (t) => {
   await t.test('full request/response cycle between two distributors', async () => {
     const storage1 = createMockStorage()
     const storage2 = createMockStorage()
-    
+
     const testManifest = Buffer.from('encrypted-file-manifest-content')
     storage1.storeManifest('shared-file', testManifest)
-    
+
     const distributor1 = new ManifestDistributor({ storage: storage1 })
     const distributor2 = new ManifestDistributor({ storage: storage2 })
-    
+
     const resultPromise = distributor2.requestManifest(
       'shared-file',
       (request) => {
@@ -338,13 +337,13 @@ test('ManifestDistributor integration', async (t) => {
       },
       5000
     )
-    
+
     const result = await resultPromise
-    
+
     assert.strictEqual(result.fileId, 'shared-file')
     assert.ok(result.manifest)
     assert.ok(result.manifest.equals(testManifest))
-    
+
     distributor1.destroy()
     distributor2.destroy()
   })
@@ -352,10 +351,10 @@ test('ManifestDistributor integration', async (t) => {
   await t.test('request for non-existent manifest returns null', async () => {
     const storage1 = createMockStorage()
     const storage2 = createMockStorage()
-    
+
     const distributor1 = new ManifestDistributor({ storage: storage1 })
     const distributor2 = new ManifestDistributor({ storage: storage2 })
-    
+
     const resultPromise = distributor2.requestManifest(
       'nonexistent-file',
       (request) => {
@@ -365,12 +364,12 @@ test('ManifestDistributor integration', async (t) => {
       },
       5000
     )
-    
+
     const result = await resultPromise
-    
+
     assert.strictEqual(result.fileId, 'nonexistent-file')
     assert.strictEqual(result.manifest, null)
-    
+
     distributor1.destroy()
     distributor2.destroy()
   })

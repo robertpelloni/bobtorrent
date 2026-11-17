@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import { ingest, reassemble, BlobClient } from '../reference-client/lib/storage.js'
+import { ingest, reassemble } from '../reference-client/lib/storage.js'
 import { BlobStore } from '../reference-client/lib/blob-store.js'
 import { BlobNetwork } from '../reference-client/lib/blob-network.js'
 

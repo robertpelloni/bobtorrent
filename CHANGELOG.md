@@ -1,3 +1,10 @@
+## [11.60.59] - 2026-11-16
+### JS Gate Restored: Lint 0 + Real Bug Fixed
+- `standard --fix` + manual cleanup: 669 -> 0 findings on owned JS (`index.js server.js lib test`; lint script scoped to match — unscoped standard swept submodules).
+- **Bug fixed**: vendored `server.js` `listen()` referenced out-of-scope `onListening` with WebTransport enabled (ReferenceError). Local completion callback added; regression test `test/server-webtransport.test.js`.
+- Restored vendored tracker modules deleted from this fork (`lib/common.js`, `lib/common-node.js`, `lib/server/{swarm,parse-http,parse-udp}.js`) from upstream — root server.js is importable again.
+- `npm test` (lint + tests) green: **114/114**.
+
 ## [11.60.58] - 2026-11-14
 ### Opt-In Signature Enforcement (lattice-go -require-signatures)
 - `Lattice.RequireSignatures` + `-require-signatures` flag (default OFF — permissive behavior unchanged). Live unsigned blocks rejected ('signature required'), signed accepted; replay of existing history never gated so cold boot cannot brick. Covered by `require_signatures_test.go` + live test on a throwaway chain. Enabling it makes the mandatory-signature policy a deployment choice instead of a code change.
