@@ -116,3 +116,6 @@ All three Go binaries launched together below-normal: lattice :4000 (200), super
 
 ## CI not firing (2026-11-17, owner action)
 - GitHub Actions is enabled and ci/Release/stale workflows are active, but gh run list shows ZERO ci/Release runs for all Nov 14-16 master pushes (only scheduled stale runs). Local gates pass (Go suite, npm test 114/114, CI bumped to Node 22), so this is a repo/token-side trigger issue to inspect in the Actions tab (push token workflow scope is the usual suspect). Also: release.yml runs semantic-release with no config in-repo while governance is VERSION-file based, and package.json version had drifted to 11.2.4 - synced to 11.60.59 this turn. Decide: keep semantic-release or retire release.yml in favor of VERSION-file releases.
+
+## CI resolved (2026-11-17)
+- The not-firing mystery was a gh default-repo artifact: gh resolved to upstream webtorrent/bittorrent-tracker. On the fork (explicit -R robertpelloni/bobtorrent), ci.yml gained a Go build/vet/test job + workflow_dispatch; manual dispatch run 44030837396 is GREEN (Go 28s, Node 50s) after fixing npm install with --legacy-peer-deps (ERESOLVE on @lightprotocol/compressed-token). Push-triggered runs still unobserved - dispatch is the proven path; check push token if automatic runs are wanted.
