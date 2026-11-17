@@ -1,3 +1,7 @@
+## [11.60.78] - 2026-11-17
+### TUI Version Truth + Smoke Test
+- Terminal UI hardcoded stale versions (header v2.0, footer v11.6.0). It now renders the injected build `Version` (`tui.Version` set from `main.Version`). TUI path smoke-tested live both runs: renders, honest Lattice OFFLINE state, quits cleanly on q (exit 0).
+
 ## [11.60.77] - 2026-11-17
 ### Submodule Repair + TODO Reconciliation
 - Removed dead `MobileMessenger` gitlink (no .gitmodules mapping, target repo does not exist) that made every `git submodule` command fatal. bobcoin + element-web now list/update cleanly. Stale TODO items reconciled (port flag, operator links, submodule pointer - all already shipped).
