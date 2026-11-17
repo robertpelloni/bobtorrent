@@ -1,3 +1,7 @@
+## [11.60.67] - 2026-11-17
+### Matchmaking Signaling Live-Verified
+- `/matchmaking` exercised live: two clients matched (initiator/responder), SIGNAL relayed intact, `/status` signaling telemetry exact (2 connections, 1 match, 1 relay, 2 disconnects). No code change needed.
+
 ## [11.60.66] - 2026-11-17
 ### Signaling Matchmaker Instance Capture
 - `handleSignalingSocket` read the mutable `signalingMatchmaker` global at operation time; a late-closing connection's deferred disconnect could mutate a different (swapped) instance - the CI failure in `TestHandleServiceStatusIncludesSignalingSnapshot` (activeConnections 2->1, disconnects 1). The handler now captures one instance per connection. Local suite x3 green.
