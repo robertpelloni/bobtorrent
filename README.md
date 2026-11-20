@@ -1,3 +1,26 @@
+# bobtorrent — EXTREME WIP ALPHA
+
+> **Status (2026-11-19): EXTREME WIP ALPHA, developed in the open. Don't bother trying to use it unless you plan on hacking on it to get it working.**
+> No deployment, no users, no release. This README was corrected on 2026-11-19 so the front door matches the repo.
+
+**What this repo actually is:** Robert Pelloni's fork of [webtorrent/bittorrent-tracker](https://github.com/webtorrent/bittorrent-tracker), grown into a monorepo experiment around a Go supernode.
+
+- **Version:** 11.60.82 (VERSION file is the source of truth; `package.json` is kept in sync and CI enforces it)
+- **Default branch:** `master`
+- **Real work in here:** the Go supernode (`cmd/`, `internal/`, `pkg/`, `go.mod`) — tracker + DHT + lattice + messenger in one control plane — plus a Java supernode, a desktop/Tauri app, and a web dashboard. See `VISION.md`, `HANDOFF.md`, and `CHANGELOG.md` for the project's own record.
+- **Verified in-repo (per HANDOFF.md, through Nov 17, 2026):** Go binaries build with `CGO_ENABLED=0`, tracker HTTP `/announce` and UDP (BEP 15) live-checked, and a local lattice chain exercised over real HTTP. That is a local prototype verification, not a deployed network.
+- **Not this:** a production tracker, a deployed storage/messaging network, or a cryptocurrency. The "Mega-Messenger" / sovereign distribution mesh in `VISION.md` is a vision document, not a shipped product.
+- **Submodules:** `bobcoin/` and `element-web/` — check `.gitmodules`; they are separate projects pulled in as references/components.
+- **Port note on Robert's machine:** bobcoin owns :8000/:8001/:4001 — run the supernode with `-port 8002` alongside it (see `DEPLOY.md`).
+
+---
+
+## Upstream tracker documentation
+
+Everything below this line is the original upstream `bittorrent-tracker` README, kept for the tracker client/server APIs that this fork is built on. It describes the upstream module, not bobtorrent's supernode additions above.
+
+---
+
 # EXTREME WIP ALPHA DEVELOPED "IN THE OPEN," DON'T BOTHER TRYING TO USE IT UNLESS YOU PLAN ON HACKING ON IT TO GET IT WORKING
 
 # bobtorrent [![ci][ci-image]][ci-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url]
